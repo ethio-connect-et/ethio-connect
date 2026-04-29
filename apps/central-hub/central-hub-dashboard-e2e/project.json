@@ -1,0 +1,10 @@
+{
+  "name": "@ethio-connect/central-hub-dashboard-e2e",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/central-hub/central-hub-dashboard-e2e/src",
+  "tags": [],
+  "implicitDependencies": ["@ethio-connect/central-hub-dashboard"],
+  "// targets": "to see all targets run: nx show project @ethio-connect/central-hub-dashboard-e2e --web",
+  "targets": {}
+}

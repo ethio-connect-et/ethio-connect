@@ -1,0 +1,42 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  affected:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install pnpm
+        run: npm install -g pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Nx Affected Build
+        run: npx nx affected --target=build --parallel
+      - name: Nx Affected Test
+        run: npx nx affected --target=test --parallel
+      - name: Nx Affected Lint
+        run: npx nx affected --target=lint --parallel
+      - name: Docker Build & Push
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for app in vendor-portal customer-portal central-hub; do
+            docker build -t ghcr.io/ethioconnect/$app:latest ./apps/$app
+            echo $GHCR_TOKEN | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker push ghcr.io/ethioconnect/$app:latest
+          done
+      - name: Update K8s Manifests
+        run: |
+          echo "Update manifests with new image tags (implement as needed)"
+      - name: Deploy via ArgoCD
+        run: |
+          echo "Trigger ArgoCD sync (implement as needed)"

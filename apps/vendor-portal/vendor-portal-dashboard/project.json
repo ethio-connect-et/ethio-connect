@@ -1,0 +1,9 @@
+{
+  "name": "@ethio-connect/vendor-portal-dashboard",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/vendor-portal/vendor-portal-dashboard",
+  "projectType": "application",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project @ethio-connect/vendor-portal-dashboard --web",
+  "targets": {}
+}

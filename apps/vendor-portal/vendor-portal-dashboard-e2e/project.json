@@ -1,0 +1,10 @@
+{
+  "name": "@ethio-connect/vendor-portal-dashboard-e2e",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/vendor-portal/vendor-portal-dashboard-e2e/src",
+  "tags": [],
+  "implicitDependencies": ["@ethio-connect/vendor-portal-dashboard"],
+  "// targets": "to see all targets run: nx show project @ethio-connect/vendor-portal-dashboard-e2e --web",
+  "targets": {}
+}

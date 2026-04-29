@@ -1,0 +1,9 @@
+{
+  "name": "@ethio-connect/customer-portal-dashboard",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/customer-portal/customer-portal-dashboard",
+  "projectType": "application",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project @ethio-connect/customer-portal-dashboard --web",
+  "targets": {}
+}
