@@ -1,0 +1,9 @@
+{
+  "name": "@ethio-connect/frontend-features",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/frontend-features/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:next"],
+  "// targets": "to see all targets run: nx show project @ethio-connect/frontend-features --web",
+  "targets": {}
+}

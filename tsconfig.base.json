@@ -13,7 +13,21 @@
     "lib": ["es2020", "dom"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
-    "paths": {}
+    "paths": {
+      "@ethio-connect/ethioconnect": ["./libs/ethioconnect/src/index.ts"],
+      "@ethio-connect/api-common": ["./libs/api-common/src/index.ts"],
+      "@ethio-connect/api-features": ["./libs/api-features/src/index.ts"],
+      "@ethio-connect/ui-components": ["./libs/ui-components/src/index.ts"],
+      "@ethio-connect/ui-components/server": [
+        "./libs/ui-components/src/server.ts"
+      ],
+      "@ethio-connect/frontend-features": [
+        "./libs/frontend-features/src/index.ts"
+      ],
+      "@ethio-connect/frontend-features/server": [
+        "./libs/frontend-features/src/server.ts"
+      ]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }

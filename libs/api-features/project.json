@@ -1,0 +1,9 @@
+{
+  "name": "@ethio-connect/api-features",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/api-features/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:nest"],
+  "// targets": "to see all targets run: nx show project @ethio-connect/api-features --web",
+  "targets": {}
+}
