@@ -1,10 +1,10 @@
-name: CI/CD Pipeline
+name: Production-Grade CI/CD Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [main, production, staging, testing]
   pull_request:
-    branches: [main]
+    branches: [main, production, staging, testing]
 
 jobs:
   affected:
@@ -19,6 +19,8 @@ jobs:
         run: npm install -g pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Nx Format Check
+        run: npx nx format:check
       - name: Nx Affected Build
         run: npx nx affected --target=build --parallel
       - name: Nx Affected Test
@@ -26,17 +28,31 @@ jobs:
       - name: Nx Affected Lint
         run: npx nx affected --target=lint --parallel
       - name: Docker Build & Push
+        if: github.ref == 'refs/heads/production' || github.ref == 'refs/heads/main'
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           for app in vendor-portal customer-portal central-hub; do
-            docker build -t ghcr.io/ethioconnect/$app:latest ./apps/$app
+            docker build -t ghcr.io/ethioconnect/$app:${GITHUB_SHA::7} ./apps/$app
+            docker tag ghcr.io/ethioconnect/$app:${GITHUB_SHA::7} ghcr.io/ethioconnect/$app:latest
             echo $GHCR_TOKEN | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker push ghcr.io/ethioconnect/$app:${GITHUB_SHA::7}
             docker push ghcr.io/ethioconnect/$app:latest
           done
-      - name: Update K8s Manifests
+      - name: Update Manifest Repo
+        if: github.ref == 'refs/heads/production' || github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          echo "Update manifests with new image tags (implement as needed)"
+          git clone https://github.com/ethio-connect-et/ethio-connect-manifest.git
+          cd ethio-connect-manifest
+          # Update image tags in overlays/production (implement script as needed)
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          git commit -m "Update image tags to $GITHUB_SHA" || echo "No changes to commit"
+          git push https://x-access-token:${GH_TOKEN}@github.com/ethio-connect-et/ethio-connect-manifest.git HEAD:production
       - name: Deploy via ArgoCD
+        if: github.ref == 'refs/heads/production'
         run: |
-          echo "Trigger ArgoCD sync (implement as needed)"
+          echo "Trigger ArgoCD sync (implement webhook or CLI as needed)"
