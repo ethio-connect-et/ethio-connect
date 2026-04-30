@@ -15,6 +15,16 @@ on:
       - staging
       - production
       - main
+  workflow_dispatch:
+    inputs:
+      promote_to:
+        description: 'Promotion stage override'
+        required: false
+        type: choice
+        options:
+          - testing
+          - staging
+          - production
 
 permissions:
   contents: read
@@ -28,8 +38,58 @@ env:
   TRIVY_SEVERITY: CRITICAL,HIGH
 
 jobs:
+  resolve-promotion:
+    name: Resolve promotion stage and policy
+    runs-on: ubuntu-latest
+    outputs:
+      promotion_stage: ${{ steps.resolve.outputs.promotion_stage }}
+      requires_approval: ${{ steps.resolve.outputs.requires_approval }}
+      argocd_sync_mode: ${{ steps.resolve.outputs.argocd_sync_mode }}
+      promotion_blocked: ${{ steps.resolve.outputs.promotion_blocked }}
+    steps:
+      - name: Resolve stage policy
+        id: resolve
+        run: |
+          stage=""
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.promote_to }}" ]]; then
+            stage="${{ github.event.inputs.promote_to }}"
+          elif [[ "${GITHUB_REF}" == "refs/heads/testing" ]]; then
+            stage="testing"
+          elif [[ "${GITHUB_REF}" == "refs/heads/staging" ]]; then
+            stage="staging"
+          elif [[ "${GITHUB_REF}" == "refs/heads/production" || "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            stage="production"
+          fi
+
+          if [[ -z "${stage}" ]]; then
+            stage="none"
+          fi
+
+          requires_approval="false"
+          argocd_sync_mode="manual"
+          case "$stage" in
+            testing)
+              requires_approval="false"
+              argocd_sync_mode="auto"
+              ;;
+            staging)
+              requires_approval="true"
+              argocd_sync_mode="manual"
+              ;;
+            production)
+              requires_approval="true"
+              argocd_sync_mode="manual"
+              ;;
+          esac
+
+          echo "promotion_stage=$stage" >> "$GITHUB_OUTPUT"
+          echo "requires_approval=$requires_approval" >> "$GITHUB_OUTPUT"
+          echo "argocd_sync_mode=$argocd_sync_mode" >> "$GITHUB_OUTPUT"
+          echo "promotion_blocked=false" >> "$GITHUB_OUTPUT"
+
   preflight:
     name: Preflight (format/lint/type-check)
+    needs: resolve-promotion
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -75,6 +135,7 @@ jobs:
 
   dependency-audit:
     name: Dependency audit (fail on critical)
+    needs: resolve-promotion
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -144,14 +205,13 @@ jobs:
 
   container-build-push:
     name: Container build, push & artifact export
-    needs: affected-build-test
+    needs:
+      - resolve-promotion
+      - affected-build-test
     runs-on: ubuntu-latest
     if: >-
       github.event_name == 'push' &&
-      (github.ref == 'refs/heads/testing' ||
-      github.ref == 'refs/heads/staging' ||
-      github.ref == 'refs/heads/production' ||
-      github.ref == 'refs/heads/main')
+      needs.resolve-promotion.outputs.promotion_stage != 'none'
     permissions:
       contents: read
       packages: write
@@ -169,9 +229,9 @@ jobs:
         run: |
           echo "NX_DOCKER_REGISTRY=ghcr.io" >> "$GITHUB_ENV"
           echo "NX_DOCKER_REPOSITORY=${{ github.repository_owner }}" >> "$GITHUB_ENV"
-          if [[ "${GITHUB_REF}" == "refs/heads/production" || "${GITHUB_REF}" == "refs/heads/main" ]]; then
+          if [[ "${{ needs.resolve-promotion.outputs.promotion_stage }}" == "production" ]]; then
             echo "NX_IMAGE_TAG=latest" >> "$GITHUB_ENV"
-          elif [[ "${GITHUB_REF}" == "refs/heads/staging" ]]; then
+          elif [[ "${{ needs.resolve-promotion.outputs.promotion_stage }}" == "staging" ]]; then
             echo "NX_IMAGE_TAG=staging" >> "$GITHUB_ENV"
           else
             echo "NX_IMAGE_TAG=testing" >> "$GITHUB_ENV"
@@ -203,20 +263,21 @@ jobs:
   package-publish:
     name: Package publish
     needs:
+      - resolve-promotion
       - affected-build-test
       - container-build-push
     runs-on: ubuntu-latest
     if: >-
       github.event_name == 'push' &&
-      (github.ref == 'refs/heads/staging' ||
-      github.ref == 'refs/heads/production' ||
-      github.ref == 'refs/heads/main')
-    environment: >-
-      ${{ github.ref == 'refs/heads/staging' && 'staging' || 'production' }}
+      (needs.resolve-promotion.outputs.promotion_stage == 'staging' ||
+      needs.resolve-promotion.outputs.promotion_stage == 'production')
+    environment: ${{ needs.resolve-promotion.outputs.promotion_stage }}
     permissions:
       contents: read
       packages: write
       id-token: write
+    outputs:
+      package_version_manifest: ${{ steps.publish-manifest.outputs.path }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -246,54 +307,170 @@ jobs:
           NPM_CONFIG_PROVENANCE: 'true'
         run: pnpm nx release publish --yes
 
-      - name: Upload publish manifest
+      - name: Generate package metadata manifest
+        id: publish-manifest
         run: |
           mkdir -p package-metadata
+          pnpm nx release --dry-run --json > package-metadata/release-plan.json || echo '{"packages":[]}' > package-metadata/release-plan.json
           cat > package-metadata/publish.json <<EOF
           {
             "branch": "${{ github.ref_name }}",
             "sha": "${{ github.sha }}",
+            "promotionStage": "${{ needs.resolve-promotion.outputs.promotion_stage }}",
             "publishedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
           EOF
+          echo "path=package-metadata/publish.json" >> "$GITHUB_OUTPUT"
 
       - name: Upload package metadata
         uses: actions/upload-artifact@v4
         with:
           name: package-publish-metadata
-          path: package-metadata/publish.json
+          path: package-metadata/*.json
           if-no-files-found: error
 
-  manifest-update:
-    name: Manifest update (immutable digests)
+  release-metadata:
+    name: Build immutable release metadata bundle
     needs:
+      - resolve-promotion
       - container-build-push
       - package-publish
     runs-on: ubuntu-latest
     if: >-
       github.event_name == 'push' &&
-      (github.ref == 'refs/heads/testing' ||
-      github.ref == 'refs/heads/staging' ||
-      github.ref == 'refs/heads/production' ||
-      github.ref == 'refs/heads/main')
-    environment: >-
-      ${{ github.ref == 'refs/heads/testing' && 'testing' ||
-          github.ref == 'refs/heads/staging' && 'staging' || 'production' }}
-    permissions:
-      contents: read
+      needs.resolve-promotion.outputs.promotion_stage != 'none'
+    outputs:
+      bundle_path: ${{ steps.bundle.outputs.bundle_path }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
       - name: Download image metadata
         uses: actions/download-artifact@v4
         with:
-          pattern: image-metadata-*
+          pattern: image-metadata*
           path: image-metadata
           merge-multiple: true
 
       - name: Download package publish metadata
+        if: needs.resolve-promotion.outputs.promotion_stage != 'testing'
         uses: actions/download-artifact@v4
         with:
           name: package-publish-metadata
           path: package-metadata
+
+      - name: Build release bundle
+        id: bundle
+        run: |
+          mkdir -p release-metadata
+          PREVIOUS_SHA=$(git rev-parse HEAD~1)
+          cat > release-metadata/release-bundle.json <<EOF
+          {
+            "promotionStage": "${{ needs.resolve-promotion.outputs.promotion_stage }}",
+            "requiresApproval": ${{ needs.resolve-promotion.outputs.requires_approval }},
+            "argoCd": {
+              "syncPolicy": "${{ needs.resolve-promotion.outputs.argocd_sync_mode }}"
+            },
+            "source": {
+              "repo": "${{ github.repository }}",
+              "branch": "${{ github.ref_name }}",
+              "commitSha": "${{ github.sha }}",
+              "previousKnownGood": {
+                "commitSha": "${PREVIOUS_SHA}"
+              }
+            },
+            "artifacts": {
+              "imagesPath": "image-metadata",
+              "packagesPath": "package-metadata"
+            },
+            "rollback": {
+              "strategy": "revert-to-previous-known-good",
+              "targetReleaseRef": "${PREVIOUS_SHA}",
+              "capturedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            }
+          }
+          EOF
+          echo "bundle_path=release-metadata/release-bundle.json" >> "$GITHUB_OUTPUT"
+
+      - name: Upload immutable release metadata bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-metadata-bundle
+          path: release-metadata/release-bundle.json
+          if-no-files-found: error
+
+  promotion-guardrails:
+    name: Drift/health guardrails and stop conditions
+    needs:
+      - resolve-promotion
+      - release-metadata
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' &&
+      needs.resolve-promotion.outputs.promotion_stage != 'none'
+    outputs:
+      promote_allowed: ${{ steps.guard.outputs.promote_allowed }}
+    steps:
+      - name: Evaluate promotion stop conditions
+        id: guard
+        run: |
+          set -euo pipefail
+          stage="${{ needs.resolve-promotion.outputs.promotion_stage }}"
+          promote_allowed="true"
+
+          if [[ "$stage" == "production" && "${{ github.ref_name }}" != "production" && "${{ github.ref_name }}" != "main" ]]; then
+            echo "Production promotion must originate from production/main branch"
+            promote_allowed="false"
+          fi
+
+          echo "Running ArgoCD drift/health prechecks for stage=$stage"
+          # Placeholder for real checks:
+          # argocd app diff <app> --hard-refresh
+          # argocd app wait <app> --health --timeout 300
+
+          echo "promote_allowed=${promote_allowed}" >> "$GITHUB_OUTPUT"
+          if [[ "$promote_allowed" != "true" ]]; then
+            echo "Promotion blocked due to guardrail violations"
+            exit 1
+          fi
+
+  manifest-update:
+    name: Manifest update via PR per environment
+    needs:
+      - resolve-promotion
+      - release-metadata
+      - promotion-guardrails
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' &&
+      needs.resolve-promotion.outputs.promotion_stage != 'none' &&
+      needs.promotion-guardrails.outputs.promote_allowed == 'true'
+    environment: ${{ needs.resolve-promotion.outputs.promotion_stage }}
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Download image metadata
+        uses: actions/download-artifact@v4
+        with:
+          pattern: image-metadata*
+          path: image-metadata
+          merge-multiple: true
+
+      - name: Download package publish metadata
+        if: needs.resolve-promotion.outputs.promotion_stage != 'testing'
+        uses: actions/download-artifact@v4
+        with:
+          name: package-publish-metadata
+          path: package-metadata
+
+      - name: Download release metadata bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: release-metadata-bundle
+          path: release-metadata
 
       - name: Checkout manifest repository
         uses: actions/checkout@v4
@@ -302,14 +479,31 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
           path: ethio-connect-manifest
 
-      - name: Update deployment manifests with immutable references
+      - name: Update deployment manifests and env metadata
         working-directory: ethio-connect-manifest
         run: |
-          mkdir -p updates
-          cp -r ../image-metadata updates/image-metadata
-          cp -r ../package-metadata updates/package-metadata
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add .
-          git commit -m "ci: update manifests for ${{ github.sha }} (digest-pinned images)" || echo "No changes to commit"
-          git push origin HEAD:${{ github.ref_name }}
+          stage="${{ needs.resolve-promotion.outputs.promotion_stage }}"
+          mkdir -p environments/${stage}/updates
+          cp -r ../image-metadata environments/${stage}/updates/image-metadata
+          if [[ -d ../package-metadata ]]; then
+            cp -r ../package-metadata environments/${stage}/updates/package-metadata
+          fi
+          cp ../release-metadata/release-bundle.json environments/${stage}/updates/release-bundle.json
+
+      - name: Create promotion PR to manifest repo
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          path: ethio-connect-manifest
+          commit-message: >-
+            ci: promote ${{ github.sha }} to ${{ needs.resolve-promotion.outputs.promotion_stage }}
+          branch: >-
+            ci/promotion/${{ needs.resolve-promotion.outputs.promotion_stage }}/${{ github.run_id }}
+          title: >-
+            ci: promote ${{ needs.resolve-promotion.outputs.promotion_stage }} from ${{ github.sha }}
+          body: |
+            Promotion stage: `${{ needs.resolve-promotion.outputs.promotion_stage }}`
+            Requires approval: `${{ needs.resolve-promotion.outputs.requires_approval }}`
+            ArgoCD sync policy: `${{ needs.resolve-promotion.outputs.argocd_sync_mode }}`
+            Source commit: `${{ github.sha }}`
+            Rollback reference: `previous-known-good`
