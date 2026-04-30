@@ -12,7 +12,12 @@
       "fallbackCurrentVersionResolver": "disk"
     }
   },
-  "tags": [],
+  "tags": [
+    "scope:shared",
+    "type:util",
+    "domain:shared",
+    "platform:cross"
+  ],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
