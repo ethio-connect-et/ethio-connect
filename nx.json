@@ -10,7 +10,8 @@
       "{workspaceRoot}/pnpm-lock.yaml",
       "{workspaceRoot}/tsconfig.base.json",
       "{workspaceRoot}/eslint.config.mjs",
-      "{workspaceRoot}/jest.preset.js"
+      "{workspaceRoot}/jest.preset.js",
+      "{workspaceRoot}/.github/workflows/*.yml"
     ],
     "production": [
       "default",
@@ -24,8 +25,8 @@
       "!{projectRoot}/playwright.config.[jt]s",
       "!{projectRoot}/**/*.stories.@(ts|tsx|js|jsx|mdx)"
     ],
-    "ci": ["default", "^production"],
-    "e2e": ["default", "^production", "{workspaceRoot}/playwright.config.*"]
+    "ci": ["default", "production"],
+    "e2e": ["default", "production", "{workspaceRoot}/playwright.config.*"]
   },
   "plugins": [
     {
