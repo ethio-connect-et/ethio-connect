@@ -22,7 +22,10 @@ export default [
             },
             {
               sourceTag: 'scope:customer-portal',
-              onlyDependOnLibsWithTags: ['scope:customer-portal', 'scope:shared'],
+              onlyDependOnLibsWithTags: [
+                'scope:customer-portal',
+                'scope:shared',
+              ],
             },
             {
               sourceTag: 'scope:vendor-portal',
@@ -30,11 +33,19 @@ export default [
             },
             {
               sourceTag: 'type:dashboard',
-              onlyDependOnLibsWithTags: ['type:feature', 'type:ui', 'type:util'],
+              onlyDependOnLibsWithTags: [
+                'type:feature',
+                'type:ui',
+                'type:util',
+              ],
             },
             {
               sourceTag: 'type:api',
-              onlyDependOnLibsWithTags: ['type:feature', 'type:data-access', 'type:util'],
+              onlyDependOnLibsWithTags: [
+                'type:feature',
+                'type:data-access',
+                'type:util',
+              ],
             },
             {
               sourceTag: '*',

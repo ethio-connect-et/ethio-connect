@@ -34,7 +34,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: 20
+  NODE_VERSION: 24
   TRIVY_SEVERITY: CRITICAL,HIGH
 
 jobs:
@@ -82,10 +82,12 @@ jobs:
               ;;
           esac
 
-          echo "promotion_stage=$stage" >> "$GITHUB_OUTPUT"
-          echo "requires_approval=$requires_approval" >> "$GITHUB_OUTPUT"
-          echo "argocd_sync_mode=$argocd_sync_mode" >> "$GITHUB_OUTPUT"
-          echo "promotion_blocked=false" >> "$GITHUB_OUTPUT"
+          {
+            echo "promotion_stage=$stage"
+            echo "requires_approval=$requires_approval"
+            echo "argocd_sync_mode=$argocd_sync_mode"
+            echo "promotion_blocked=false"
+          } >> "$GITHUB_OUTPUT"
 
   preflight:
     name: Preflight (format/lint/type-check)
@@ -95,7 +97,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -142,7 +144,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Run Trivy filesystem scan
         uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8
@@ -171,7 +173,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -217,7 +219,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install dependencies
         uses: ./.github/actions/pnpm-install
@@ -227,15 +229,17 @@ jobs:
 
       - name: Set container environment
         run: |
-          echo "NX_DOCKER_REGISTRY=ghcr.io" >> "$GITHUB_ENV"
-          echo "NX_DOCKER_REPOSITORY=${{ github.repository_owner }}" >> "$GITHUB_ENV"
-          if [[ "${{ needs.resolve-promotion.outputs.promotion_stage }}" == "production" ]]; then
-            echo "NX_IMAGE_TAG=latest" >> "$GITHUB_ENV"
-          elif [[ "${{ needs.resolve-promotion.outputs.promotion_stage }}" == "staging" ]]; then
-            echo "NX_IMAGE_TAG=staging" >> "$GITHUB_ENV"
-          else
-            echo "NX_IMAGE_TAG=testing" >> "$GITHUB_ENV"
-          fi
+          {
+            echo "NX_DOCKER_REGISTRY=ghcr.io"
+            echo "NX_DOCKER_REPOSITORY=${{ github.repository_owner }}"
+            if [[ "${{ needs.resolve-promotion.outputs.promotion_stage }}" == "production" ]]; then
+              echo "NX_IMAGE_TAG=latest"
+            elif [[ "${{ needs.resolve-promotion.outputs.promotion_stage }}" == "staging" ]]; then
+              echo "NX_IMAGE_TAG=staging"
+            else
+              echo "NX_IMAGE_TAG=testing"
+            fi
+          } >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -280,7 +284,7 @@ jobs:
       package_version_manifest: ${{ steps.publish-manifest.outputs.path }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -343,7 +347,7 @@ jobs:
       bundle_path: ${{ steps.bundle.outputs.bundle_path }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
 
@@ -473,7 +477,7 @@ jobs:
           path: release-metadata
 
       - name: Checkout manifest repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: ethio-connect-et/ethio-connect-manifest
           token: ${{ secrets.GH_TOKEN }}
