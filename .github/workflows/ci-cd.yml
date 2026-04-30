@@ -25,6 +25,7 @@ concurrency:
 
 env:
   NODE_VERSION: 20
+  TRIVY_SEVERITY: CRITICAL,HIGH
 
 jobs:
   preflight:
@@ -61,9 +62,38 @@ jobs:
       - name: Type check (affected)
         run: pnpm nx affected --target=type-check --parallel=3
 
+  dependency-audit:
+    name: Dependency audit (fail on critical)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8 
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-fs.sarif
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Upload dependency scan results
+        uses: github/codeql-action/upload-sarif@865f5f5c36632f18690a3d569fa0a764f2da0c3e
+        if: always()
+        with:
+          sarif_file: trivy-fs.sarif
+
   affected-build-test:
     name: Affected build & test
-    needs: preflight
+    needs:
+      - preflight
+      - dependency-audit
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -104,7 +134,7 @@ jobs:
           retention-days: 7
 
   container-build-push:
-    name: Container build & push
+    name: Container build, scan, sign & attest
     needs: affected-build-test
     runs-on: ubuntu-latest
     if: >-
@@ -121,6 +151,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -145,6 +176,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@4959ce089c160fddf62f7b42464195ba1a56d382
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -168,25 +202,69 @@ jobs:
           provenance: true
           sbom: true
 
-      - name: Export image metadata
+      - name: Vulnerability scan image (fail on CRITICAL)
+        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8 
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}@${{ steps.build-push.outputs.digest }}
+          format: sarif
+          output: trivy-image-${{ matrix.app }}.sarif
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Upload image scan results
+        uses: github/codeql-action/upload-sarif@865f5f5c36632f18690a3d569fa0a764f2da0c3e
+        if: always()
+        with:
+          sarif_file: trivy-image-${{ matrix.app }}.sarif
+
+      - name: Generate SBOM (SPDX JSON)
+        uses: anchore/sbom-action@v0.17.7
+        with:
+          image: ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}@${{ steps.build-push.outputs.digest }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.app }}.spdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.app }}
+          path: sbom-${{ matrix.app }}.spdx.json
+          if-no-files-found: error
+
+      - name: Sign image (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: 'true'
+        run: |
+          cosign sign --yes ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}@${{ steps.build-push.outputs.digest }}
+
+      - name: Attest SBOM provenance (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: 'true'
+        run: |
+          cosign attest --yes \
+            --predicate sbom-${{ matrix.app }}.spdx.json \
+            --type spdxjson \
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}@${{ steps.build-push.outputs.digest }}
+
+      - name: Export immutable image metadata
         run: |
           mkdir -p image-metadata
-          cat > image-metadata/${{ matrix.app }}.json <<EOF
+          cat > image-metadata/${{ matrix.app }}.json <<EOF_META
           {
             "app": "${{ matrix.app }}",
-            "tags": "${{ steps.meta.outputs.tags }}",
+            "image": "ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}@${{ steps.build-push.outputs.digest }}",
             "digest": "${{ steps.build-push.outputs.digest }}",
             "branch": "${{ github.ref_name }}",
             "sha": "${{ github.sha }}"
           }
-          EOF
+          EOF_META
 
-      - name: Upload image metadata and attestations
+      - name: Upload image metadata
         uses: actions/upload-artifact@v4
         with:
           name: image-metadata-${{ matrix.app }}
-          path: |
-            image-metadata/${{ matrix.app }}.json
+          path: image-metadata/${{ matrix.app }}.json
           if-no-files-found: error
           retention-days: 14
 
@@ -256,7 +334,7 @@ jobs:
           if-no-files-found: error
 
   manifest-update:
-    name: Manifest update
+    name: Manifest update (immutable digests)
     needs:
       - container-build-push
       - package-publish
@@ -293,7 +371,7 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
           path: ethio-connect-manifest
 
-      - name: Update deployment manifests
+      - name: Update deployment manifests with immutable references
         working-directory: ethio-connect-manifest
         run: |
           mkdir -p updates
@@ -302,5 +380,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add .
-          git commit -m "ci: update manifests for ${{ github.sha }}" || echo "No changes to commit"
+          git commit -m "ci: update manifests for ${{ github.sha }} (digest-pinned images)" || echo "No changes to commit"
           git push origin HEAD:${{ github.ref_name }}
