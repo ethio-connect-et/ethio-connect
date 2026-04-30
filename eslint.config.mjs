@@ -5,7 +5,7 @@ export default [
   ...nx.configs['flat/typescript'],
   ...nx.configs['flat/javascript'],
   {
-    ignores: ['**/dist', '**/out-tsc'],
+    ignores: ['**/dist', '**/out-tsc', '**/lint-fixtures/**'],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
@@ -16,6 +16,32 @@ export default [
           enforceBuildableLibDependency: true,
           allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
           depConstraints: [
+            {
+              sourceTag: 'platform:e2e',
+              onlyDependOnLibsWithTags: ['type:app', 'scope:shared'],
+            },
+            {
+              sourceTag: 'platform:web',
+              notDependOnLibsWithTags: ['platform:api'],
+            },
+            {
+              sourceTag: 'domain:central-hub',
+              onlyDependOnLibsWithTags: ['domain:central-hub', 'domain:shared'],
+            },
+            {
+              sourceTag: 'domain:customer-portal',
+              onlyDependOnLibsWithTags: [
+                'domain:customer-portal',
+                'domain:shared',
+              ],
+            },
+            {
+              sourceTag: 'domain:vendor-portal',
+              onlyDependOnLibsWithTags: [
+                'domain:vendor-portal',
+                'domain:shared',
+              ],
+            },
             {
               sourceTag: 'scope:central-hub',
               onlyDependOnLibsWithTags: ['scope:central-hub', 'scope:shared'],
