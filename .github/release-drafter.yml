@@ -22,7 +22,7 @@ categories:
       - 'ci'
       - 'release'
       - 'docker'
-      - 'deploy'
+      - 'gitops'
   - title: 'Security and Dependencies'
     labels:
       - 'security'
@@ -47,7 +47,7 @@ version-resolver:
       - 'fix'
       - 'ci'
       - 'docker'
-      - 'deploy'
+      - 'gitops'
       - 'security'
       - 'dependencies'
   default: patch

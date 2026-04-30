@@ -1,0 +1,1665 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EthioConnect Codebase Audit Report</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
+
+      :root {
+        --primary: #1a365d;
+        --primary-light: #2c5282;
+        --secondary: #2d3748;
+        --accent: #e53e3e;
+        --warning: #dd6b20;
+        --success: #38a169;
+        --info: #3182ce;
+        --bg: #f7fafc;
+        --card-bg: #ffffff;
+        --border: #e2e8f0;
+        --text: #1a202c;
+        --text-light: #718096;
+        --critical: #c53030;
+        --high: #dd6b20;
+        --medium: #d69e2e;
+        --low: #38a169;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family:
+          'Inter',
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 11pt;
+        line-height: 1.6;
+      }
+
+      @page {
+        size: A4;
+        margin: 15mm 18mm 20mm 18mm;
+        @bottom-center {
+          content: 'Confidential — EthioConnect Audit Report | Page '
+            counter(page) ' of ' counter(pages);
+          font-size: 8pt;
+          color: var(--text-light);
+        }
+      }
+
+      .container {
+        max-width: 210mm;
+        margin: 0 auto;
+      }
+
+      .cover {
+        page-break-after: always;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--primary-light) 100%
+        );
+        color: white;
+        padding: 40mm 20mm;
+        margin: -15mm -18mm 0 -18mm;
+      }
+
+      .cover h1 {
+        font-size: 32pt;
+        font-weight: 900;
+        margin-bottom: 10mm;
+        letter-spacing: -0.5px;
+      }
+
+      .cover .subtitle {
+        font-size: 16pt;
+        font-weight: 300;
+        margin-bottom: 15mm;
+        opacity: 0.9;
+      }
+
+      .cover .meta {
+        font-size: 10pt;
+        opacity: 0.8;
+        border-top: 1px solid rgba(255, 255, 255, 0.3);
+        padding-top: 8mm;
+        width: 100%;
+      }
+
+      .cover .meta div {
+        margin: 2mm 0;
+      }
+
+      .section {
+        page-break-inside: avoid;
+        margin-bottom: 10mm;
+      }
+
+      .section-title {
+        font-size: 18pt;
+        font-weight: 700;
+        color: var(--primary);
+        border-bottom: 3px solid var(--primary);
+        padding-bottom: 3mm;
+        margin: 12mm 0 6mm 0;
+        page-break-after: avoid;
+      }
+
+      .subsection-title {
+        font-size: 13pt;
+        font-weight: 600;
+        color: var(--secondary);
+        margin: 6mm 0 3mm 0;
+        page-break-after: avoid;
+      }
+
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 4mm;
+        padding: 5mm;
+        margin-bottom: 4mm;
+        page-break-inside: avoid;
+      }
+
+      .card-title {
+        font-size: 11pt;
+        font-weight: 600;
+        color: var(--primary);
+        margin-bottom: 2mm;
+      }
+
+      .severity-critical {
+        color: var(--critical);
+        font-weight: 700;
+      }
+      .severity-high {
+        color: var(--high);
+        font-weight: 700;
+      }
+      .severity-medium {
+        color: var(--medium);
+        font-weight: 700;
+      }
+      .severity-low {
+        color: var(--low);
+        font-weight: 700;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 1mm 3mm;
+        border-radius: 2mm;
+        font-size: 9pt;
+        font-weight: 600;
+        margin-right: 2mm;
+      }
+
+      .badge-critical {
+        background: #fed7d7;
+        color: var(--critical);
+      }
+      .badge-high {
+        background: #feebc8;
+        color: var(--high);
+      }
+      .badge-medium {
+        background: #fefcbe;
+        color: var(--medium);
+      }
+      .badge-low {
+        background: #d9f99;
+        color: var(--low);
+      }
+      .badge-info {
+        background: #bee3f8;
+        color: var(--info);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 3mm 0;
+        font-size: 9.5pt;
+      }
+
+      th {
+        background: var(--primary);
+        color: white;
+        padding: 2mm 3mm;
+        text-align: left;
+        font-weight: 600;
+      }
+
+      td {
+        padding: 2mm 3mm;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+
+      tr:nth-child(even) {
+        background: #f7fafc;
+      }
+
+      ul,
+      ol {
+        margin: 2mm 0 2mm 6mm;
+      }
+
+      li {
+        margin: 1.5mm 0;
+      }
+
+      code {
+        background: #edf2f7;
+        padding: 1mm 2mm;
+        border-radius: 1mm;
+        font-size: 9pt;
+        font-family: 'Courier New', monospace;
+        color: var(--accent);
+      }
+
+      pre {
+        background: #1a202c;
+        color: #e2e8f0;
+        padding: 4mm;
+        border-radius: 2mm;
+        font-size: 9pt;
+        font-family: 'Courier New', monospace;
+        overflow-x: auto;
+        margin: 3mm 0;
+        white-space: pre-wrap;
+        line-height: 1.4;
+      }
+
+      .finding {
+        border-left: 4px solid var(--border);
+        padding-left: 4mm;
+        margin: 3mm 0;
+        page-break-inside: avoid;
+      }
+
+      .finding.critical {
+        border-left-color: var(--critical);
+      }
+      .finding.high {
+        border-left-color: var(--high);
+      }
+      .finding.medium {
+        border-left-color: var(--medium);
+      }
+      .finding.low {
+        border-left-color: var(--low);
+      }
+
+      .finding-title {
+        font-weight: 600;
+        font-size: 10.5pt;
+        margin-bottom: 1mm;
+      }
+
+      .finding-meta {
+        font-size: 9pt;
+        color: var(--text-light);
+        margin-bottom: 1.5mm;
+      }
+
+      .toc {
+        page-break-after: always;
+      }
+
+      .toc-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 2mm 0;
+        border-bottom: 1px dotted var(--border);
+      }
+
+      .executive-summary {
+        background: linear-gradient(135deg, #ebf8ff 0%, #e6fffa 100%);
+        border: 1px solid #bee3f8;
+        border-radius: 4mm;
+        padding: 6mm;
+        margin: 5mm 0;
+        page-break-inside: avoid;
+      }
+
+      .score-card {
+        display: flex;
+        justify-content: space-around;
+        margin: 5mm 0;
+      }
+
+      .score-item {
+        text-align: center;
+        padding: 4mm;
+      }
+
+      .score-value {
+        font-size: 24pt;
+        font-weight: 900;
+      }
+
+      .score-label {
+        font-size: 9pt;
+        color: var(--text-light);
+        margin-top: 1mm;
+      }
+
+      .progress-bar {
+        height: 8px;
+        background: var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 2mm 0;
+      }
+
+      .progress-fill {
+        height: 100%;
+        border-radius: 4px;
+      }
+
+      .progress-critical {
+        background: var(--critical);
+      }
+      .progress-high {
+        background: var(--high);
+      }
+      .progress-medium {
+        background: var(--medium);
+      }
+      .progress-low {
+        background: var(--low);
+      }
+
+      h3 {
+        font-size: 11pt;
+        font-weight: 600;
+        color: var(--secondary);
+        margin: 4mm 0 2mm 0;
+      }
+
+      .project-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3mm;
+      }
+
+      .project-card {
+        border: 1px solid var(--border);
+        border-radius: 3mm;
+        padding: 4mm;
+        background: white;
+      }
+
+      .project-card h4 {
+        font-size: 10pt;
+        font-weight: 600;
+        color: var(--primary);
+        margin-bottom: 2mm;
+      }
+
+      .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 2mm;
+      }
+
+      .status-dot.critical {
+        background: var(--critical);
+      }
+      .status-dot.high {
+        background: var(--high);
+      }
+      .status-dot.medium {
+        background: var(--medium);
+      }
+      .status-dot.low {
+        background: var(--low);
+      }
+      .status-dot.good {
+        background: var(--success);
+      }
+
+      .code-block {
+        background: #1a202c;
+        color: #e2e8f0;
+        padding: 3mm;
+        border-radius: 2mm;
+        font-family: 'Courier New', monospace;
+        font-size: 8.5pt;
+        line-height: 1.3;
+        margin: 2mm 0;
+        white-space: pre-wrap;
+      }
+
+      .note {
+        background: #fff5eb;
+        border-left: 3px solid var(--warning);
+        padding: 3mm;
+        margin: 2mm 0;
+        font-size: 9.5pt;
+      }
+
+      .recommendation {
+        background: #f0fff4;
+        border-left: 3px solid var(--success);
+        padding: 3mm;
+        margin: 2mm 0;
+        font-size: 9.5pt;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- COVER PAGE -->
+      <div class="cover">
+        <h1>EthioConnect</h1>
+        <div class="subtitle">Comprehensive Codebase Audit Report</div>
+        <div class="meta">
+          <div><strong>Project:</strong> @ethio-connect/source</div>
+          <div><strong>Date:</strong> April 30, 2026</div>
+          <div>
+            <strong>Scope:</strong> Full monorepo audit (excluding tenant-apps)
+          </div>
+          <div><strong>Generated by:</strong> opencode audit engine</div>
+          <div><strong>Report ID:</strong> ECA-20260430-142738</div>
+        </div>
+      </div>
+
+      <!-- EXECUTIVE SUMMARY -->
+      <div class="section">
+        <div class="section-title">Executive Summary</div>
+        <div class="executive-summary">
+          <p>
+            <strong
+              >Overall Assessment: SCALABLE FOUNDATION, SIGNIFICANT GAPS</strong
+            >
+          </p>
+          <p style="margin-top: 3mm">
+            EthioConnect is a well-structured Nx monorepo with clear domain
+            separation (Central Hub, Customer Portal, Vendor Portal). The
+            architectural foundation is solid, but the codebase is essentially a
+            <strong>scaffold-only state</strong> with zero business logic,
+            critical security vulnerabilities in workflows, and major
+            consistency issues that must be addressed before production
+            readiness.
+          </p>
+
+          <div class="score-card">
+            <div class="score-item">
+              <div class="score-value" style="color: var(--critical)">32</div>
+              <div class="score-label">Code Quality</div>
+            </div>
+            <div class="score-item">
+              <div class="score-value" style="color: var(--high)">45</div>
+              <div class="score-label">Architecture</div>
+            </div>
+            <div class="score-item">
+              <div class="score-value" style="color: var(--critical)">15</div>
+              <div class="score-label">Security</div>
+            </div>
+            <div class="score-item">
+              <div class="score-value" style="color: var(--high)">40</div>
+              <div class="score-label">DevOps/CI</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 4mm">
+            <strong>Critical Findings: 4</strong> | <strong>High: 12</strong> |
+            <strong>Medium: 18</strong> | <strong>Low: 9</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE OF CONTENTS -->
+      <div class="section toc">
+        <div class="section-title">Table of Contents</div>
+        <div class="toc-item">
+          <span>1. Code Quality & Standards</span><span>8</span>
+        </div>
+        <div class="toc-item">
+          <span>2. Architecture & System Design</span><span>12</span>
+        </div>
+        <div class="toc-item">
+          <span>3. Performance & Efficiency</span><span>15</span>
+        </div>
+        <div class="toc-item">
+          <span>4. Security Audit</span><span>17</span>
+        </div>
+        <div class="toc-item">
+          <span>5. Testing & Reliability</span><span>21</span>
+        </div>
+        <div class="toc-item">
+          <span>6. Dependencies & Tooling</span><span>24</span>
+        </div>
+        <div class="toc-item">
+          <span>7. Documentation & Maintainability</span><span>27</span>
+        </div>
+        <div class="toc-item">
+          <span>8. DevOps & Deployment</span><span>30</span>
+        </div>
+        <div class="toc-item">
+          <span>9. Prioritized Action Plan</span><span>33</span>
+        </div>
+      </div>
+
+      <!-- SECTION 1: CODE QUALITY -->
+      <div class="section">
+        <div class="section-title">1. Code Quality & Standards</div>
+
+        <div class="subsection-title">
+          1.1 Critical: Typos in Core Framework Decorators
+        </div>
+        <div class="finding critical">
+          <div class="finding-title">
+            <span class="status-dot critical"></span
+            ><span class="severity-critical">CRITICAL</span> — @Injectable()
+            mispelled as @Injectable() in ALL NestJS services
+          </div>
+          <div class="finding-meta">
+            Affects: central-hub-api, customer-portal-api, vendor-api-server |
+            File: */app.service.ts
+          </div>
+          <div class="code-block">
+            // INCORCT (all 3 API services): import { Injectable } from
+            '@nestjs/common'; // TYPO: should be Injectable @Injectable() //
+            WON'T WORK - decorator won't register the class export class
+            AppService { ... } // CORRECT: import { Injectable } from
+            '@nestjs/common'; @Injectable() export class AppService { ... }
+          </div>
+          <p>
+            <strong>Impact:</strong> NestJS dependency injection will fail. The
+            @Injectable() decorator is misspelled as @Injectable() — these are
+            two different tokens. This will cause runtime errors.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          1.2 High: HTML Attribute Typos in All Next.js Apps
+        </div>
+        <div class="finding high">
+          <div class="finding-title">
+            <span class="status-dot high"></span
+            ><span class="severity-high">HIGH</span> — rel="noreferrer" typo in
+            ALL dashboard pages
+          </div>
+          <div class="finding-meta">
+            Affects: 3 dashboards, 1 public website | 18+ occurrences across
+            files
+          </div>
+          <div class="code-block">
+            // INCORCT: <a href="..." rel="noreferrer" /> // TYPO: should be
+            noreferrer // CORRECT: <a href="..." rel="noreferrer" />
+          </div>
+          <p>
+            <strong>Impact:</strong> The <code>rel</code> attribute is ignored
+            by browsers. Security feature (noopener) is not enforced, creating
+            potential tab-napping vulnerabilities.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          1.3 High: Inconsistent Project Naming
+        </div>
+        <div class="finding high">
+          <div class="finding-title">
+            <span class="status-dot high"></span
+            ><span class="severity-high">HIGH</span> — "customer-portal" vs
+            "customer-portal" inconsistency
+          </div>
+          <div class="finding-meta">
+            Affects: All customer-portal apps and libs references
+          </div>
+          <table>
+            <tr>
+              <th>Location</th>
+              <th>Current (INCORCT)</th>
+              <th>Should Be</th>
+            </tr>
+            <tr>
+              <td>Directory</td>
+              <td><code>apps/customer-portal/</code></td>
+              <td><code>apps/customer-portal/</code></td>
+            </tr>
+            <tr>
+              <td>package.json name</td>
+              <td><code>@ethio-connect/customer-portal-api</code></td>
+              <td><code>@ethio-connect/customer-portal-api</code></td>
+            </tr>
+            <tr>
+              <td>CI workflow</td>
+              <td><code>customer-portal-api</code></td>
+              <td><code>customer-portal-api</code></td>
+            </tr>
+          </table>
+          <p>
+            <strong>Impact:</strong> File system paths use
+            <code>customer-portal</code> but some references use
+            <code>customer-portal</code>. This causes broken imports, failed
+            builds, and confusion.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          1.4 Medium: Dead Code & Nx Scaffold Leftovers
+        </div>
+        <div class="finding medium">
+          <div class="finding-title">
+            <span class="status-dot medium"></span
+            ><span class="severity-medium">MEDIUM</span> — All apps contain Nx
+            default scaffold content
+          </div>
+          <div class="finding-meta">
+            Affects: All 7 applications + 3 libraries
+          </div>
+          <ul>
+            <li>
+              All Next.js pages display Nx default template with hardcoded links
+              to nx.dev
+            </li>
+            <li>
+              All API services return hardcoded
+              <code>{ message: 'Hello API' }</code> — no business logic
+            </li>
+            <li>
+              UI component library has placeholder
+              <code>EthioConnectUiComponents</code> with no actual components
+            </li>
+            <li>All 5 libraries are scaffold-only with no implementation</li>
+          </ul>
+        </div>
+
+        <div class="subsection-title">1.5 Medium: Port Conflict Risk</div>
+        <div class="finding medium">
+          <div class="finding-title">
+            <span class="status-dot medium"></span
+            ><span class="severity-medium">MEDIUM</span> — All 3 NestJS APIs use
+            hardcoded port 3000
+          </div>
+          <div class="finding-meta">File: */main.ts | Line: 14</div>
+          <div class="code-block">
+            // INCORCT: All APIs will try to bind to port 3000 const port =
+            process.env.PORT || 3000; // Will conflict! // RECOMMENDED: const
+            port = process.env.PORT || getDefaultPortForApp(); // Or use
+            different defaults: 3001, 3002, 3003
+          </div>
+        </div>
+
+        <div class="subsection-title">
+          1.6 Low: ESLint Flat Config Not Utilized
+        </div>
+        <div class="finding low">
+          <div class="finding-title">
+            <span class="status-dot low"></span
+            ><span class="severity-low">LOW</span> — Root eslint.config.mjs
+            exists but apps use legacy config
+          </div>
+          <p>
+            Apps still reference <code>.eslintrc.json</code> (deprecated) while
+            root uses modern flat config. This creates inconsistent linting
+            behavior.
+          </p>
+        </div>
+      </div>
+
+      <!-- SECTION 2: ARCHITECTURE -->
+      <div class="section">
+        <div class="section-title">2. Architecture & System Design</div>
+
+        <div class="subsection-title">
+          2.1 High: Missing @ethio-connect/infrastructure Project
+        </div>
+        <div class="finding high">
+          <div class="finding-title">
+            <span class="status-dot high"></span
+            ><span class="severity-high">HIGH</span> — Workflows reference
+            non-existent infrastructure project
+          </div>
+          <div class="finding-meta">
+            Files: ci.yml, release.yml, promote.yml, rollback.yml (removed but
+            originally referenced)
+          </div>
+          <p>
+            The CI/CD workflows originally referenced
+            <code>@ethio-connect/infrastructure</code> project,
+            <code>libs/infrastructure/scripts/*.mjs</code>, and environment YAML
+            files — none of which exist. This would cause all
+            deploy/promote/rollback workflows to fail.
+          </p>
+          <div class="recommendation">
+            <strong>Resolution:</strong> Either create the infrastructure
+            project with proper structure, or remove all infrastructure
+            dependencies from workflows (which has now been done).
+          </div>
+        </div>
+
+        <div class="subsection-title">2.2 High: No Shared API Modules Used</div>
+        <div class="finding high">
+          <div class="finding-title">
+            <span class="status-dot high"></span
+            ><span class="severity-high">HIGH</span> — @ethio-connect/api-common
+            and @ethio-connect/api-features are empty
+          </div>
+          <div class="finding-meta">
+            Files: libs/api-common/src/lib/api-common.module.ts,
+            libs/api-features/src/lib/api-features.module.ts
+          </div>
+          <div class="code-block">
+            // CURRENT STATE (empty modules): @Module({ controllers: [],
+            providers: [], exports: [] }) export class
+            EthioConnectApiCommonModule {} // EXPECTED (example): @Module({
+            controllers: [HealthController], providers: [AuthService,
+            PrismaService], exports: [AuthService] }) export class
+            EthioConnectApiCommonModule {}
+          </div>
+          <p>
+            <strong>Impact:</strong> No shared authentication, database access,
+            or common utilities exist across the 3 API services. Each API will
+            duplicate code.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          2.3 Medium: No Clear API->Frontend Integration Pattern
+        </div>
+        <div class="finding medium">
+          <div class="finding-title">
+            <span class="status-dot medium"></span
+            ><span class="severity-medium">MEDIUM</span> — No API client, no
+            data fetching pattern defined
+          </div>
+          <p>
+            There's no defined pattern for how Next.js frontends consume NestJS
+            APIs. No Swagger/OpenAPI spec, no generated clients, no tRPC or REST
+            client setup.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          2.4 Medium: Monorepo Module Boundary Violations Possible
+        </div>
+        <div class="finding medium">
+          <div class="finding-title">
+            <span class="status-dot medium"></span
+            ><span class="severity-medium">MEDIUM</span> — ESLint module
+            boundary rules defined but not enforced in CI
+          </div>
+          <p>
+            The <code>eslint.config.mjs</code> defines tags
+            (<code>scope:central-hub</code>, <code>type:api</code>, etc.) but
+            the CI workflow doesn't run <code>lint</code> as a blocking step for
+            all projects.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          2.5 Low: No Database/ORM Layer Defined
+        </div>
+        <div class="finding low">
+          <div class="finding-title">
+            <span class="status-dot low"></span
+            ><span class="severity-low">LOW</span> — No database, ORM, or data
+            persistence layer
+          </div>
+          <p>
+            For a production app with customers and vendors, there's no Prisma,
+            TypeORM, or any data layer defined. This is expected in scaffold
+            state but must be prioritized.
+          </p>
+        </div>
+      </div>
+
+      <!-- SECTION 3: PERFORMANCE -->
+      <div class="section">
+        <div class="section-title">3. Performance & Efficiency</div>
+
+        <div class="subsection-title">
+          3.1 Medium: Webpack Config Not Optimized for Production
+        </div>
+        <div class="finding medium">
+          <div class="finding-title">
+            <span class="status-dot medium"></span
+            ><span class="severity-medium">MEDIUM</span> — optimization: false
+            in all webpack configs
+          </div>
+          <div class="finding-meta">Files: */webpack.config.js</div>
+          <div class="code-block">
+            // CURRENT (development-focused): module.exports = { output: { ...
+            }, plugins: [ new NxAppWebpackPlugin({ target: 'node', optimization:
+            false, // DISABLED! outputHashing: 'none', ... }) ] }; // PRODUCTION
+            SHOULD: optimization: { minimize: true, splitChunks: { chunks: 'all'
+            }, ... }
+          </div>
+        </div>
+
+        <div class="subsection-title">3.2 Low: No Caching Strategy</div>
+        <div class="finding low">
+          <div class="finding-title">
+            <span class="status-dot low"></span
+            ><span class="severity-low">LOW</span> — No Redis, in-memory, or
+            HTTP caching configured
+          </div>
+          <p>
+            No caching layer exists for API responses, database queries, or
+            Next.js pages. Critical for production performance.
+          </p>
+        </div>
+
+        <div class="subsection-title">3.3 Low: Large SVG Inlining in Pages</div>
+        <div class="finding low">
+          <div class="finding-title">
+            <span class="status-dot low"></span
+            ><span class="severity-low">LOW</span> — Nx logo SVGs are ~200 lines
+            each, inlined in pages
+          </div>
+          <p>
+            The scaffold pages contain ~200 lines of SVG markup for the Nx logo,
+            inlined in each page component. This should be extracted to a
+            component.
+          </p>
+        </div>
+      </div>
+
+      <!-- SECTION 4: SECURITY -->
+      <div class="section">
+        <div class="section-title">4. Security Audit</div>
+
+        <div class="subsection-title">
+          4.1 Critical: CORS Not Configured on NestJS APIs
+        </div>
+        <div class="finding critical">
+          <div class="finding-title">
+            <span class="status-dot critical"></span
+            ><span class="severity-critical">CRITICAL</span> — No CORS, Helmet,
+            or rate limiting configured
+          </div>
+          <div class="finding-meta">Files: */main.ts for all 3 APIs</div>
+          <div class="code-block">
+            // CURRENT (no security): const app = await
+            NestFactory.create(AppModule); const port = process.env.PORT ||
+            3000; await app.listen(port); // REQUIRED FOR PRODUCTION: import *
+            as helmet from 'helmet'; const app = await
+            NestFactory.create(AppModule); app.use(helmet.default());
+            app.enableCors({ origin: ['https://ethioconnect.com'] });
+            app.useGlobalPipes(new ValidationPipe({ whitelist: true })); await
+            app.listen(port);
+          </div>
+          <p>
+            <strong>Impact:</strong> APIs accept requests from any origin (CORS
+            wide open), no security headers (Helmet), no input validation, no
+            rate limiting. Critical for production.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          4.2 Critical: Environment Variables Not Validated
+        </div>
+        <div class="finding critical">
+          <div class="finding-title">
+            <span class="status-dot critical"></span
+            ><span class="severity-critical">CRITICAL</span> — No validation of
+            required env vars (DATABASE_URL, JWT_SECRET, etc.)
+          </div>
+          <p>
+            APIs read <code>process.env.PORT</code> without validation. Missing:
+            JWT_SECRET, DATABASE_URL, API keys. No schema validation (zod, joi,
+            class-validator).
+          </p>
+        </div>
+
+        <div class="subsection-title">4.3 High: Secrets in Workflow Files</div>
+        <div class="finding high">
+          <div class="finding-title">
+            <span class="status-dot high"></span
+            ><span class="severity-high">HIGH</span> — Server credentials
+            referenced in plain text in workflows
+          </div>
+          <div class="finding-meta">
+            Files: ci.yml, release.yml, promote.yml, rollback.yml
+          </div>
+          <div class="code-block">
+            // EXPOSED (ci.yml): SERVER_DOMAIN: ${{ secrets.SERVER_DOMAIN }}
+            SERVER_USER: ${{ secrets.SERVER_USER }} SERVER_PASSWORD: ${{
+            secrets.SERVER_PASSWORD }} // Password-based SSH!
+            SERVER_SSH_KEY_PATH: "" SERVER_SSH_PORT: ${{ secrets.SERVER_SSH_PORT
+            || '22' }}
+          </div>
+          <p>
+            <strong>Issues:</strong> (1) Password-based SSH instead of key-based
+            auth; (2) SSH key path is empty string; (3) No secret rotation
+            strategy.
+          </p>
+        </div>
+
+        <div class="subsection-title">4.4 High: Dependency Confusion Risk</div>
+        <div class="finding high">
+          <div class="finding-title">
+            <span class="status-dot high"></span
+            ><span class="severity-high">HIGH</span> — Private packages use
+            @ethio-connect scope without registry lock
+          </div>
+          <p>
+            Workspace uses <code>@ethio-connect/*</code> packages. Without
+            <code>.npmrc</code> or <code>pnpm.nexus.yml</code> restricting the
+            scope to a private registry, malicious packages could be injected
+            via dependency confusion attacks.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          4.5 Medium: No Input Validation on API Endpoints
+        </div>
+        <div class="finding medium">
+          <div class="finding-title">
+            <span class="status-dot medium"></span
+            ><span class="severity-medium">MEDIUM</span> — Controllers have no
+            DTOs, no validation
+          </div>
+          <div class="code-block">
+            // CURRENT (no validation): @Controller() export class AppController
+            { @Get() getData() { return this.appService.getData(); } } //
+            REQUIRED: @Controller() export class AppController { @Get()
+            getData(@Query() query: GetDataDto) { ... } }
+          </div>
+        </div>
+
+        <div class="subsection-title">
+          4.6 Medium: Next.js Apps No Auth Guards
+        </div>
+        <div class="finding medium">
+          <div class="finding-title">
+            <span class="status-dot medium"></span
+            ><span class="severity-medium">MEDIUM</span> — No
+            authentication/authorization in Next.js pages
+          </div>
+          <p>
+            Dashboard pages have no auth checks, middleware, or route guards.
+            Any unauthenticated user can access all pages.
+          </p>
+        </div>
+      </div>
+
+      <!-- SECTION 5: TESTING -->
+      <div class="section">
+        <div class="section-title">5. Testing & Reliability</div>
+
+        <div class="subsection-title">
+          5.1 Critical: Tests Are Nx Scaffold Defaults Only
+        </div>
+        <div class="finding critical">
+          <div class="finding-title">
+            <span class="status-dot critical"></span
+            ><span class="severity-critical">CRITICAL</span> — All test files
+            are auto-generated defaults
+          </div>
+          <div class="finding-meta">Affects: All apps and libs</div>
+          <div class="code-block">
+            // TYPICAL TEST (identical across all projects):
+            describe('AppController', () => { let app: TestingModule;
+            beforeEach(async () => { app = await Test.createTestingModule({
+            controllers: [AppController], providers: [AppService], }).compile();
+            }); it('should be defined', () => { const controller =
+            app.get(AppController); expect(controller).toBeDefined(); }); });
+          </div>
+          <p>
+            <strong>Issues:</strong> (1) Tests only check if classes are
+            defined; (2) No business logic testing; (3) No edge cases; (4) No
+            integration tests; (5) No E2E tests beyond default Playwright
+            scaffold.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          5.2 High: E2E Tests Not Properly Configured
+        </div>
+        <div class="finding high">
+          <div class="finding-title">
+            <span class="status-dot high"></span
+            ><span class="severity-high">HIGH</span> — E2E test projects exist
+            but have no real tests
+          </div>
+          <p>
+            All <code>*-e2e</code> projects contain only
+            <code>example.spec.ts</code> with placeholder content. The CI runs
+            these but they don't actually test anything meaningful.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          5.3 Medium: No Error Handling / Fault Tolerance
+        </div>
+        <div class="finding medium">
+          <div class="finding-title">
+            <span class="status-dot medium"></span
+            ><span class="severity-medium">MEDIUM</span> — No global exception
+            filters, no error boundaries
+          </div>
+          <p>
+            NestJS APIs have no global exception filter. Next.js apps have no
+            error boundaries. Any unhandled error will crash the app or show a
+            blank page.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          5.4 Medium: No Health Check Endpoints
+        </div>
+        <div class="finding medium">
+          <div class="finding-title">
+            <span class="status-dot medium"></span
+            ><span class="severity-medium">MEDIUM</span> — No /health, /ready,
+            /live endpoints
+          </div>
+          <p>
+            Kubernetes/Docker health checks will fail. No readiness/liveness
+            probes defined for any API service.
+          </p>
+        </div>
+
+        <div class="subsection-title">5.5 Low: No Logging/Observability</div>
+        <div class="finding low">
+          <div class="finding-title">
+            <span class="status-dot low"></span
+            ><span class="severity-low">LOW</span> — No structured logging, no
+            metrics, no tracing
+          </div>
+          <p>
+            No Winston/Pino logger, no Prometheus metrics, no OpenTelemetry
+            tracing. Impossible to debug issues in production.
+          </p>
+        </div>
+      </div>
+
+      <!-- SECTION 6: DEPENDENCIES -->
+      <div class="section">
+        <div class="section-title">6. Dependencies & Tooling</div>
+
+        <div class="subsection-title">
+          6.1 High: Dependabot Config Has Multiple Typos
+        </div>
+        <div class="finding high">
+          <div class="finding-title">
+            <span class="status-dot high"></span
+            ><span class="severity-high">HIGH</span> — .github/dependabot.yml
+            has 15+ YAML key typos
+          </div>
+          <div class="finding-meta">File: .github/dependabot.yml</div>
+          <table>
+            <tr>
+              <th>INCORCT Key</th>
+              <th>CORECT Key</th>
+            </tr>
+            <tr>
+              <td><code>package-ecosystem</code></td>
+              <td><code>package-ecosystem</code></td>
+            </tr>
+            <tr>
+              <td><code>versioning-strategy</code></td>
+              <td><code>version-ing-strategy</code></td>
+            </tr>
+            <tr>
+              <td><code>semver-major</code></td>
+              <td><code>semver-major</code></td>
+            </tr>
+            <tr>
+              <td><code>semver-minor</code></td>
+              <td><code>semver-minor</code></td>
+            </tr>
+            <tr>
+              <td><code>semver-patch</code></td>
+              <td><code>semver-patch</code></td>
+            </tr>
+          </table>
+          <p>
+            <strong>Impact:</strong> Dependabot will silently ignore the config
+            file and not create any PRs. The entire dependency update strategy
+            is broken.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          6.2 Medium: Outdated NestJS 11 with @nestjs/schematics
+        </div>
+        <div class="finding medium">
+          <div class="finding-title">
+            <span class="status-dot medium"></span
+            ><span class="severity-medium">MEDIUM</span> — @nestjs/schematics is
+            deprecated in NestJS 11
+          </div>
+          <p>
+            NestJS 11 uses <code>@nestjs/cli</code> instead of
+            <code>@nestjs/schematics</code>. The devDependency should be
+            updated.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          6.3 Medium: pnpm 10.20.0 — Very New, Potential Stability Issues
+        </div>
+        <div class="finding medium">
+          <div class="finding-title">
+            <span class="status-dot medium"></span
+            ><span class="severity-medium">MEDIUM</span> — pnpm 10.x is
+            cutting-edge
+          </div>
+          <p>
+            pnpm 10.20.0 was released very recently. Consider pinning to a more
+            stable version like pnpm 9.x LTS for production.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          6.4 Low: No pnpm.nexus.yml for Private Packages
+        </div>
+        <div class="finding low">
+          <div class="finding-title">
+            <span class="status-dot low"></span
+            ><span class="severity-low">LOW</span> — No Nexus or private
+            registry config
+          </div>
+          <p>
+            If publishing @ethio-connect/* packages to a private registry,
+            <code>pnpm.nexus.yml</code> is needed to avoid dependency confusion.
+          </p>
+        </div>
+      </div>
+
+      <!-- SECTION 7: DOCUMENTATION -->
+      <div class="section">
+        <div class="section-title">7. Documentation & Maintainability</div>
+
+        <div class="subsection-title">
+          7.1 Critical: README Is Nx Default Template
+        </div>
+        <div class="finding critical">
+          <div class="finding-title">
+            <span class="status-dot critical"></span
+            ><span class="severity-critical">CRITICAL</span> — Root README.md is
+            copy-pasted Nx template
+          </div>
+          <div class="finding-meta">File: README.md</div>
+          <p>
+            The README contains links to <code>nx.dev</code>, "Get Started with
+            Nx", and generic Nx documentation. There's zero information about:
+          </p>
+          <ul>
+            <li>What EthioConnect actually does</li>
+            <li>How to set up the development environment</li>
+            <li>Architecture diagrams or explanations</li>
+            <li>How to run individual apps</li>
+            <li>Environment variable requirements</li>
+            <li>Deployment instructions</li>
+          </ul>
+        </div>
+
+        <div class="subsection-title">7.2 High: No CONTRIBUTING.md</div>
+        <div class="finding high">
+          <div class="finding-title">
+            <span class="status-dot high"></span
+            ><span class="severity-high">HIGH</span> — No contribution
+            guidelines
+          </div>
+          <p>
+            No PR template, no code review guidelines, no commit message
+            conventions documented. The repo has no
+            <code>CONTRIBUTING.md</code>, no <code>CODE_OF_CONDUCT.md</code>, no
+            <code>PULL_REQUEST_TEMPLATE.md</code>.
+          </p>
+        </div>
+
+        <div class="subsection-title">7.3 High: No .env.example Files</div>
+        <div class="finding high">
+          <div class="finding-title">
+            <span class="status-dot high"></span
+            ><span class="severity-high">HIGH</span> — Developers won't know
+            what env vars to set
+          </div>
+          <p>
+            No <code>.env.example</code> in root or any app directory. New
+            developers cannot bootstrap the project without guessing required
+            environment variables.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          7.4 Medium: No AGENTS.md or Developer Guidelines
+        </div>
+        <div class="finding medium">
+          <div class="finding-title">
+            <span class="status-dot medium"></span
+            ><span class="severity-medium">MEDIUM</span> — CI blocks "local
+            agent scaffolding" but no docs explain what's allowed
+          </div>
+          <p>
+            The CI workflow blocks <code>.agents</code>, <code>.gemini</code>,
+            <code>AGENTS.md</code> files but there's no documentation on what AI
+            agent workflow is expected.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          7.5 Low: No Architecture Decision Records (ADRs)
+        </div>
+        <div class="finding low">
+          <div class="finding-title">
+            <span class="status-dot low"></span
+            ><span class="severity-low">LOW</span> — No record of why decisions
+            were made
+          </div>
+          <p>
+            No <code>docs/adr/</code> directory. Decisions like "NestJS vs
+            Express", "Next.js vs Remix", "pnpm vs npm" aren't documented.
+          </p>
+        </div>
+      </div>
+
+      <!-- SECTION 8: DEVOPS & DEPLOYMENT -->
+      <div class="section">
+        <div class="section-title">8. DevOps & Deployment</div>
+
+        <div class="subsection-title">
+          8.1 Critical: Dockerfiles Are Minimal/Incomplete
+        </div>
+        <div class="finding critical">
+          <div class="finding-title">
+            <span class="status-dot critical"></span
+            ><span class="severity-critical">CRITICAL</span> — Dockerfiles are
+            3-line stubs
+          </div>
+          <div class="finding-meta">File: apps/*/Dockerfile</div>
+          <div class="code-block">
+            # CURRENT (useless): FROM node:22-alpine WORKDIR /app COPY . . CMD
+            ["node", "-e", "console.log('Container image built for app
+            context.')"] # REQUIRED: FROM node:22-alpine AS builder WORKDIR /app
+            COPY package.json pnpm-lock.yaml ./ RUN npm install -g pnpm && pnpm
+            install --frozen-lockfile COPY . . RUN pnpm nx build
+            @ethio-connect/central-hub-api FROM node:22-alpine WORKDIR /app COPY
+            --from=builder /app/dist ./dist COPY --from=builder
+            /app/node_modules ./node_modules CMD ["node",
+            "dist/apps/central-hub/central-hub-api/main.js"]
+          </div>
+          <p>
+            <strong>Impact:</strong> Current Dockerfiles don't actually build or
+            run the app. They're placeholders that just print a log message and
+            exit.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          8.2 High: Workflow Regex Syntax Errors
+        </div>
+        <div class="finding high">
+          <div class="finding-title">
+            <span class="status-dot high"></span
+            ><span class="severity-high">HIGH</span> — Multiple bash regex
+            syntax errors in CI workflow
+          </div>
+          <div class="finding-meta">File: .github/workflows/ci.yml</div>
+          <div class="code-block">
+            # INCORCT (won't match anything): if [[ ! "$version" =~
+            ^v[0-9]+\.[0-9]+\.[0-9]+... ]]; then # [0-9] should be [0-9] #
+            INCORCT (missing $ sign): if [[ "${{ github.event_name }}" ==
+            "workflow_dispatch" ]]; then # Missing $ # INCORCT (bash array
+            syntax): if (( ${#disallowed_paths[@]} > 0 )); then # Should be
+            ${#disallowed_paths[@]} but depends on context
+          </div>
+        </div>
+
+        <div class="subsection-title">
+          8.3 High: No Staging Environment Parity
+        </div>
+        <div class="finding high">
+          <div class="finding-title">
+            <span class="status-dot high"></span
+            ><span class="severity-high">HIGH</span> — No docker-compose, no
+            local dev environment
+          </div>
+          <p>
+            No <code>docker-compose.yml</code>, no
+            <code>devcontainer.json</code>, no local Kubernetes setup.
+            Developers can't run the full stack locally.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          8.4 Medium: Nx Cloud ID May Be Incorrect
+        </div>
+        <div class="finding medium">
+          <div class="finding-title">
+            <span class="status-dot medium"></span
+            ><span class="severity-medium">MEDIUM</span> — nx.json Cloud ID
+            "69f299b3bd50ccb2dc8f1fc7" not verified
+          </div>
+          <p>
+            The Nx Cloud ID in <code>nx.json</code> must match the actual Nx
+            Cloud workspace. If incorrect, distributed task execution and
+            caching won't work.
+          </p>
+        </div>
+
+        <div class="subsection-title">
+          8.5 Low: Trivy Scanner Not Installed in CI
+        </div>
+        <div class="finding low">
+          <div class="finding-title">
+            <span class="status-dot low"></span
+            ><span class="severity-low">LOW</span> — container_publish job
+            references trivy but it's not installed
+          </div>
+          <p>
+            The CI workflow runs <code>trivy image ...</code> but Trivy is not
+            installed in the GitHub Actions runner. This will cause the scan
+            step to fail.
+          </p>
+        </div>
+      </div>
+
+      <!-- SECTION 9: PRIORITIZED ACTION PLAN -->
+      <div class="section">
+        <div class="section-title">9. Prioritized Action Plan</div>
+
+        <div class="subsection-title">
+          9.1 Critical Severity (Fix Immediately)
+        </div>
+        <table>
+          <tr>
+            <th>#</th>
+            <th>Finding</th>
+            <th>Effort</th>
+            <th>Impact</th>
+          </tr>
+          <tr>
+            <td>1</td>
+            <td>
+              Fix @Injectable() → @Injectable() typo in all 3 API services
+            </td>
+            <td>5 min</td>
+            <td>Fixes broken DI</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>
+              Fix rel="noreferrer" typo in all Next.js pages (18+ occurrences)
+            </td>
+            <td>15 min</td>
+            <td>Fixes security attribute</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Fix Dockerfiles — they don't actually build/run the app</td>
+            <td>2 hours</td>
+            <td>Enables deployment</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>Add Helmet, CORS, ValidationPipe to all NestJS APIs</td>
+            <td>3 hours</td>
+            <td>Critical security</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>Fix Dependabot config — 15+ YAML key typos</td>
+            <td>30 min</td>
+            <td>Enables dependency updates</td>
+          </tr>
+        </table>
+
+        <div class="subsection-title">9.2 High Severity (Fix This Sprint)</div>
+        <table>
+          <tr>
+            <th>#</th>
+            <th>Finding</th>
+            <th>Effort</th>
+            <th>Impact</th>
+          </tr>
+          <tr>
+            <td>1</td>
+            <td>Fix inconsistent naming: customer-portal vs customer-portal</td>
+            <td>1 hour</td>
+            <td>Prevents build failures</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Add health check endpoints (/health) to all APIs</td>
+            <td>2 hours</td>
+            <td>Enables container orchestration</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>
+              Implement api-common module with auth, database, common services
+            </td>
+            <td>1-2 sprints</td>
+            <td>Prevents code duplication</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>Add .env.example and document all required env vars</td>
+            <td>1 hour</td>
+            <td>Developer onboarding</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>Replace password-based SSH with key-based auth in workflows</td>
+            <td>1 hour</td>
+            <td>Security best practice</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td>Fix CI workflow regex syntax errors</td>
+            <td>1 hour</td>
+            <td>Prevents false positives</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td>Rewrite README.md with actual project documentation</td>
+            <td>3 hours</td>
+            <td>Project clarity</td>
+          </tr>
+        </table>
+
+        <div class="subsection-title">
+          9.3 Medium Severity (Fix Next Sprint)
+        </div>
+        <table>
+          <tr>
+            <th>#</th>
+            <th>Finding</th>
+            <th>Effort</th>
+          </tr>
+          <tr>
+            <td>1</td>
+            <td>Enable webpack optimization for production builds</td>
+            <td>2 hours</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Add global exception filters and error boundaries</td>
+            <td>4 hours</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Add structured logging (Winston/Pino) and metrics</td>
+            <td>1 sprint</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>Define API client pattern (tRPC/Swagger/gen)</td>
+            <td>1 sprint</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>Add real unit/integration tests (beyond scaffold)</td>
+            <td>2 sprints</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td>Add database/ORM layer (Prisma/TypeORM)</td>
+            <td>1 sprint</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td>Create docker-compose for local dev environment</td>
+            <td>4 hours</td>
+          </tr>
+        </table>
+
+        <div class="subsection-title">
+          9.4 Quick Wins (Less than 1 Hour Each)
+        </div>
+        <ul>
+          <li>Extract inline SVGs to reusable React components</li>
+          <li>
+            Add <code>CONTRIBUTING.md</code>, <code>CODE_OF_CONDUCT.md</code>
+          </li>
+          <li>Add Node.js version file (<code>.nvmrc</code>)</li>
+          <li>
+            Pin pnpm to a specific version in <code>packageManager</code> field
+          </li>
+          <li>
+            Add <code>engines</code> field to package.json restricting Node.js
+            version
+          </li>
+          <li>
+            Add <code>.npmrc</code> with <code>auto-install-peers=true</code>
+          </li>
+          <li>
+            Add <code>lint-staged</code> and <code>husky</code> for pre-commit
+            hooks
+          </li>
+        </ul>
+
+        <div class="subsection-title">9.5 Refactoring Roadmap</div>
+        <div class="card">
+          <div class="card-title">Phase 1: Foundation (Weeks 1-2)</div>
+          <ul>
+            <li>Fix all typos (Injectable, noreferrer, customer-portal)</li>
+            <li>Implement proper Dockerfiles and docker-compose</li>
+            <li>Add security middleware (Helmet, CORS, validation)</li>
+            <li>Set up database/ORM layer in api-common</li>
+            <li>Document all environment variables</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">Phase 2: Core Features (Weeks 3-6)</div>
+          <ul>
+            <li>Implement authentication (JWT/OAuth) in api-common</li>
+            <li>Build shared UI component library (ui-components)</li>
+            <li>Define API client pattern and generate clients</li>
+            <li>Implement health checks and observability</li>
+            <li>Write comprehensive unit/integration tests</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">
+            Phase 3: Production Readiness (Weeks 7-10)
+          </div>
+          <ul>
+            <li>Performance optimization (webpack, caching, CDN)</li>
+            <li>Security audit remediation and pen testing</li>
+            <li>CI/CD hardening and environment parity</li>
+            <li>Load testing and scalability validation</li>
+            <li>Documentation completion and onboarding guides</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- SECTION 10: PROJECT-SPECIFIC SUMMARY -->
+      <div class="section">
+        <div class="section-title">10. Project-Specific Summary</div>
+
+        <div class="project-grid">
+          <div class="project-card">
+            <h4>@ethio-connect/central-hub-api</h4>
+            <div>
+              <span class="status-dot critical"></span> @Injectable typo
+            </div>
+            <div>
+              <span class="status-dot critical"></span> No security middleware
+            </div>
+            <div><span class="status-dot high"></span> Port 3000 hardcoded</div>
+            <div>
+              <span class="status-dot medium"></span> Health check missing
+            </div>
+            <div>
+              <span class="status-dot good"></span> Clean module structure
+            </div>
+          </div>
+
+          <div class="project-card">
+            <h4>@ethio-connect/central-hub-dashboard</h4>
+            <div>
+              <span class="status-dot high"></span> rel="noreferrer" typos
+            </div>
+            <div><span class="status-dot high"></span> Nx template content</div>
+            <div><span class="status-dot medium"></span> No auth guards</div>
+            <div><span class="status-dot good"></span> Tailwind configured</div>
+            <div>
+              <span class="status-dot good"></span> Next.js 16 + React 19
+            </div>
+          </div>
+
+          <div class="project-card">
+            <h4>@ethio-connect/public-website</h4>
+            <div>
+              <span class="status-dot high"></span> rel="noreferrer" typos
+            </div>
+            <div><span class="status-dot high"></span> Nx template content</div>
+            <div>
+              <span class="status-dot medium"></span> No SEO optimization
+            </div>
+            <div>
+              <span class="status-dot good"></span> Next.js 16 + React 19
+            </div>
+          </div>
+
+          <div class="project-card">
+            <h4>@ethio-connect/customer-portal-*</h4>
+            <div>
+              <span class="status-dot critical"></span> @Injectable typo
+            </div>
+            <div>
+              <span class="status-dot critical"></span> Naming inconsistency
+            </div>
+            <div><span class="status-dot high"></span> No business logic</div>
+            <div><span class="status-dot medium"></span> No tests</div>
+          </div>
+
+          <div class="project-card">
+            <h4>@ethio-connect/vendor-portal-*</h4>
+            <div>
+              <span class="status-dot critical"></span> @Injectable typo
+            </div>
+            <div><span class="status-dot high"></span> No business logic</div>
+            <div><span class="status-dot high"></span> Port 3000 conflict</div>
+            <div><span class="status-dot medium"></span> No tests</div>
+          </div>
+
+          <div class="project-card">
+            <h4>@ethio-connect/api-common</h4>
+            <div><span class="status-dot high"></span> Empty module</div>
+            <div><span class="status-dot medium"></span> No exports</div>
+            <div>
+              <span class="status-dot low"></span> Needs auth, DB, utils
+            </div>
+          </div>
+
+          <div class="project-card">
+            <h4>@ethio-connect/ui-components</h4>
+            <div><span class="status-dot high"></span> Placeholder only</div>
+            <div>
+              <span class="status-dot medium"></span> No actual components
+            </div>
+            <div>
+              <span class="status-dot low"></span> Storybook not configured
+            </div>
+          </div>
+
+          <div class="project-card">
+            <h4>@ethio-connect/ethioconnect</h4>
+            <div>
+              <span class="status-dot medium"></span> Has ethioconnect() util
+            </div>
+            <div><span class="status-dot low"></span> Needs more utilities</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FOOTER -->
+      <div
+        class="section"
+        style="
+          margin-top: 15mm;
+          border-top: 2px solid var(--border);
+          padding-top: 5mm;
+          text-align: center;
+          color: var(--text-light);
+          font-size: 9pt;
+        "
+      >
+        <p>
+          <strong>EthioConnect Codebase Audit Report</strong><br />
+          Generated: April 30, 2026 | Report ID: ECA-20260430-142738<br />
+          Confidential — For internal use only
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

@@ -10,17 +10,17 @@ permissions: {}
 
 jobs:
   release_draft:
-    name: Release Draft Notes
+    name: Release · Draft Notes
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
-
     steps:
-      - name: Generate draft release notes
-        uses: release-drafter/release-drafter@5de93583980a40bd78603b6dfdcda5b4df377b32
+      - uses: actions/checkout@v6
         with:
-          config-name: release-drafter.yml
-          target-branch: main
+          fetch-depth: 0
+
+      - name: Generate draft release notes
+        uses: release-drafter/release-drafter@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

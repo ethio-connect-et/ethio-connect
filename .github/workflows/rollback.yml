@@ -1,0 +1,120 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to roll back'
+        required: true
+        type: choice
+        options:
+          - testing
+          - staging
+          - production
+      reason:
+        description: 'Reason for rollback'
+        required: true
+        type: string
+      target_tag:
+        description: 'Explicit image tag to restore (optional, defaults to previous)'
+        required: false
+        type: string
+
+permissions: {}
+
+env:
+  CI: true
+  NODE_VERSION: '24.11.0'
+  PNPM_VERSION: '10.20.0'
+
+jobs:
+  rollback_images:
+    name: Rollback · Re-tag Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: pnpm/action-setup@v5
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Resolve rollback context
+        id: context
+        shell: bash
+        run: |
+          set -euo pipefail
+          ENVIRONMENT="${{ github.event.inputs.environment }}"
+
+          case "$ENVIRONMENT" in
+            testing) target_branch="testing" ;;
+            staging) target_branch="staging" ;;
+            production) target_branch="main" ;;
+            *)
+              echo "::error::Invalid environment: $ENVIRONMENT"
+              exit 1
+              ;;
+          esac
+
+          short_sha="$(printf '%s' "${GITHUB_SHA}" | cut -c1-12)"
+          echo "target_branch=$target_branch" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Rollback images by re-tagging
+        shell: bash
+        run: |
+          set -euo pipefail
+          target_branch="${{ steps.context.outputs.target_branch }}"
+          explicit_tag="${{ github.event.inputs.target_tag }}"
+          reason="${{ github.event.inputs.reason }}"
+
+          projects=$(pnpm nx show projects --withTarget docker:build --json | jq -r '.[]')
+
+          {
+            echo "## Rollback Summary"
+            echo ""
+            echo "Reason: \`${reason}\`"
+            echo ""
+            echo "| Project | Rolled Back To |"
+            echo "|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          while IFS= read -r project; do
+            if [[ -z "$project" ]]; then continue; fi
+            repository_name="${project#@ethio-connect/}"
+
+            if [[ -n "$explicit_tag" ]]; then
+              rollback_tag="$explicit_tag"
+            else
+              rollback_tag="${target_branch}-$(git rev-parse --short=12 HEAD~1 2>/dev/null || echo 'previous')"
+            fi
+
+            docker pull "ghcr.io/ethio-connect/${repository_name}:${rollback_tag}" 2>/dev/null || {
+              echo "::warning::Could not pull ${rollback_tag} for ${repository_name}, skipping."
+              continue
+            }
+            current_tag="${target_branch}-$(git rev-parse --short=12 HEAD 2>/dev/null || echo 'latest')"
+            docker tag "ghcr.io/ethio-connect/${repository_name}:${rollback_tag}" "ghcr.io/ethio-connect/${repository_name}:${current_tag}"
+            docker push "ghcr.io/ethio-connect/${repository_name}:${current_tag}"
+
+            echo "| \`${repository_name}\` | \`${rollback_tag}\` |" >> "$GITHUB_STEP_SUMMARY"
+          done <<< "$projects"
+
+          echo "Rollback complete for ${target_branch}. Reason: ${reason}"
