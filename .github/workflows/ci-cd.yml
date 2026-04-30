@@ -1,58 +1,306 @@
-name: Production-Grade CI/CD Pipeline
+name: Staged CI/CD Pipeline
 
 on:
   push:
-    branches: [main, production, staging, testing]
+    branches:
+      - development
+      - testing
+      - staging
+      - production
+      - main
   pull_request:
-    branches: [main, production, staging, testing]
+    branches:
+      - development
+      - testing
+      - staging
+      - production
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 20
 
 jobs:
-  affected:
+  preflight:
+    name: Preflight (format/lint/type-check)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          node-version: 18
-      - name: Install pnpm
-        run: npm install -g pnpm
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Nx Format Check
-        run: npx nx format:check
-      - name: Nx Affected Build
-        run: npx nx affected --target=build --parallel
-      - name: Nx Affected Test
-        run: npx nx affected --target=test --parallel
-      - name: Nx Affected Lint
-        run: npx nx affected --target=lint --parallel
-      - name: Docker Build & Push
-        if: github.ref == 'refs/heads/production' || github.ref == 'refs/heads/main'
-        env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Format check
+        run: pnpm nx format:check
+
+      - name: Lint (affected)
+        run: pnpm nx affected --target=lint --parallel=3
+
+      - name: Type check (affected)
+        run: pnpm nx affected --target=type-check --parallel=3
+
+  affected-build-test:
+    name: Affected build & test
+    needs: preflight
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Affected build
+        run: pnpm nx affected --target=build --parallel=3
+
+      - name: Affected test
+        run: pnpm nx affected --target=test --parallel=3
+
+      - name: Archive build outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: nx-build-outputs
+          path: |
+            dist/**
+            !**/*.map
+          if-no-files-found: warn
+          retention-days: 7
+
+  container-build-push:
+    name: Container build & push
+    needs: affected-build-test
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/testing' ||
+      github.ref == 'refs/heads/staging' ||
+      github.ref == 'refs/heads/production' ||
+      github.ref == 'refs/heads/main')
+    environment: >-
+      ${{ github.ref == 'refs/heads/testing' && 'testing' ||
+          github.ref == 'refs/heads/staging' && 'staging' ||
+          (github.ref == 'refs/heads/production' || github.ref == 'refs/heads/main') && 'production' || '' }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [vendor-portal, customer-portal, central-hub]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download build outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: nx-build-outputs
+          path: dist
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/production' || github.ref == 'refs/heads/main' }}
+            type=raw,value=staging,enable=${{ github.ref == 'refs/heads/staging' }}
+            type=raw,value=testing,enable=${{ github.ref == 'refs/heads/testing' }}
+
+      - name: Build and push image
+        id: build-push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./apps/${{ matrix.app }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: true
+          sbom: true
+
+      - name: Export image metadata
         run: |
-          for app in vendor-portal customer-portal central-hub; do
-            docker build -t ghcr.io/ethioconnect/$app:${GITHUB_SHA::7} ./apps/$app
-            docker tag ghcr.io/ethioconnect/$app:${GITHUB_SHA::7} ghcr.io/ethioconnect/$app:latest
-            echo $GHCR_TOKEN | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker push ghcr.io/ethioconnect/$app:${GITHUB_SHA::7}
-            docker push ghcr.io/ethioconnect/$app:latest
-          done
-      - name: Update Manifest Repo
-        if: github.ref == 'refs/heads/production' || github.ref == 'refs/heads/main'
+          mkdir -p image-metadata
+          cat > image-metadata/${{ matrix.app }}.json <<EOF
+          {
+            "app": "${{ matrix.app }}",
+            "tags": "${{ steps.meta.outputs.tags }}",
+            "digest": "${{ steps.build-push.outputs.digest }}",
+            "branch": "${{ github.ref_name }}",
+            "sha": "${{ github.sha }}"
+          }
+          EOF
+
+      - name: Upload image metadata and attestations
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-metadata-${{ matrix.app }}
+          path: |
+            image-metadata/${{ matrix.app }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  package-publish:
+    name: Package publish
+    needs:
+      - affected-build-test
+      - container-build-push
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/staging' ||
+      github.ref == 'refs/heads/production' ||
+      github.ref == 'refs/heads/main')
+    environment: >-
+      ${{ github.ref == 'refs/heads/staging' && 'staging' || 'production' }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Download build outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: nx-build-outputs
+          path: dist
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Publish packages
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm -r --filter ./packages/* publish --access public --no-git-checks
+
+      - name: Upload publish manifest
         run: |
-          git clone https://github.com/ethio-connect-et/ethio-connect-manifest.git
-          cd ethio-connect-manifest
-          # Update image tags in overlays/production (implement script as needed)
+          mkdir -p package-metadata
+          cat > package-metadata/publish.json <<EOF
+          {
+            "branch": "${{ github.ref_name }}",
+            "sha": "${{ github.sha }}",
+            "publishedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+      - name: Upload package metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-publish-metadata
+          path: package-metadata/publish.json
+          if-no-files-found: error
+
+  manifest-update:
+    name: Manifest update
+    needs:
+      - container-build-push
+      - package-publish
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/testing' ||
+      github.ref == 'refs/heads/staging' ||
+      github.ref == 'refs/heads/production' ||
+      github.ref == 'refs/heads/main')
+    environment: >-
+      ${{ github.ref == 'refs/heads/testing' && 'testing' ||
+          github.ref == 'refs/heads/staging' && 'staging' || 'production' }}
+    permissions:
+      contents: read
+    steps:
+      - name: Download image metadata
+        uses: actions/download-artifact@v4
+        with:
+          pattern: image-metadata-*
+          path: image-metadata
+          merge-multiple: true
+
+      - name: Download package publish metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: package-publish-metadata
+          path: package-metadata
+
+      - name: Checkout manifest repository
+        uses: actions/checkout@v4
+        with:
+          repository: ethio-connect-et/ethio-connect-manifest
+          token: ${{ secrets.GH_TOKEN }}
+          path: ethio-connect-manifest
+
+      - name: Update deployment manifests
+        working-directory: ethio-connect-manifest
+        run: |
+          mkdir -p updates
+          cp -r ../image-metadata updates/image-metadata
+          cp -r ../package-metadata updates/package-metadata
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add .
-          git commit -m "Update image tags to $GITHUB_SHA" || echo "No changes to commit"
-          git push https://x-access-token:${GH_TOKEN}@github.com/ethio-connect-et/ethio-connect-manifest.git HEAD:production
-      - name: Deploy via ArgoCD
-        if: github.ref == 'refs/heads/production'
-        run: |
-          echo "Trigger ArgoCD sync (implement webhook or CLI as needed)"
+          git commit -m "ci: update manifests for ${{ github.sha }}" || echo "No changes to commit"
+          git push origin HEAD:${{ github.ref_name }}
