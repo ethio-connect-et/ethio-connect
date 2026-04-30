@@ -15,6 +15,30 @@
         "@ethio-connect/customer-portal-api:build",
         "@ethio-connect/customer-portal-api:serve"
       ]
+    },
+    "lint": {
+      "executor": "nx:noop"
+    },
+    "test": {
+      "executor": "nx:noop"
+    },
+    "build": {
+      "executor": "nx:noop"
+    },
+    "deploy-metadata": {
+      "dependsOn": ["e2e"],
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/deploy-metadata/{projectName}.json"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"{projectName}\",\\n  \"root\": \"{projectRoot}\",\\n  \"type\": \"e2e\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/{projectName}.json"
+      }
     }
-  }
+  },
+  "tags": [
+    "domain:customer-portal",
+    "platform:e2e",
+    "scope:customer-portal",
+    "type:app"
+  ]
 }

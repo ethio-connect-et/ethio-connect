@@ -1,0 +1,111 @@
+name: Nx CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - development
+      - main
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  main:
+    name: Nx Main
+    runs-on: ubuntu-latest
+    outputs:
+      nx_base: ${{ steps.nx-shas.outputs.NX_BASE }}
+      nx_head: ${{ steps.nx-shas.outputs.NX_HEAD }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Derive NX_BASE and NX_HEAD
+        id: nx-shas
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            HEAD_SHA="${{ github.sha }}"
+            if [[ -n "${{ github.event.before }}" && "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]]; then
+              BEFORE_SHA="${{ github.event.before }}"
+            else
+              BEFORE_SHA="${HEAD_SHA}~1"
+            fi
+            BASE_SHA=$(git merge-base "$BEFORE_SHA" "$HEAD_SHA")
+          fi
+
+          NX_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
+          NX_HEAD="$HEAD_SHA"
+
+          echo "NX_BASE=$NX_BASE" | tee -a "$GITHUB_ENV"
+          echo "NX_HEAD=$NX_HEAD" | tee -a "$GITHUB_ENV"
+          echo "NX_BASE=$NX_BASE" >> "$GITHUB_OUTPUT"
+          echo "NX_HEAD=$NX_HEAD" >> "$GITHUB_OUTPUT"
+
+      - name: Start Nx Cloud run
+        run: pnpm nx-cloud start-ci-run
+
+      - name: Affected lint
+        run: pnpm nx affected -t lint --base="$NX_BASE" --head="$NX_HEAD" --parallel=8
+
+      - name: Affected test
+        run: pnpm nx affected -t test --base="$NX_BASE" --head="$NX_HEAD" --parallel=6
+
+      - name: Affected build
+        run: pnpm nx affected -t build --base="$NX_BASE" --head="$NX_HEAD" --parallel=4
+
+      - name: Affected e2e
+        run: pnpm nx affected -t e2e --base="$NX_BASE" --head="$NX_HEAD" --parallel=2
+
+      - name: Stop Nx Cloud agents
+        if: always()
+        run: pnpm nx-cloud stop-all-agents
+
+  agents:
+    name: Nx Agent ${{ matrix.size }}-${{ matrix.idx }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - idx: 1
+            size: medium
+            runner: ubuntu-latest
+          - idx: 2
+            size: medium
+            runner: ubuntu-latest
+          - idx: 3
+            size: large
+            runner: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Nx Agent
+        run: pnpm nx-cloud start-agent
