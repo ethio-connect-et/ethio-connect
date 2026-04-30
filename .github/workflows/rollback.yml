@@ -106,13 +106,13 @@ jobs:
               rollback_tag="${target_branch}-$(git rev-parse --short=12 HEAD~1 2>/dev/null || echo 'previous')"
             fi
 
-            docker pull "ghcr.io/ethio-connect/${repository_name}:${rollback_tag}" 2>/dev/null || {
+            docker pull "ghcr.io/ethio-connect-et/${repository_name}:${rollback_tag}" 2>/dev/null || {
               echo "::warning::Could not pull ${rollback_tag} for ${repository_name}, skipping."
               continue
             }
             current_tag="${target_branch}-$(git rev-parse --short=12 HEAD 2>/dev/null || echo 'latest')"
-            docker tag "ghcr.io/ethio-connect/${repository_name}:${rollback_tag}" "ghcr.io/ethio-connect/${repository_name}:${current_tag}"
-            docker push "ghcr.io/ethio-connect/${repository_name}:${current_tag}"
+            docker tag "ghcr.io/ethio-connect-et/${repository_name}:${rollback_tag}" "ghcr.io/ethio-connect-et/${repository_name}:${current_tag}"
+            docker push "ghcr.io/ethio-connect-et/${repository_name}:${current_tag}"
 
             echo "| \`${repository_name}\` | \`${rollback_tag}\` |" >> "$GITHUB_STEP_SUMMARY"
           done <<< "$projects"

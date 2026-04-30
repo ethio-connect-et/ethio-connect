@@ -106,12 +106,12 @@ jobs:
             source_tag="${source_branch}-$(git rev-parse --short=12 origin/${source_branch} 2>/dev/null || echo 'latest')"
             target_tag="${target_branch}-$(git rev-parse --short=12 origin/${target_branch} 2>/dev/null || echo 'latest')"
 
-            docker pull "ghcr.io/ethio-connect/${repository_name}:${source_tag}" 2>/dev/null || {
+            docker pull "ghcr.io/ethio-connect-et/${repository_name}:${source_tag}" 2>/dev/null || {
               echo "::warning::Could not pull ${source_tag} for ${repository_name}, skipping."
               continue
             }
-            docker tag "ghcr.io/ethio-connect/${repository_name}:${source_tag}" "ghcr.io/ethio-connect/${repository_name}:${target_tag}"
-            docker push "ghcr.io/ethio-connect/${repository_name}:${target_tag}"
+            docker tag "ghcr.io/ethio-connect-et/${repository_name}:${source_tag}" "ghcr.io/ethio-connect-et/${repository_name}:${target_tag}"
+            docker push "ghcr.io/ethio-connect-et/${repository_name}:${target_tag}"
 
             echo "| \`${repository_name}\` | \`${source_tag}\` | \`${target_tag}\` |" >> "$GITHUB_STEP_SUMMARY"
           done <<< "$projects"
