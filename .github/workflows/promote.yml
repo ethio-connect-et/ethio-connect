@@ -1,0 +1,119 @@
+name: Promote Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      from_environment:
+        description: 'Source environment'
+        required: true
+        type: choice
+        options:
+          - testing
+          - staging
+      to_environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+permissions: {}
+
+env:
+  CI: true
+  NODE_VERSION: '24.11.0'
+  PNPM_VERSION: '10.20.0'
+
+jobs:
+  promote_images:
+    name: Promote · Re-tag Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: pnpm/action-setup@v5
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Resolve promotion context
+        id: context
+        shell: bash
+        run: |
+          set -euo pipefail
+          FROM="${{ github.event.inputs.from_environment }}"
+          TO="${{ github.event.inputs.to_environment }}"
+
+          case "$FROM-$TO" in
+            testing-staging)
+              source_branch="testing"
+              target_branch="staging"
+              ;;
+            staging-production)
+              source_branch="staging"
+              target_branch="main"
+              ;;
+            *)
+              echo "::error::Invalid promotion path: $FROM -> $TO"
+              exit 1
+              ;;
+          esac
+
+          short_sha="$(printf '%s' "${GITHUB_SHA}" | cut -c1-12)"
+          {
+            echo "source_branch=$source_branch"
+            echo "target_branch=$target_branch"
+            echo "short_sha=$short_sha"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote images by re-tagging
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_branch="${{ steps.context.outputs.source_branch }}"
+          target_branch="${{ steps.context.outputs.target_branch }}"
+
+          projects=$(pnpm nx show projects --withTarget docker:build --json | jq -r '.[]')
+
+          {
+            echo "## Promotion Summary"
+            echo ""
+            echo "| Project | Source Tag | Target Tag |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          while IFS= read -r project; do
+            if [[ -z "$project" ]]; then continue; fi
+            repository_name="${project#@ethio-connect/}"
+            source_tag="${source_branch}-$(git rev-parse --short=12 origin/${source_branch} 2>/dev/null || echo 'latest')"
+            target_tag="${target_branch}-$(git rev-parse --short=12 origin/${target_branch} 2>/dev/null || echo 'latest')"
+
+            docker pull "ghcr.io/ethio-connect/${repository_name}:${source_tag}" 2>/dev/null || {
+              echo "::warning::Could not pull ${source_tag} for ${repository_name}, skipping."
+              continue
+            }
+            docker tag "ghcr.io/ethio-connect/${repository_name}:${source_tag}" "ghcr.io/ethio-connect/${repository_name}:${target_tag}"
+            docker push "ghcr.io/ethio-connect/${repository_name}:${target_tag}"
+
+            echo "| \`${repository_name}\` | \`${source_tag}\` | \`${target_tag}\` |" >> "$GITHUB_STEP_SUMMARY"
+          done <<< "$projects"
+
+          echo "Promotion complete: ${source_branch} -> ${target_branch}"

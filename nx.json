@@ -72,6 +72,44 @@
         "watchDepsTargetName": "watch-deps",
         "serveStaticTargetName": "serve-static"
       }
+    },
+    {
+      "plugin": "@nx/docker",
+      "options": {
+        "buildTarget": {
+          "name": "docker:build",
+          "skipDefaultTag": true,
+          "cwd": ".",
+          "env": {
+            "PROJECT_NAME": "{projectName}"
+          },
+          "args": [
+            "--file",
+            "{projectRoot}/Dockerfile",
+            "--tag",
+            "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect}/${PROJECT_NAME##*/}:${IMAGE_TAG:-latest}",
+            "--tag",
+            "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect}/${PROJECT_NAME##*/}:${BUILD_NUMBER:-0}",
+            "--label",
+            "org.opencontainers.image.revision=${COMMIT_SHA:-unknown}",
+            "--label",
+            "org.opencontainers.image.created=${BUILD_DATE:-unknown}",
+            "--label",
+            "org.opencontainers.image.title=${PROJECT_NAME##*/}",
+            "--label",
+            "org.opencontainers.image.source=${REPO_URL:-unknown}",
+            "--label",
+            "org.opencontainers.image.version=${VERSION:-0.0.1}",
+            "--label",
+            "org.opencontainers.image.licenses=${LICENCE:-MIT}",
+            "--cache-from",
+            "type=registry,ref=${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect}/${PROJECT_NAME##*/}:cache"
+          ]
+        },
+        "runTarget": {
+          "name": "docker:run"
+        }
+      }
     }
   ],
   "generators": {
@@ -187,6 +225,40 @@
       "@ethio-connect/ethioconnect"
     ],
     "projectsRelationship": "independent",
+    "groups": {
+      "shared-libs": {
+        "docker": false,
+        "projects": [
+          "@ethio-connect/api-common",
+          "@ethio-connect/api-features",
+          "@ethio-connect/frontend-features",
+          "@ethio-connect/ui-components",
+          "@ethio-connect/ethioconnect"
+        ]
+      },
+      "central-hub": {
+        "docker": true,
+        "projects": [
+          "@ethio-connect/central-hub-api",
+          "@ethio-connect/central-hub-dashboard",
+          "@ethio-connect/central-hub-public-dashboard"
+        ]
+      },
+      "customer-portal": {
+        "docker": true,
+        "projects": [
+          "@ethio-connect/customer-portal-api",
+          "@ethio-connect/customer-portal-dashboard"
+        ]
+      },
+      "vendor-portal": {
+        "docker": true,
+        "projects": [
+          "@ethio-connect/vendor-api-server",
+          "@ethio-connect/vendor-portal-dashboard"
+        ]
+      }
+    },
     "git": {
       "commit": true,
       "tag": true,
