@@ -134,7 +134,7 @@ jobs:
           retention-days: 7
 
   container-build-push:
-    name: Container build, scan, sign & attest
+    name: Container build, push & artifact export
     needs: affected-build-test
     runs-on: ubuntu-latest
     if: >-
@@ -143,28 +143,30 @@ jobs:
       github.ref == 'refs/heads/staging' ||
       github.ref == 'refs/heads/production' ||
       github.ref == 'refs/heads/main')
-    environment: >-
-      ${{ github.ref == 'refs/heads/testing' && 'testing' ||
-          github.ref == 'refs/heads/staging' && 'staging' ||
-          (github.ref == 'refs/heads/production' || github.ref == 'refs/heads/main') && 'production' || '' }}
     permissions:
       contents: read
       packages: write
-      id-token: write
-      security-events: write
-    strategy:
-      fail-fast: false
-      matrix:
-        app: [vendor-portal, customer-portal, central-hub]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download build outputs
-        uses: actions/download-artifact@v4
-        with:
-          name: nx-build-outputs
-          path: dist
+      - name: Install dependencies
+        uses: ./.github/actions/pnpm-install
+
+      - name: Set SHAs for Nx affected
+        uses: nrwl/nx-set-shas@v4
+
+      - name: Set container environment
+        run: |
+          echo "NX_DOCKER_REGISTRY=ghcr.io" >> $GITHUB_ENV
+          echo "NX_DOCKER_REPOSITORY=${{ github.repository_owner }}" >> $GITHUB_ENV
+          if [[ "${GITHUB_REF}" == "refs/heads/production" || "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "NX_IMAGE_TAG=latest" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF}" == "refs/heads/staging" ]]; then
+            echo "NX_IMAGE_TAG=staging" >> $GITHUB_ENV
+          else
+            echo "NX_IMAGE_TAG=testing" >> $GITHUB_ENV
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -176,97 +178,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@4959ce089c160fddf62f7b42464195ba1a56d382
+      - name: Build container images for affected deployable apps
+        run: pnpm nx affected -t container --parallel=3
 
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}
-          tags: |
-            type=sha,format=short
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/production' || github.ref == 'refs/heads/main' }}
-            type=raw,value=staging,enable=${{ github.ref == 'refs/heads/staging' }}
-            type=raw,value=testing,enable=${{ github.ref == 'refs/heads/testing' }}
+      - name: Push container images for affected deployable apps
+        run: pnpm nx affected -t container-push --parallel=3
 
-      - name: Build and push image
-        id: build-push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./apps/${{ matrix.app }}/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          provenance: true
-          sbom: true
-
-      - name: Vulnerability scan image (fail on CRITICAL)
-        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8 
-        with:
-          image-ref: ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}@${{ steps.build-push.outputs.digest }}
-          format: sarif
-          output: trivy-image-${{ matrix.app }}.sarif
-          severity: CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-
-      - name: Upload image scan results
-        uses: github/codeql-action/upload-sarif@865f5f5c36632f18690a3d569fa0a764f2da0c3e
-        if: always()
-        with:
-          sarif_file: trivy-image-${{ matrix.app }}.sarif
-
-      - name: Generate SBOM (SPDX JSON)
-        uses: anchore/sbom-action@v0.17.7
-        with:
-          image: ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}@${{ steps.build-push.outputs.digest }}
-          format: spdx-json
-          output-file: sbom-${{ matrix.app }}.spdx.json
-
-      - name: Upload SBOM artifact
+      - name: Upload image metadata artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-${{ matrix.app }}
-          path: sbom-${{ matrix.app }}.spdx.json
+          name: image-metadata
+          path: dist/containers/**/image.json
           if-no-files-found: error
-
-      - name: Sign image (keyless)
-        env:
-          COSIGN_EXPERIMENTAL: 'true'
-        run: |
-          cosign sign --yes ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}@${{ steps.build-push.outputs.digest }}
-
-      - name: Attest SBOM provenance (keyless)
-        env:
-          COSIGN_EXPERIMENTAL: 'true'
-        run: |
-          cosign attest --yes \
-            --predicate sbom-${{ matrix.app }}.spdx.json \
-            --type spdxjson \
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}@${{ steps.build-push.outputs.digest }}
-
-      - name: Export immutable image metadata
-        run: |
-          mkdir -p image-metadata
-          cat > image-metadata/${{ matrix.app }}.json <<EOF_META
-          {
-            "app": "${{ matrix.app }}",
-            "image": "ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}@${{ steps.build-push.outputs.digest }}",
-            "digest": "${{ steps.build-push.outputs.digest }}",
-            "branch": "${{ github.ref_name }}",
-            "sha": "${{ github.sha }}"
-          }
-          EOF_META
-
-      - name: Upload image metadata
-        uses: actions/upload-artifact@v4
-        with:
-          name: image-metadata-${{ matrix.app }}
-          path: image-metadata/${{ matrix.app }}.json
-          if-no-files-found: error
-          retention-days: 14
 
   package-publish:
     name: Package publish
