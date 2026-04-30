@@ -9,7 +9,6 @@
     "scope:customer-portal",
     "type:dashboard"
   ],
-  "// targets": "to see all targets run: nx show project @ethio-connect/customer-portal-dashboard --web",
   "targets": {
     "container": {
       "dependsOn": ["build", "^build"],
@@ -19,7 +18,7 @@
       ],
       "options": {
         "cwd": "{workspaceRoot}",
-        "command": "docker buildx build --load --file {projectRoot}/Dockerfile --tag ${NX_DOCKER_REGISTRY:-ghcr.io}/${NX_DOCKER_REPOSITORY:-ethio-connect}/{projectName}:${NX_IMAGE_TAG:-local} --metadata-file dist/containers/{projectName}/container-metadata.json {projectRoot}"
+        "command": "docker buildx build --load --file {projectRoot}/Dockerfile --tag ${NX_DOCKER_REGISTRY:-ghcr.io}/${NX_DOCKER_REPOSITORY:-ethio-connect-et}/{projectName}:${NX_IMAGE_TAG:-local} --metadata-file dist/containers/{projectName}/container-metadata.json {projectRoot}"
       }
     },
     "container-push": {
@@ -28,7 +27,7 @@
       "outputs": ["{workspaceRoot}/dist/containers/{projectName}/image.json"],
       "options": {
         "cwd": "{workspaceRoot}",
-        "command": "mkdir -p dist/containers/{projectName} && docker buildx build --push --file {projectRoot}/Dockerfile --tag ${NX_DOCKER_REGISTRY:-ghcr.io}/${NX_DOCKER_REPOSITORY:-ethio-connect}/{projectName}:${NX_IMAGE_TAG:-${NX_TASK_HASH:-latest}} --metadata-file dist/containers/{projectName}/push-metadata.json {projectRoot} && DIGEST=$(python - <<'P'\nimport json\nfrom pathlib import Path\np=Path('dist/containers/{projectName}/push-metadata.json')\nj=json.loads(p.read_text()) if p.exists() else {}\nprint(j.get('containerimage.digest',''))\nP\n) && printf \"{\\n  \\\"project\\\": \\\"{projectName}\\\",\\n  \\\"image\\\": \\\"%s/%s/{projectName}:%s\\\",\\n  \\\"digest\\\": \\\"%s\\\",\\n  \\\"ref\\\": \\\"%s/%s/{projectName}@%s\\\"\\n}\\n\" \"${NX_DOCKER_REGISTRY:-ghcr.io}\" \"${NX_DOCKER_REPOSITORY:-ethio-connect}\" \"${NX_IMAGE_TAG:-${NX_TASK_HASH:-latest}}\" \"$DIGEST\" \"${NX_DOCKER_REGISTRY:-ghcr.io}\" \"${NX_DOCKER_REPOSITORY:-ethio-connect}\" \"$DIGEST\" > dist/containers/{projectName}/image.json"
+        "command": "mkdir -p dist/containers/{projectName} && docker buildx build --push --file {projectRoot}/Dockerfile --tag ${NX_DOCKER_REGISTRY:-ghcr.io}/${NX_DOCKER_REPOSITORY:-ethio-connect-et}/{projectName}:${NX_IMAGE_TAG:-${NX_TASK_HASH:-latest}} --metadata-file dist/containers/{projectName}/push-metadata.json {projectRoot} && DIGEST=$(python - <<'P'\nimport json\nfrom pathlib import Path\np=Path('dist/containers/{projectName}/push-metadata.json')\nj=json.loads(p.read_text()) if p.exists() else {}\nprint(j.get('containerimage.digest',''))\nP\n) && printf \"{\\n  \\\"project\\\": \\\"{projectName}\\\",\\n  \\\"image\\\": \\\"%s/%s/{projectName}:%s\\\",\\n  \\\"digest\\\": \\\"%s\\\",\\n  \\\"ref\\\": \\\"%s/%s/{projectName}@%s\\\"\\n}\\n\" \"${NX_DOCKER_REGISTRY:-ghcr.io}\" \"${NX_DOCKER_REPOSITORY:-ethio-connect-et}\" \"${NX_IMAGE_TAG:-${NX_TASK_HASH:-latest}}\" \"$DIGEST\" \"${NX_DOCKER_REGISTRY:-ghcr.io}\" \"${NX_DOCKER_REPOSITORY:-ethio-connect-et}\" \"$DIGEST\" > dist/containers/{projectName}/image.json"
       }
     },
     "lint": {

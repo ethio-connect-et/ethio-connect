@@ -3,8 +3,14 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/ui-components/src",
   "projectType": "library",
+  "release": {
+    "version": {
+      "manifestRootsToUpdate": ["dist/{projectRoot}"],
+      "currentVersionResolver": "git-tag",
+      "fallbackCurrentVersionResolver": "disk"
+    }
+  },
   "tags": ["scope:shared", "type:ui", "domain:shared", "platform:web"],
-  "// targets": "to see all targets run: nx show project @ethio-connect/ui-components --web",
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
@@ -25,13 +31,6 @@
       "options": {
         "packageRoot": "dist/{projectRoot}"
       }
-    }
-  },
-  "release": {
-    "version": {
-      "manifestRootsToUpdate": ["dist/{projectRoot}"],
-      "currentVersionResolver": "git-tag",
-      "fallbackCurrentVersionResolver": "disk"
     }
   }
 }
