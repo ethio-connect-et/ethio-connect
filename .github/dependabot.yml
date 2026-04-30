@@ -1,0 +1,175 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: 06:00
+      timezone: UTC
+    commit-message:
+      prefix: deps
+      include: scope
+      scope: app
+    labels:
+      - dependencies
+      - triage
+    milestone: Dependencies
+    reviewers:
+      - anomalyco
+    assignees:
+      - anomalyco
+    open-pull-requests-limit: 10
+    versioning-strategy: increase-if-necessary
+    allow:
+      - dependency-type: production
+    ignore:
+      - dependency-name: '*'
+        update-types:
+          - version-update:semver-major
+    groups:
+      '@nestjs':
+        patterns:
+          - '@nestjs/*'
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-patch
+      '@nx':
+        patterns:
+          - '@nx/*'
+          - nx
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-patch
+      react:
+        patterns:
+          - react
+          - react-dom
+          - '@types/react*'
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-patch
+      next:
+        patterns:
+          - next
+          - '@next/*'
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-patch
+      tailwind:
+        patterns:
+          - tailwindcss
+          - postcss
+          - autoprefixer
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-patch
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: 06:30
+      timezone: UTC
+    commit-message:
+      prefix: deps(dev)
+      include: scope
+      scope: dev
+    labels:
+      - dependencies
+      - triage
+      - dev-dependencies
+    open-pull-requests-limit: 15
+    versioning-strategy: increase-if-necessary
+    allow:
+      - dependency-type: development
+    ignore:
+      - dependency-name: '*'
+        update-types:
+          - version-update:semver-major
+    groups:
+      typescript:
+        patterns:
+          - typescript
+          - ts-jest
+          - '@types/*'
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-patch
+      testing:
+        patterns:
+          - jest*
+          - '@testing-library/*'
+          - playwright*
+          - '@playwright/*'
+      eslint:
+        patterns:
+          - eslint*
+          - '@eslint/*'
+          - eslint-*
+          - typescript-eslint*
+      formatting:
+        patterns:
+          - prettier
+          - eslint-config-prettier
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: 06:00
+      timezone: UTC
+    commit-message:
+      prefix: deps(ci)
+      include: scope
+    labels:
+      - dependencies
+      - ci
+    open-pull-requests-limit: 10
+    versioning-strategy: increase-if-necessary
+    groups:
+      actions-core:
+        patterns:
+          - actions/*
+      nx-actions:
+        patterns:
+          - nrwl/*
+      docker-actions:
+        patterns:
+          - docker/*
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+      day: wednesday
+      time: 06:00
+      timezone: UTC
+    commit-message:
+      prefix: deps(docker)
+      include: scope
+    labels:
+      - dependencies
+      - docker
+    open-pull-requests-limit: 5
+    versioning-strategy: increase-if-necessary
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: security
+      include: scope
+    labels:
+      - security
+      - dependencies
+      - urgent
+    open-pull-requests-limit: 5
+    versioning-strategy: increase-if-necessary
+    allow:
+      - dependency-type: all
+    target-branch: development
+    ignore:
+      - dependency-name: '*'
+        update-types:
+          - version-update:semver-major
+    security-updates-only: true

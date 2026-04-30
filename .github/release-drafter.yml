@@ -1,0 +1,53 @@
+name-template: 'Ethio Connect $RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+template: |
+  ## Summary
+
+  $CHANGES
+
+categories:
+  - title: 'Applications'
+    labels:
+      - 'app'
+      - 'feature'
+      - 'ui'
+      - 'api'
+  - title: 'Libraries and Shared Code'
+    labels:
+      - 'library'
+      - 'shared'
+      - 'refactor'
+  - title: 'Platform and Delivery'
+    labels:
+      - 'ci'
+      - 'release'
+      - 'docker'
+      - 'gitops'
+  - title: 'Security and Dependencies'
+    labels:
+      - 'security'
+      - 'dependencies'
+
+change-template: '- $TITLE (#$NUMBER)'
+no-changes-template: '- No release-note worthy changes.'
+version-resolver:
+  major:
+    labels:
+      - 'major'
+      - 'breaking'
+  minor:
+    labels:
+      - 'feature'
+      - 'app'
+      - 'api'
+      - 'ui'
+  patch:
+    labels:
+      - 'bug'
+      - 'fix'
+      - 'ci'
+      - 'docker'
+      - 'gitops'
+      - 'security'
+      - 'dependencies'
+  default: patch
