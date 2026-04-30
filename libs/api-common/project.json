@@ -3,7 +3,35 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/api-common/src",
   "projectType": "library",
-  "tags": ["scope:shared", "type:nest"],
+  "tags": ["scope:shared", "type:util", "domain:shared", "platform:api"],
   "// targets": "to see all targets run: nx show project @ethio-connect/api-common --web",
-  "targets": {}
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/api-common",
+        "main": "libs/api-common/src/index.ts",
+        "tsConfig": "libs/api-common/tsconfig.lib.json",
+        "assets": ["libs/api-common/*.md"],
+        "generatePackageJson": true
+      }
+    },
+    "package": {
+      "executor": "nx:noop",
+      "dependsOn": ["build"]
+    },
+    "nx-release-publish": {
+      "options": {
+        "packageRoot": "dist/{projectRoot}"
+      }
+    }
+  },
+  "release": {
+    "version": {
+      "manifestRootsToUpdate": ["dist/{projectRoot}"],
+      "currentVersionResolver": "git-tag",
+      "fallbackCurrentVersionResolver": "disk"
+    }
+  }
 }

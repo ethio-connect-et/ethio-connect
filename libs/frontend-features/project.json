@@ -3,7 +3,35 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/frontend-features/src",
   "projectType": "library",
-  "tags": ["scope:shared", "type:next"],
+  "tags": ["scope:shared", "type:feature", "domain:shared", "platform:web"],
   "// targets": "to see all targets run: nx show project @ethio-connect/frontend-features --web",
-  "targets": {}
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/frontend-features",
+        "main": "libs/frontend-features/src/index.ts",
+        "tsConfig": "libs/frontend-features/tsconfig.lib.json",
+        "assets": ["libs/frontend-features/*.md"],
+        "generatePackageJson": true
+      }
+    },
+    "package": {
+      "executor": "nx:noop",
+      "dependsOn": ["build"]
+    },
+    "nx-release-publish": {
+      "options": {
+        "packageRoot": "dist/{projectRoot}"
+      }
+    }
+  },
+  "release": {
+    "version": {
+      "manifestRootsToUpdate": ["dist/{projectRoot}"],
+      "currentVersionResolver": "git-tag",
+      "fallbackCurrentVersionResolver": "disk"
+    }
+  }
 }
