@@ -1,0 +1,10 @@
+* @ethio-connect/application-team
+
+/.github/ @ethio-connect/platform-team
+/deploy/ @ethio-connect/platform-team
+/deploy/** @ethio-connect/platform-team
+/tools/ @ethio-connect/platform-team
+/docs/resources/ @ethio-connect/architecture-team
+/docs/reports/ @ethio-connect/application-team
+/apps/ @ethio-connect/application-team
+/libs/ @ethio-connect/application-team
