@@ -37,7 +37,10 @@ export default [
             },
             {
               sourceTag: 'domain:vendor-portal',
-              onlyDependOnLibsWithTags: ['domain:vendor-portal', 'domain:shared'],
+              onlyDependOnLibsWithTags: [
+                'domain:vendor-portal',
+                'domain:shared',
+              ],
             },
             {
               sourceTag: 'scope:central-hub',
