@@ -51,6 +51,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Configure npm registries
+        run: |
+          cat <<'EOF' > .npmrc
+          @ethio-connect:registry=https://npm.pkg.github.com
+          registry=https://registry.npmjs.org/
+          always-auth=true
+          //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+          //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+          EOF
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Format check
         run: pnpm nx format:check
 
@@ -227,10 +240,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Publish packages
+      - name: Publish changed packages with Nx Release
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm -r --filter ./packages/* publish --access public --no-git-checks
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: pnpm nx release publish --yes
 
       - name: Upload publish manifest
         run: |
