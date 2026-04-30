@@ -2,11 +2,15 @@
   "name": "@ethio-connect/central-hub-api-e2e",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
-  "implicitDependencies": ["@ethio-connect/central-hub-api"],
+  "implicitDependencies": [
+    "@ethio-connect/central-hub-api"
+  ],
   "targets": {
     "e2e": {
       "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{e2eProjectRoot}"],
+      "outputs": [
+        "{workspaceRoot}/coverage/{e2eProjectRoot}"
+      ],
       "options": {
         "jestConfig": "apps/central-hub/central-hub-api-e2e/jest.config.cts",
         "passWithNoTests": true
@@ -15,6 +19,34 @@
         "@ethio-connect/central-hub-api:build",
         "@ethio-connect/central-hub-api:serve"
       ]
+    },
+    "lint": {
+      "executor": "nx:noop"
+    },
+    "test": {
+      "executor": "nx:noop"
+    },
+    "build": {
+      "executor": "nx:noop"
+    },
+    "deploy-metadata": {
+      "dependsOn": [
+        "e2e"
+      ],
+      "executor": "nx:run-commands",
+      "outputs": [
+        "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
+      ],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"{projectName}\",\\n  \"root\": \"{projectRoot}\",\\n  \"type\": \"e2e\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/{projectName}.json"
+      }
     }
-  }
+  },
+  "tags": [
+    "domain:central-hub",
+    "platform:e2e",
+    "scope:central-hub",
+    "type:app"
+  ]
 }
