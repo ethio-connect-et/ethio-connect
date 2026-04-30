@@ -1,3 +1,7 @@
+import { EthioConnectUiComponents } from '@ethio-connect/ui-components';
+import { EthioConnectFrontendFeatures } from '@ethio-connect/frontend-features';
+import { ethioconnect } from '@ethio-connect/ethioconnect';
+
 export default function Index() {
   /*
    * Replace the elements below with your own.
@@ -8,6 +12,10 @@ export default function Index() {
     <div>
       <div className="wrapper">
         <div className="container">
+          <div data-workspace-lib={ethioconnect()}>
+            <EthioConnectUiComponents />
+            <EthioConnectFrontendFeatures />
+          </div>
           <div id="welcome">
             <h1>
               <span> Hello there, </span>
