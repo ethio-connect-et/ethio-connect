@@ -3,6 +3,14 @@
   "defaultBase": "development",
   "analytics": false,
   "namedInputs": {
+    "sharedGlobals": [
+      "{workspaceRoot}/nx.json",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/pnpm-lock.yaml",
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/eslint.config.mjs",
+      "{workspaceRoot}/jest.preset.js"
+    ],
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "production": [
       "default",
@@ -12,9 +20,12 @@
       "!{projectRoot}/tsconfig.spec.json",
       "!{projectRoot}/jest.config.[jt]s",
       "!{projectRoot}/src/test-setup.[jt]s",
-      "!{projectRoot}/test-setup.[jt]s"
+      "!{projectRoot}/test-setup.[jt]s",
+      "!{projectRoot}/playwright.config.[jt]s",
+      "!{projectRoot}/**/*.stories.@(ts|tsx|js|jsx|mdx)"
     ],
-    "sharedGlobals": []
+    "ci": ["default", "^production"],
+    "e2e": ["default", "^production", "{workspaceRoot}/playwright.config.*"]
   },
   "plugins": [
     {
@@ -28,11 +39,23 @@
         "watchDepsTargetName": "watch-deps"
       }
     },
-    { "plugin": "@nx/playwright/plugin", "options": { "targetName": "e2e" } },
-    { "plugin": "@nx/eslint/plugin", "options": { "targetName": "lint" } },
+    {
+      "plugin": "@nx/playwright/plugin",
+      "options": {
+        "targetName": "e2e"
+      }
+    },
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "lint"
+      }
+    },
     {
       "plugin": "@nx/jest/plugin",
-      "options": { "targetName": "test" },
+      "options": {
+        "targetName": "test"
+      },
       "exclude": [
         "apps/central-hub/central-hub-api-e2e/**/*",
         "apps/vendor-portal/vendor-api-server-e2e/**/*",
@@ -52,18 +75,109 @@
     }
   ],
   "generators": {
-    "@nx/next": { "application": { "style": "tailwind", "linter": "eslint" } },
-    "@nx/react": { "library": { "unitTestRunner": "jest" } }
+    "@nx/next": {
+      "application": {
+        "style": "tailwind",
+        "linter": "eslint"
+      }
+    },
+    "@nx/react": {
+      "library": {
+        "unitTestRunner": "jest"
+      }
+    }
   },
   "targetDefaults": {
     "@nx/js:tsc": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["production", "^production"]
+      "inputs": ["production", "^production"],
+      "outputs": ["{options.outputPath}"]
+    },
+    "@nx/eslint:lint": {
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "outputs": ["{options.outputFile}"]
+    },
+    "@nx/jest:jest": {
+      "cache": true,
+      "inputs": ["ci", "^production"],
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "passWithNoTests": true
+      }
+    },
+    "@nx/playwright:playwright": {
+      "cache": true,
+      "inputs": ["e2e", "^production"],
+      "outputs": [
+        "{workspaceRoot}/dist/.playwright/{projectRoot}",
+        "{workspaceRoot}/playwright-report/{projectRoot}"
+      ]
+    },
+    "build": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"],
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}",
+        "{projectRoot}/dist",
+        "{projectRoot}/build",
+        ".next/{projectRoot}"
+      ]
+    },
+    "test": {
+      "cache": true,
+      "inputs": ["ci", "^production"],
+      "outputs": [
+        "{workspaceRoot}/coverage/{projectRoot}",
+        "{projectRoot}/test-results"
+      ]
+    },
+    "lint": {
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "outputs": ["{options.outputFile}"]
+    },
+    "e2e": {
+      "cache": true,
+      "inputs": ["e2e", "^production"],
+      "outputs": [
+        "{workspaceRoot}/dist/.playwright/{projectRoot}",
+        "{workspaceRoot}/playwright-report/{projectRoot}",
+        "{projectRoot}/test-results"
+      ]
+    },
+    "package": {
+      "cache": true,
+      "inputs": ["production", "^production"],
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}", "{projectRoot}/dist"]
+    },
+    "container": {
+      "cache": true,
+      "inputs": [
+        "production",
+        "^production",
+        "{workspaceRoot}/Dockerfile",
+        "{projectRoot}/Dockerfile"
+      ],
+      "outputs": ["{workspaceRoot}/dist/containers/{projectName}"]
+    },
+    "docker": {
+      "cache": true,
+      "inputs": [
+        "production",
+        "^production",
+        "{workspaceRoot}/Dockerfile",
+        "{projectRoot}/Dockerfile"
+      ],
+      "outputs": ["{workspaceRoot}/dist/containers/{projectName}"]
     }
   },
   "release": {
-    "version": { "preVersionCommand": "pnpm dlx nx run-many -t build" }
+    "version": {
+      "preVersionCommand": "pnpm dlx nx run-many -t build"
+    }
   },
   "nxCloudId": "69f299b3bd50ccb2dc8f1fc7"
 }
