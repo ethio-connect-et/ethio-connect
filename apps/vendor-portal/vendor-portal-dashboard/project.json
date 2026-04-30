@@ -9,7 +9,6 @@
     "scope:vendor-portal",
     "type:dashboard"
   ],
-  "// targets": "to see all targets run: nx show project @ethio-connect/vendor-portal-dashboard --web",
   "targets": {
     "container": {
       "dependsOn": ["build", "^build"],
