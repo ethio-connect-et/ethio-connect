@@ -89,9 +89,9 @@
             "--file",
             "{projectRoot}/Dockerfile",
             "--tag",
-            "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect}/${PROJECT_NAME##*/}:${IMAGE_TAG:-latest}",
+            "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${IMAGE_TAG:-latest}",
             "--tag",
-            "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect}/${PROJECT_NAME##*/}:${BUILD_NUMBER:-0}",
+            "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${BUILD_NUMBER:-0}",
             "--label",
             "org.opencontainers.image.revision=${COMMIT_SHA:-unknown}",
             "--label",
@@ -105,7 +105,7 @@
             "--label",
             "org.opencontainers.image.licenses=${LICENCE:-MIT}",
             "--cache-from",
-            "type=registry,ref=${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect}/${PROJECT_NAME##*/}:cache"
+            "type=registry,ref=${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:cache"
           ]
         },
         "runTarget": {
