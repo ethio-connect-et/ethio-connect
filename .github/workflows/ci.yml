@@ -384,7 +384,7 @@ jobs:
             echo ""
             echo "| Project | Image Tag |"
             echo "|---|---|"
-            pnpm nx show projects --withTarget docker:build --json | jq -r '.[] | "| `" + . + "` | `" + "'"$image_tag"'" + "` |"'
+            pnpm nx show projects --withTarget docker:build | awk '/^@ethio-connect\// { printf("| `%s` | `%s` |\n", $0, "'"$image_tag"'") }'
           } >> "$GITHUB_STEP_SUMMARY"
 
   release_draft:

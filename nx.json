@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
-  "defaultBase": "development",
+  "defaultBase": "main",
   "analytics": false,
   "nxCloudId": "69f299b3bd50ccb2dc8f1fc7",
   "namedInputs": {
