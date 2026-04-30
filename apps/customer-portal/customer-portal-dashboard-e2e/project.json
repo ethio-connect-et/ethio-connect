@@ -10,7 +10,6 @@
     "type:app"
   ],
   "implicitDependencies": ["@ethio-connect/customer-portal-dashboard"],
-  "// targets": "to see all targets run: nx show project @ethio-connect/customer-portal-dashboard-e2e --web",
   "targets": {
     "lint": {
       "executor": "nx:noop"

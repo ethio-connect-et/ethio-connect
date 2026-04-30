@@ -10,7 +10,6 @@
     "type:app"
   ],
   "implicitDependencies": ["@ethio-connect/central-hub-public-dashboard"],
-  "// targets": "to see all targets run: nx show project @ethio-connect/public-website-e2e --web",
   "targets": {
     "lint": {
       "executor": "nx:noop"

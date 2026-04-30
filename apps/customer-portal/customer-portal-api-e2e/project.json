@@ -2,6 +2,12 @@
   "name": "@ethio-connect/customer-portal-api-e2e",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
+  "tags": [
+    "domain:customer-portal",
+    "platform:e2e",
+    "scope:customer-portal",
+    "type:app"
+  ],
   "implicitDependencies": ["@ethio-connect/customer-portal-api"],
   "targets": {
     "e2e": {
@@ -34,11 +40,5 @@
         "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"{projectName}\",\\n  \"root\": \"{projectRoot}\",\\n  \"type\": \"e2e\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/{projectName}.json"
       }
     }
-  },
-  "tags": [
-    "domain:customer-portal",
-    "platform:e2e",
-    "scope:customer-portal",
-    "type:app"
-  ]
+  }
 }
