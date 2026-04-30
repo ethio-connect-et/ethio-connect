@@ -1,15 +1,12 @@
-name: Application Continuous Integration
+name: CI
 
 on:
   pull_request:
-    branches:
-      - development
-      - testing
-      - staging
-      - main
-    types: [opened, synchronize, reopened, ready_for_review]
-  merge_group:
-    types: [checks_requested]
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
   push:
     branches:
       - development
@@ -17,119 +14,403 @@ on:
       - staging
       - main
     paths:
-      - '.github/workflows/**'
       - 'apps/**'
       - 'libs/**'
-      - 'deploy/**'
-      - 'scripts/**'
-      - 'nx.json'
+      - '.github/workflows/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
+      - 'nx.json'
       - 'tsconfig.base.json'
-  workflow_dispatch:
+      - 'eslint.config.mjs'
+      - 'jest.config.ts'
+      - 'jest.preset.js'
 
-permissions:
-  actions: read
-  contents: read
-  pull-requests: read
-  security-events: write
+permissions: {}
 
 env:
+  CI: true
   NODE_VERSION: '24.11.0'
   PNPM_VERSION: '10.20.0'
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+  DOCKER_BUILDKIT: 1
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.sha }}
-  cancel-in-progress: ${{ github.event_name != 'push' }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  governance_policy_checks:
-    name: Governance Branch and Workflow Policy
-    uses: ./.github/workflows/ci-policy-governance.yml
-    with:
-      node_version: '24.11.0'
-      pnpm_version: '10.20.0'
-      event_name: ${{ github.event_name }}
-      base_ref: ${{ github.base_ref }}
-      head_ref: ${{ github.head_ref }}
-    secrets: inherit
-
-  quality_and_security:
-    name: Quality and Security Gate
-    needs: [governance_policy_checks]
-    uses: ./.github/workflows/ci-quality-security.yml
-    with:
-      node_version: '24.11.0'
-      pnpm_version: '10.20.0'
-      event_name: ${{ github.event_name }}
-      ref_name: ${{ github.ref_name }}
-      base_ref: ${{ github.base_ref }}
-    secrets: inherit
-
-  publish_container_images:
-    name: Publish Signed Application Images
-    needs: [quality_and_security]
-    if: >-
-      github.event_name == 'push' &&
-      (
-        github.ref == 'refs/heads/testing' ||
-        github.ref == 'refs/heads/staging' ||
-        github.ref == 'refs/heads/main'
-      ) &&
-      !contains(github.event.head_commit.message, '[skip ci]')
+  governance_branch_policy:
+    name: Governance · Branch Policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
-      id-token: write
-      packages: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Block local agent scaffolding artifacts
+        shell: bash
+        env: { MESSAGE: '${{ github.event.head_commit.message }}' }
+        run: |
+          set -euo pipefail
+          allow_reintroduction="false"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
+            if [[ "$labels" == *"allow-agent-scaffolding"* ]]; then
+              allow_reintroduction="true"
+            fi
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            head_message="$MESSAGE"
+            if [[ "$head_message" == *"[allow-agent-scaffolding]"* ]]; then
+              allow_reintroduction="true"
+            fi
+          fi
+
+          if [[ "$allow_reintroduction" == "true" ]]; then
+            echo "Local-agent scaffolding reintroduction explicitly approved."
+            exit 0
+          fi
+
+          disallowed_paths=()
+          while IFS= read -r path; do
+            disallowed_paths+=("$path")
+          done < <(git ls-files .agents .gemini AGENTS.md)
+
+          if (( ${#disallowed_paths[@]} > 0 )); then
+            echo "::error::Detected blocked local-agent scaffolding artifacts:"
+            printf ' - %s\n' "${disallowed_paths[@]}"
+            echo "Remove these files or approve with PR label 'allow-agent-scaffolding' (or '[allow-agent-scaffolding]' in a push commit message)."
+            exit 1
+          fi
+          echo "No blocked local-agent scaffolding artifacts tracked in repository."
+
+      - name: Enforce pull request promotion policy
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env: { BASE: '${{ github.base_ref }}', HEAD: '${{ github.head_ref }}' }
+        run: |
+          set -euo pipefail
+          target_branch="$BASE"
+          source_branch="$HEAD"
+          case "$target_branch" in
+            development)
+              if [[ ! "$source_branch" =~ ^((feat|fix|chore|update)/.+|ops/development/.+)$ ]]; then
+                echo "::error::Development only accepts PRs from feat/*, fix/*, chore/*, update/*, or ops/development/* branches. Got: $source_branch"
+                exit 1
+              fi
+              ;;
+            testing)
+              if [[ "$source_branch" != "development" && ! "$source_branch" =~ ^ops/testing/.+$ ]]; then
+                echo "::error::Testing only accepts PRs from development or ops/testing/* branches. Got: $source_branch"
+                exit 1
+              fi
+              ;;
+            staging)
+              if [[ "$source_branch" != "testing" && ! "$source_branch" =~ ^ops/staging/.+$ ]]; then
+                echo "::error::Staging only accepts PRs from testing or ops/staging/* branches. Got: $source_branch"
+                exit 1
+              fi
+              ;;
+            main)
+              if [[ "$source_branch" != "staging" && ! "$source_branch" =~ ^ops/main/.+$ ]]; then
+                echo "::error::Main only accepts PRs from staging or ops/main/* branches. Got: $source_branch"
+                exit 1
+              fi
+              ;;
+          esac
+
+      - name: Enforce merge-time branch policy
+        if: github.event_name == 'push'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const commitSha = context.sha;
+            const targetBase = context.ref.replace('refs/heads/', '');
+            const rules = {
+              development: {
+                expected: 'feat/*, fix/*, chore/*, update/*, or ops/development/*',
+                matchers: [/^(feat|fix|chore|update)\/.+$/, /^ops\/development\/.+$/],
+              },
+              testing: {
+                expected: 'development or ops/testing/*',
+                matchers: [/^development$/, /^ops\/testing\/.+$/],
+              },
+              staging: {
+                expected: 'testing or ops/staging/*',
+                matchers: [/^testing$/, /^ops\/staging\/.+$/],
+              },
+              main: {
+                expected: 'staging or ops/main/*',
+                matchers: [/^staging$/, /^ops\/main\/.+$/],
+              },
+            };
+            const rule = rules[targetBase];
+            if (!rule) { core.info(`No merge-time branch policy for ${targetBase}.`); return; }
+            if (context.payload.forced) { core.setFailed(`Force pushes to ${targetBase} are not allowed.`); return; }
+            const commitResponse = await github.rest.repos.getCommit({ owner, repo, ref: commitSha });
+            const commitMessage = commitResponse.data.commit.message ?? '';
+            const commitSubject = commitMessage.split('\n')[0] ?? '';
+            const prs = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, { owner, repo, commit_sha: commitSha });
+            const sourceMatchesRule = (source) => Boolean(source) && rule.matchers.some((m) => m.test(source));
+            const matches = prs.filter((pr) => pr.base?.ref === targetBase && sourceMatchesRule(pr.head?.ref) && pr.merged_at);
+            if (matches.length > 0) { core.info(`Validated merged PR #${matches[0].number} from ${matches[0].head?.ref} to ${targetBase}.`); return; }
+            const mergeMatch = commitSubject.match(/^Merge pull request #(\d+) from /);
+            if (mergeMatch) {
+              const prNumber = Number(mergeMatch[1]);
+              const prResponse = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+              const pr = prResponse.data;
+              if (pr.base?.ref === targetBase && sourceMatchesRule(pr.head?.ref) && pr.merged_at && pr.merge_commit_sha === commitSha) {
+                core.info(`Validated merged PR #${pr.number} from ${pr.head?.ref} to ${targetBase}.`); return;
+              }
+            }
+            const associated = prs.map((pr) => `#${pr.number}: ${pr.head.ref} -> ${pr.base.ref} (merged=${pr.merged_at ?? 'no'})`).join('\n');
+            core.setFailed(`${targetBase} must not receive direct pushes. Only merged PRs from ${rule.expected} to ${targetBase} are allowed for commit ${commitSha}.` + `\nCommit: ${commitSubject || '(empty)'}` + (associated ? `\nAssociated PRs:\n${associated}` : '\nNo PRs associated.'));
+
+  security_sast:
+    name: Security · SAST
+    needs: [governance_branch_policy]
+    if: |
+      always() && needs.governance_branch_policy.result == 'success' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'push' || contains(fromJSON('["development","testing","staging","main"]'), github.ref_name))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: read
       security-events: write
-    uses: ./.github/workflows/ci-image-publish-attest.yml
-    with:
-      node_version: '24.11.0'
-      pnpm_version: '10.20.0'
-    secrets: inherit
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
 
-  dispatch_staging_release:
-    name: Dispatch Staging Release to Environments
-    needs: [publish_container_images]
-    if: >-
-      needs.publish_container_images.result == 'success' &&
-      needs.publish_container_images.outputs['infra_environment'] == 'staging'
-    uses: ./.github/workflows/ci-release-dispatch.yml
-    with:
-      source_sha: ${{ github.sha }}
-      source_ref: refs/heads/staging
-      target_environment: staging
-      image_tag: ${{ needs.publish_container_images.outputs['image_tag'] }}
-      release_version: ${{ needs.publish_container_images.outputs['release_version'] }}
-      release_schema_version: 1.0.0
-      applications_json: ${{ needs.publish_container_images.outputs['applications_json'] }}
-      attestation_references_json: ${{ needs.publish_container_images.outputs['attestation_references_json'] }}
-    secrets: inherit
+      - uses: pnpm/action-setup@v5
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
 
-  summarize_protected_branch_publish:
-    name: Summarize Protected Branch Publish
-    needs: [publish_container_images, dispatch_staging_release]
-    if: always() && needs.publish_container_images.result == 'success'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          pnpm fetch --frozen-lockfile
+          pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Run Snyk vulnerability scanner
+        continue-on-error: true
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --sarif-file-output=snyk.sarif
+
+      - name: Upload Snyk results to GitHub
+        if: hashFiles('snyk.sarif')
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: snyk.sarif
+
+  security_codeql:
+    name: Security · CodeQL
+    needs: [governance_branch_policy]
+    if: |
+      always() && needs.governance_branch_policy.result == 'success' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'push' || contains(fromJSON('["development","testing","staging","main"]'), github.ref_name))
     runs-on: ubuntu-latest
     timeout-minutes: 20
-
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    outputs:
+      enabled: ${{ steps.advanced-security.outputs.enabled }}
     steps:
-      - name: Write publish summary
-        env:
-          INFRA_ENVIRONMENT: ${{ needs.publish_container_images.outputs['infra_environment'] }}
-          IMAGE_TAG: ${{ needs.publish_container_images.outputs['image_tag'] }}
-          RELEASE_VERSION: ${{ needs.publish_container_images.outputs['release_version'] }}
-          DISPATCH_RESULT: ${{ needs.dispatch_staging_release.result }}
-        run: |
+      - name: Check if Advanced Security is enabled
+        id: advanced-security
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const response = await github.request('GET /repos/{owner}/{repo}', { owner: context.repo.owner, repo: context.repo.repo, headers: { 'X-GitHub-Api-Version': '2022-11-28' } });
+              const enabled = response.data.security_and_analysis?.advanced_security?.status === 'enabled';
+              core.info(`Advanced Security enabled: ${enabled}`);
+              core.setOutput('enabled', enabled ? 'true' : 'false');
+            } catch (error) { core.warning(`Unable to determine Advanced Security status: ${error.message}`); core.setOutput('enabled', 'false'); }
+
+      - uses: actions/checkout@v6
+        if: steps.advanced-security.outputs.enabled == 'true'
+        with: { fetch-depth: 1 }
+
+      - uses: pnpm/action-setup@v5
+        if: steps.advanced-security.outputs.enabled == 'true'
+        with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
+
+      - uses: actions/setup-node@v6
+        if: steps.advanced-security.outputs.enabled == 'true'
+        with:
           {
-            echo "## Protected Branch Image Publish"
+            node-version: '${{ env.NODE_VERSION }}',
+            cache: pnpm,
+            cache-dependency-path: pnpm-lock.yaml,
+          }
+
+      - name: Install dependencies
+        if: steps.advanced-security.outputs.enabled == 'true'
+        run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Initialize CodeQL
+        if: steps.advanced-security.outputs.enabled == 'true'
+        uses: github/codeql-action/init@v4
+        with:
+          { languages: 'javascript,typescript', queries: 'security-extended' }
+
+      - name: Perform CodeQL Analysis
+        if: steps.advanced-security.outputs.enabled == 'true'
+        uses: github/codeql-action/analyze@v4
+        with: { category: '/language:javascript-typescript' }
+
+      - name: Skip CodeQL when disabled
+        if: steps.advanced-security.outputs.enabled != 'true'
+        run: "echo 'Skipping CodeQL: Advanced Security not enabled.'"
+
+  quality_gate:
+    name: Quality · Gate
+    needs: [governance_branch_policy, security_sast, security_codeql]
+    if: |
+      always() && needs.governance_branch_policy.result == 'success' &&
+      needs.security_sast.result != 'failure' && needs.security_codeql.result != 'failure' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'push' || contains(fromJSON('["development","testing","staging","main"]'), github.ref_name))
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0, filter: 'tree:0' }
+
+      - uses: pnpm/action-setup@v5
+        with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
+
+      - uses: actions/setup-node@v6
+        with:
+          {
+            node-version: '${{ env.NODE_VERSION }}',
+            cache: pnpm,
+            cache-dependency-path: pnpm-lock.yaml,
+          }
+
+      - name: Install dependencies
+        run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Configure affected range for PRs and testing
+        if: github.event_name == 'pull_request' || github.ref_name == 'testing'
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_ref="${{ github.event_name == 'pull_request' && github.base_ref || 'development' }}"
+          git fetch --no-tags origin "${base_ref}:refs/remotes/origin/${base_ref}"
+          echo "NX_BASE=origin/${base_ref}" >> "$GITHUB_ENV"
+          echo "NX_HEAD=HEAD" >> "$GITHUB_ENV"
+
+      - uses: nrwl/nx-set-shas@v5
+        if: github.event_name != 'pull_request' && github.ref_name != 'testing'
+
+      - name: Check formatting
+        run: pnpm nx format:check --base="$NX_BASE" --head="$NX_HEAD"
+
+      - name: Run affected quality tasks
+        run: pnpm nx affected -t lint test build --base="$NX_BASE" --head="$NX_HEAD" --parallel=3 --outputStyle=static
+
+  container_publish:
+    name: Container · Publish
+    needs: [quality_gate]
+    if: github.event_name == 'push' && contains(fromJSON('["testing","staging","main"]'), github.ref_name)
+    outputs:
+      target_branch: ${{ github.ref_name }}
+      image_tag: ${{ steps.publish-context.outputs.image_tag }}
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0, filter: 'tree:0' }
+
+      - uses: pnpm/action-setup@v5
+        with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
+
+      - uses: actions/setup-node@v6
+        with:
+          {
+            node-version: '${{ env.NODE_VERSION }}',
+            cache: pnpm,
+            cache-dependency-path: pnpm-lock.yaml,
+          }
+
+      - name: Install dependencies
+        run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Set publish context
+        id: publish-context
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch_label="$(echo '${{ github.ref_name }}' | tr '[:upper:]' '[:lower:]' | sed 's#[^a-z0-9_.-]#-#g')"
+          short_sha="$(git rev-parse --short=12 "${GITHUB_SHA}")"
+          echo "image_tag=${branch_label}-${short_sha}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          {
+            registry: ghcr.io,
+            username: '${{ github.actor }}',
+            password: '${{ secrets.GITHUB_TOKEN }}',
+          }
+
+      - name: Build and push images
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_tag="${{ steps.publish-context.outputs.image_tag }}"
+          build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          IMAGE_TAG="$image_tag" BUILD_NUMBER="${GITHUB_RUN_NUMBER}" COMMIT_SHA="${GITHUB_SHA}" BUILD_DATE="$build_date" \
+          pnpm nx run-many -t docker:build --all --outputStyle=static
+          {
+            echo "## Published Images"
             echo ""
-            echo "| Field | Value |"
+            echo "| Project | Image Tag |"
             echo "|---|---|"
-            echo "| Environment | \`${INFRA_ENVIRONMENT}\` |"
-            echo "| Image Tag | \`${IMAGE_TAG}\` |"
-            echo "| Release Version | \`${RELEASE_VERSION}\` |"
-            echo "| Staging Dispatch | \`${DISPATCH_RESULT:-not-applicable}\` |"
+            pnpm nx show projects --withTarget docker:build --json | jq -r '.[] | "| `" + . + "` | `" + "'"$image_tag"'" + "` |"'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  release_draft:
+    name: Release · Draft
+    needs: [quality_gate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - name: Generate draft release notes
+        uses: release-drafter/release-drafter@v6
+        env: { GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
