@@ -114,7 +114,7 @@ jobs:
 
       - name: Enforce merge-time branch policy
         if: github.event_name == 'push'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const { owner, repo } = context.repo;
@@ -226,7 +226,7 @@ jobs:
     steps:
       - name: Check if Advanced Security is enabled
         id: advanced-security
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             try {
