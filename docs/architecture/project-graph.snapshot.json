@@ -22,10 +22,7 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "e2e",
-                "^production"
-              ],
+              "inputs": ["e2e", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/.playwright/{projectRoot}",
                 "{workspaceRoot}/playwright-report/{projectRoot}",
@@ -42,9 +39,7 @@
                 "command": "playwright test src/example.spec.ts --output=../../../dist/.playwright/apps/customer-portal/customer-portal-dashboard-e2e/test-output/src-example-spec-ts"
               },
               "metadata": {
-                "technologies": [
-                  "playwright"
-                ],
+                "technologies": ["playwright"],
                 "description": "Runs Playwright Tests in src/example.spec.ts in CI",
                 "help": {
                   "command": "pnpm exec playwright test --help",
@@ -57,9 +52,7 @@
               },
               "dependsOn": [
                 {
-                  "projects": [
-                    "@ethio-connect/customer-portal-dashboard"
-                  ],
+                  "projects": ["@ethio-connect/customer-portal-dashboard"],
                   "target": "dev"
                 }
               ],
@@ -69,9 +62,7 @@
                 "^production",
                 "^{projectRoot}/tsconfig*.json",
                 {
-                  "externalDependencies": [
-                    "@playwright/test"
-                  ]
+                  "externalDependencies": ["@playwright/test"]
                 }
               ],
               "outputs": [
@@ -90,9 +81,7 @@
                 "^production",
                 "^{projectRoot}/tsconfig*.json",
                 {
-                  "externalDependencies": [
-                    "@playwright/test"
-                  ]
+                  "externalDependencies": ["@playwright/test"]
                 }
               ],
               "outputs": [
@@ -108,9 +97,7 @@
                 }
               ],
               "metadata": {
-                "technologies": [
-                  "playwright"
-                ],
+                "technologies": ["playwright"],
                 "description": "Runs Playwright Tests in CI",
                 "nonAtomizedTarget": "e2e",
                 "help": {
@@ -134,9 +121,7 @@
                 "^production",
                 "^{projectRoot}/tsconfig*.json",
                 {
-                  "externalDependencies": [
-                    "@playwright/test"
-                  ]
+                  "externalDependencies": ["@playwright/test"]
                 }
               ],
               "outputs": [
@@ -147,9 +132,7 @@
                 "expectedSuites": 1
               },
               "metadata": {
-                "technologies": [
-                  "playwright"
-                ],
+                "technologies": ["playwright"],
                 "description": "Merges Playwright blob reports from atomized tasks to produce unified reports for the configured reporters."
               },
               "configurations": {},
@@ -161,13 +144,8 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "test": {
               "executor": "nx:noop",
@@ -175,10 +153,7 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -190,13 +165,8 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -205,9 +175,7 @@
               ]
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "e2e"
-              ],
+              "dependsOn": ["e2e"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -230,9 +198,7 @@
             "scope:customer-portal",
             "type:app"
           ],
-          "implicitDependencies": [
-            "@ethio-connect/customer-portal-dashboard"
-          ]
+          "implicitDependencies": ["@ethio-connect/customer-portal-dashboard"]
         }
       },
       "@ethio-connect/customer-portal-dashboard": {
@@ -247,13 +213,8 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -277,9 +238,7 @@
                 "cwd": "apps/customer-portal/customer-portal-dashboard",
                 "command": "next start"
               },
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "configurations": {},
               "parallelism": true
@@ -290,17 +249,13 @@
                 "cwd": "apps/customer-portal/customer-portal-dashboard",
                 "command": "next start"
               },
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "configurations": {},
               "parallelism": true
             },
             "build-deps": {
-              "dependsOn": [
-                "^build"
-              ],
+              "dependsOn": ["^build"],
               "configurations": {},
               "options": {},
               "parallelism": true,
@@ -308,9 +263,7 @@
             },
             "watch-deps": {
               "continuous": true,
-              "dependsOn": [
-                "build-deps"
-              ],
+              "dependsOn": ["build-deps"],
               "executor": "nx:run-commands",
               "options": {
                 "command": "pnpm exec nx watch --projects @ethio-connect/customer-portal-dashboard --includeDependentProjects -- pnpm exec nx build-deps @ethio-connect/customer-portal-dashboard"
@@ -324,13 +277,8 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "test": {
               "executor": "nx:noop",
@@ -338,20 +286,14 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
               ]
             },
             "docker:build": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "options": {
                 "cwd": ".",
                 "args": [
@@ -381,14 +323,9 @@
                 },
                 "command": "docker build ."
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker build",
                 "help": {
                   "command": "docker build --help",
@@ -405,30 +342,20 @@
               "parallelism": true
             },
             "docker:run": {
-              "dependsOn": [
-                "docker:build"
-              ],
+              "dependsOn": ["docker:build"],
               "options": {
                 "cwd": "apps/customer-portal/customer-portal-dashboard",
                 "command": "docker run {args} apps-customer-portal-customer-portal-dashboard"
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker run",
                 "help": {
                   "command": "docker run --help",
                   "example": {
                     "options": {
-                      "args": [
-                        "-p",
-                        "3000:3000"
-                      ]
+                      "args": ["-p", "3000:3000"]
                     }
                   }
                 }
@@ -439,18 +366,13 @@
             },
             "nx-release-publish": {
               "executor": "@nx/js:release-publish",
-              "dependsOn": [
-                "^nx-release-publish"
-              ],
+              "dependsOn": ["^nx-release-publish"],
               "options": {},
               "configurations": {},
               "parallelism": true
             },
             "container": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/container-metadata.json"
@@ -470,9 +392,7 @@
               ]
             },
             "container-push": {
-              "dependsOn": [
-                "container"
-              ],
+              "dependsOn": ["container"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/image.json"
@@ -485,9 +405,7 @@
               "parallelism": true
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -502,11 +420,7 @@
           },
           "metadata": {
             "targetGroups": {
-              "Docker": [
-                "docker:build",
-                "docker:run",
-                "nx-release-publish"
-              ]
+              "Docker": ["docker:build", "docker:run", "nx-release-publish"]
             },
             "js": {
               "packageName": "@ethio-connect/customer-portal-dashboard",
@@ -549,10 +463,7 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "e2e",
-                "^production"
-              ],
+              "inputs": ["e2e", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/.playwright/{projectRoot}",
                 "{workspaceRoot}/playwright-report/{projectRoot}",
@@ -569,9 +480,7 @@
                 "command": "playwright test src/example.spec.ts --output=../../../dist/.playwright/apps/vendor-portal/vendor-portal-dashboard-e2e/test-output/src-example-spec-ts"
               },
               "metadata": {
-                "technologies": [
-                  "playwright"
-                ],
+                "technologies": ["playwright"],
                 "description": "Runs Playwright Tests in src/example.spec.ts in CI",
                 "help": {
                   "command": "pnpm exec playwright test --help",
@@ -584,9 +493,7 @@
               },
               "dependsOn": [
                 {
-                  "projects": [
-                    "@ethio-connect/vendor-portal-dashboard"
-                  ],
+                  "projects": ["@ethio-connect/vendor-portal-dashboard"],
                   "target": "dev"
                 }
               ],
@@ -596,9 +503,7 @@
                 "^production",
                 "^{projectRoot}/tsconfig*.json",
                 {
-                  "externalDependencies": [
-                    "@playwright/test"
-                  ]
+                  "externalDependencies": ["@playwright/test"]
                 }
               ],
               "outputs": [
@@ -617,9 +522,7 @@
                 "^production",
                 "^{projectRoot}/tsconfig*.json",
                 {
-                  "externalDependencies": [
-                    "@playwright/test"
-                  ]
+                  "externalDependencies": ["@playwright/test"]
                 }
               ],
               "outputs": [
@@ -635,9 +538,7 @@
                 }
               ],
               "metadata": {
-                "technologies": [
-                  "playwright"
-                ],
+                "technologies": ["playwright"],
                 "description": "Runs Playwright Tests in CI",
                 "nonAtomizedTarget": "e2e",
                 "help": {
@@ -661,9 +562,7 @@
                 "^production",
                 "^{projectRoot}/tsconfig*.json",
                 {
-                  "externalDependencies": [
-                    "@playwright/test"
-                  ]
+                  "externalDependencies": ["@playwright/test"]
                 }
               ],
               "outputs": [
@@ -674,9 +573,7 @@
                 "expectedSuites": 1
               },
               "metadata": {
-                "technologies": [
-                  "playwright"
-                ],
+                "technologies": ["playwright"],
                 "description": "Merges Playwright blob reports from atomized tasks to produce unified reports for the configured reporters."
               },
               "configurations": {},
@@ -688,13 +585,8 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "test": {
               "executor": "nx:noop",
@@ -702,10 +594,7 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -717,13 +606,8 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -732,9 +616,7 @@
               ]
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "e2e"
-              ],
+              "dependsOn": ["e2e"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -757,9 +639,7 @@
             "scope:vendor-portal",
             "type:app"
           ],
-          "implicitDependencies": [
-            "@ethio-connect/vendor-portal-dashboard"
-          ]
+          "implicitDependencies": ["@ethio-connect/vendor-portal-dashboard"]
         }
       },
       "@ethio-connect/customer-portal-api-e2e": {
@@ -774,19 +654,12 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "e2e": {
               "executor": "@nx/jest:jest",
-              "outputs": [
-                "{workspaceRoot}/coverage/{e2eProjectRoot}"
-              ],
+              "outputs": ["{workspaceRoot}/coverage/{e2eProjectRoot}"],
               "options": {
                 "jestConfig": "apps/customer-portal/customer-portal-api-e2e/jest.config.cts",
                 "passWithNoTests": true
@@ -798,10 +671,7 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ]
+              "inputs": ["ci", "^production"]
             },
             "test": {
               "executor": "nx:noop",
@@ -809,10 +679,7 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -824,13 +691,8 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -839,9 +701,7 @@
               ]
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "e2e"
-              ],
+              "dependsOn": ["e2e"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -863,9 +723,7 @@
             "scope:customer-portal",
             "type:app"
           ],
-          "implicitDependencies": [
-            "@ethio-connect/customer-portal-api"
-          ]
+          "implicitDependencies": ["@ethio-connect/customer-portal-api"]
         }
       },
       "@ethio-connect/central-hub-dashboard-e2e": {
@@ -889,10 +747,7 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "e2e",
-                "^production"
-              ],
+              "inputs": ["e2e", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/.playwright/{projectRoot}",
                 "{workspaceRoot}/playwright-report/{projectRoot}",
@@ -909,9 +764,7 @@
                 "command": "playwright test src/example.spec.ts --output=../../../dist/.playwright/apps/central-hub/central-hub-dashboard-e2e/test-output/src-example-spec-ts"
               },
               "metadata": {
-                "technologies": [
-                  "playwright"
-                ],
+                "technologies": ["playwright"],
                 "description": "Runs Playwright Tests in src/example.spec.ts in CI",
                 "help": {
                   "command": "pnpm exec playwright test --help",
@@ -924,9 +777,7 @@
               },
               "dependsOn": [
                 {
-                  "projects": [
-                    "@ethio-connect/central-hub-dashboard"
-                  ],
+                  "projects": ["@ethio-connect/central-hub-dashboard"],
                   "target": "dev"
                 }
               ],
@@ -936,9 +787,7 @@
                 "^production",
                 "^{projectRoot}/tsconfig*.json",
                 {
-                  "externalDependencies": [
-                    "@playwright/test"
-                  ]
+                  "externalDependencies": ["@playwright/test"]
                 }
               ],
               "outputs": [
@@ -957,9 +806,7 @@
                 "^production",
                 "^{projectRoot}/tsconfig*.json",
                 {
-                  "externalDependencies": [
-                    "@playwright/test"
-                  ]
+                  "externalDependencies": ["@playwright/test"]
                 }
               ],
               "outputs": [
@@ -975,9 +822,7 @@
                 }
               ],
               "metadata": {
-                "technologies": [
-                  "playwright"
-                ],
+                "technologies": ["playwright"],
                 "description": "Runs Playwright Tests in CI",
                 "nonAtomizedTarget": "e2e",
                 "help": {
@@ -1001,9 +846,7 @@
                 "^production",
                 "^{projectRoot}/tsconfig*.json",
                 {
-                  "externalDependencies": [
-                    "@playwright/test"
-                  ]
+                  "externalDependencies": ["@playwright/test"]
                 }
               ],
               "outputs": [
@@ -1014,9 +857,7 @@
                 "expectedSuites": 1
               },
               "metadata": {
-                "technologies": [
-                  "playwright"
-                ],
+                "technologies": ["playwright"],
                 "description": "Merges Playwright blob reports from atomized tasks to produce unified reports for the configured reporters."
               },
               "configurations": {},
@@ -1028,13 +869,8 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "test": {
               "executor": "nx:noop",
@@ -1042,10 +878,7 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -1057,13 +890,8 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -1072,9 +900,7 @@
               ]
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "e2e"
-              ],
+              "dependsOn": ["e2e"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -1097,9 +923,7 @@
             "scope:central-hub",
             "type:app"
           ],
-          "implicitDependencies": [
-            "@ethio-connect/central-hub-dashboard"
-          ]
+          "implicitDependencies": ["@ethio-connect/central-hub-dashboard"]
         }
       },
       "@ethio-connect/vendor-portal-dashboard": {
@@ -1114,13 +938,8 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -1144,9 +963,7 @@
                 "cwd": "apps/vendor-portal/vendor-portal-dashboard",
                 "command": "next start"
               },
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "configurations": {},
               "parallelism": true
@@ -1157,17 +974,13 @@
                 "cwd": "apps/vendor-portal/vendor-portal-dashboard",
                 "command": "next start"
               },
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "configurations": {},
               "parallelism": true
             },
             "build-deps": {
-              "dependsOn": [
-                "^build"
-              ],
+              "dependsOn": ["^build"],
               "configurations": {},
               "options": {},
               "parallelism": true,
@@ -1175,9 +988,7 @@
             },
             "watch-deps": {
               "continuous": true,
-              "dependsOn": [
-                "build-deps"
-              ],
+              "dependsOn": ["build-deps"],
               "executor": "nx:run-commands",
               "options": {
                 "command": "pnpm exec nx watch --projects @ethio-connect/vendor-portal-dashboard --includeDependentProjects -- pnpm exec nx build-deps @ethio-connect/vendor-portal-dashboard"
@@ -1191,13 +1002,8 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "test": {
               "executor": "nx:noop",
@@ -1205,20 +1011,14 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
               ]
             },
             "docker:build": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "options": {
                 "cwd": ".",
                 "args": [
@@ -1248,14 +1048,9 @@
                 },
                 "command": "docker build ."
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker build",
                 "help": {
                   "command": "docker build --help",
@@ -1272,30 +1067,20 @@
               "parallelism": true
             },
             "docker:run": {
-              "dependsOn": [
-                "docker:build"
-              ],
+              "dependsOn": ["docker:build"],
               "options": {
                 "cwd": "apps/vendor-portal/vendor-portal-dashboard",
                 "command": "docker run {args} apps-vendor-portal-vendor-portal-dashboard"
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker run",
                 "help": {
                   "command": "docker run --help",
                   "example": {
                     "options": {
-                      "args": [
-                        "-p",
-                        "3000:3000"
-                      ]
+                      "args": ["-p", "3000:3000"]
                     }
                   }
                 }
@@ -1306,18 +1091,13 @@
             },
             "nx-release-publish": {
               "executor": "@nx/js:release-publish",
-              "dependsOn": [
-                "^nx-release-publish"
-              ],
+              "dependsOn": ["^nx-release-publish"],
               "options": {},
               "configurations": {},
               "parallelism": true
             },
             "container": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/container-metadata.json"
@@ -1337,9 +1117,7 @@
               ]
             },
             "container-push": {
-              "dependsOn": [
-                "container"
-              ],
+              "dependsOn": ["container"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/image.json"
@@ -1352,9 +1130,7 @@
               "parallelism": true
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -1369,11 +1145,7 @@
           },
           "metadata": {
             "targetGroups": {
-              "Docker": [
-                "docker:build",
-                "docker:run",
-                "nx-release-publish"
-              ]
+              "Docker": ["docker:build", "docker:run", "nx-release-publish"]
             },
             "js": {
               "packageName": "@ethio-connect/vendor-portal-dashboard",
@@ -1407,19 +1179,12 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "test": {
               "metadata": {
-                "technologies": [
-                  "jest"
-                ],
+                "technologies": ["jest"],
                 "description": "Run Jest Tests",
                 "help": {
                   "command": "pnpm exec jest --help",
@@ -1431,10 +1196,7 @@
                 }
               },
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -1453,13 +1215,8 @@
             },
             "build": {
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -1467,9 +1224,7 @@
                 "{projectRoot}/.next"
               ],
               "metadata": {
-                "technologies": [
-                  "webpack"
-                ],
+                "technologies": ["webpack"],
                 "description": "Runs Webpack build",
                 "help": {
                   "command": "pnpm exec webpack-cli build --help",
@@ -1477,25 +1232,19 @@
                     "options": {
                       "json": "stats.json"
                     },
-                    "args": [
-                      "--profile"
-                    ]
+                    "args": ["--profile"]
                   }
                 }
               },
               "executor": "nx:run-commands",
               "options": {
                 "cwd": "apps/customer-portal/customer-portal-api",
-                "args": [
-                  "--node-env=production"
-                ],
+                "args": ["--node-env=production"],
                 "command": "webpack-cli build"
               },
               "configurations": {
                 "development": {
-                  "args": [
-                    "--node-env=development"
-                  ]
+                  "args": ["--node-env=development"]
                 }
               },
               "parallelism": true
@@ -1504,9 +1253,7 @@
               "continuous": true,
               "executor": "@nx/js:node",
               "defaultConfiguration": "development",
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "options": {
                 "buildTarget": "@ethio-connect/customer-portal-api:build",
                 "runBuildTargetDependencies": false
@@ -1525,24 +1272,17 @@
               "continuous": true,
               "options": {
                 "cwd": "apps/customer-portal/customer-portal-api",
-                "args": [
-                  "--node-env=production"
-                ],
+                "args": ["--node-env=production"],
                 "command": "webpack-cli serve"
               },
               "metadata": {
-                "technologies": [
-                  "webpack"
-                ],
+                "technologies": ["webpack"],
                 "description": "Starts Webpack dev server in production mode",
                 "help": {
                   "command": "pnpm exec webpack-cli serve --help",
                   "example": {
                     "options": {
-                      "args": [
-                        "--client-progress",
-                        "--history-api-fallback "
-                      ]
+                      "args": ["--client-progress", "--history-api-fallback "]
                     }
                   }
                 }
@@ -1553,9 +1293,7 @@
             },
             "serve-static": {
               "continuous": true,
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "@nx/web:file-server",
               "options": {
                 "buildTarget": "build",
@@ -1565,9 +1303,7 @@
               "parallelism": true
             },
             "build-deps": {
-              "dependsOn": [
-                "^build"
-              ],
+              "dependsOn": ["^build"],
               "configurations": {},
               "options": {},
               "parallelism": true,
@@ -1575,9 +1311,7 @@
             },
             "watch-deps": {
               "continuous": true,
-              "dependsOn": [
-                "build-deps"
-              ],
+              "dependsOn": ["build-deps"],
               "executor": "nx:run-commands",
               "options": {
                 "command": "pnpm exec nx watch --projects @ethio-connect/customer-portal-api --includeDependentProjects -- pnpm exec nx build-deps @ethio-connect/customer-portal-api"
@@ -1586,10 +1320,7 @@
               "parallelism": true
             },
             "docker:build": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "options": {
                 "cwd": ".",
                 "args": [
@@ -1619,14 +1350,9 @@
                 },
                 "command": "docker build ."
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker build",
                 "help": {
                   "command": "docker build --help",
@@ -1643,30 +1369,20 @@
               "parallelism": true
             },
             "docker:run": {
-              "dependsOn": [
-                "docker:build"
-              ],
+              "dependsOn": ["docker:build"],
               "options": {
                 "cwd": "apps/customer-portal/customer-portal-api",
                 "command": "docker run {args} apps-customer-portal-customer-portal-api"
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker run",
                 "help": {
                   "command": "docker run --help",
                   "example": {
                     "options": {
-                      "args": [
-                        "-p",
-                        "3000:3000"
-                      ]
+                      "args": ["-p", "3000:3000"]
                     }
                   }
                 }
@@ -1677,17 +1393,13 @@
             },
             "nx-release-publish": {
               "executor": "@nx/js:release-publish",
-              "dependsOn": [
-                "^nx-release-publish"
-              ],
+              "dependsOn": ["^nx-release-publish"],
               "options": {},
               "configurations": {},
               "parallelism": true
             },
             "prune-lockfile": {
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "cache": true,
               "executor": "@nx/js:prune-lockfile",
               "outputs": [
@@ -1701,9 +1413,7 @@
               "parallelism": true
             },
             "copy-workspace-modules": {
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "cache": true,
               "outputs": [
                 "{workspaceRoot}/dist/apps/customer-portal/customer-portal-api/workspace_modules"
@@ -1716,20 +1426,14 @@
               "parallelism": true
             },
             "prune": {
-              "dependsOn": [
-                "prune-lockfile",
-                "copy-workspace-modules"
-              ],
+              "dependsOn": ["prune-lockfile", "copy-workspace-modules"],
               "executor": "nx:noop",
               "configurations": {},
               "options": {},
               "parallelism": true
             },
             "container": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/container-metadata.json"
@@ -1749,9 +1453,7 @@
               ]
             },
             "container-push": {
-              "dependsOn": [
-                "container"
-              ],
+              "dependsOn": ["container"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/image.json"
@@ -1764,9 +1466,7 @@
               "parallelism": true
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -1782,11 +1482,7 @@
           "projectType": "application",
           "metadata": {
             "targetGroups": {
-              "Docker": [
-                "docker:build",
-                "docker:run",
-                "nx-release-publish"
-              ]
+              "Docker": ["docker:build", "docker:run", "nx-release-publish"]
             },
             "js": {
               "packageName": "@ethio-connect/customer-portal-api",
@@ -1819,19 +1515,12 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "e2e": {
               "executor": "@nx/jest:jest",
-              "outputs": [
-                "{workspaceRoot}/coverage/{e2eProjectRoot}"
-              ],
+              "outputs": ["{workspaceRoot}/coverage/{e2eProjectRoot}"],
               "options": {
                 "jestConfig": "apps/vendor-portal/vendor-api-server-e2e/jest.config.cts",
                 "passWithNoTests": true
@@ -1843,10 +1532,7 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ]
+              "inputs": ["ci", "^production"]
             },
             "test": {
               "executor": "nx:noop",
@@ -1854,10 +1540,7 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -1869,13 +1552,8 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -1884,9 +1562,7 @@
               ]
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "e2e"
-              ],
+              "dependsOn": ["e2e"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -1908,9 +1584,7 @@
             "scope:vendor-portal",
             "type:app"
           ],
-          "implicitDependencies": [
-            "@ethio-connect/vendor-api-server"
-          ]
+          "implicitDependencies": ["@ethio-connect/vendor-api-server"]
         }
       },
       "@ethio-connect/central-hub-dashboard": {
@@ -1925,13 +1599,8 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -1955,9 +1624,7 @@
                 "cwd": "apps/central-hub/central-hub-dashboard",
                 "command": "next start"
               },
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "configurations": {},
               "parallelism": true
@@ -1968,17 +1635,13 @@
                 "cwd": "apps/central-hub/central-hub-dashboard",
                 "command": "next start"
               },
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "configurations": {},
               "parallelism": true
             },
             "build-deps": {
-              "dependsOn": [
-                "^build"
-              ],
+              "dependsOn": ["^build"],
               "configurations": {},
               "options": {},
               "parallelism": true,
@@ -1986,9 +1649,7 @@
             },
             "watch-deps": {
               "continuous": true,
-              "dependsOn": [
-                "build-deps"
-              ],
+              "dependsOn": ["build-deps"],
               "executor": "nx:run-commands",
               "options": {
                 "command": "pnpm exec nx watch --projects @ethio-connect/central-hub-dashboard --includeDependentProjects -- pnpm exec nx build-deps @ethio-connect/central-hub-dashboard"
@@ -2002,13 +1663,8 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "test": {
               "executor": "nx:noop",
@@ -2016,20 +1672,14 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
               ]
             },
             "docker:build": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "options": {
                 "cwd": ".",
                 "args": [
@@ -2059,14 +1709,9 @@
                 },
                 "command": "docker build ."
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker build",
                 "help": {
                   "command": "docker build --help",
@@ -2083,30 +1728,20 @@
               "parallelism": true
             },
             "docker:run": {
-              "dependsOn": [
-                "docker:build"
-              ],
+              "dependsOn": ["docker:build"],
               "options": {
                 "cwd": "apps/central-hub/central-hub-dashboard",
                 "command": "docker run {args} apps-central-hub-central-hub-dashboard"
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker run",
                 "help": {
                   "command": "docker run --help",
                   "example": {
                     "options": {
-                      "args": [
-                        "-p",
-                        "3000:3000"
-                      ]
+                      "args": ["-p", "3000:3000"]
                     }
                   }
                 }
@@ -2117,18 +1752,13 @@
             },
             "nx-release-publish": {
               "executor": "@nx/js:release-publish",
-              "dependsOn": [
-                "^nx-release-publish"
-              ],
+              "dependsOn": ["^nx-release-publish"],
               "options": {},
               "configurations": {},
               "parallelism": true
             },
             "container": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/container-metadata.json"
@@ -2148,9 +1778,7 @@
               ]
             },
             "container-push": {
-              "dependsOn": [
-                "container"
-              ],
+              "dependsOn": ["container"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/image.json"
@@ -2163,9 +1791,7 @@
               "parallelism": true
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -2180,11 +1806,7 @@
           },
           "metadata": {
             "targetGroups": {
-              "Docker": [
-                "docker:build",
-                "docker:run",
-                "nx-release-publish"
-              ]
+              "Docker": ["docker:build", "docker:run", "nx-release-publish"]
             },
             "js": {
               "packageName": "@ethio-connect/central-hub-dashboard",
@@ -2218,19 +1840,12 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "e2e": {
               "executor": "@nx/jest:jest",
-              "outputs": [
-                "{workspaceRoot}/coverage/{e2eProjectRoot}"
-              ],
+              "outputs": ["{workspaceRoot}/coverage/{e2eProjectRoot}"],
               "options": {
                 "jestConfig": "apps/central-hub/central-hub-api-e2e/jest.config.cts",
                 "passWithNoTests": true
@@ -2242,10 +1857,7 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ]
+              "inputs": ["ci", "^production"]
             },
             "test": {
               "executor": "nx:noop",
@@ -2253,10 +1865,7 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -2268,13 +1877,8 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -2283,9 +1887,7 @@
               ]
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "e2e"
-              ],
+              "dependsOn": ["e2e"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -2307,9 +1909,7 @@
             "scope:central-hub",
             "type:app"
           ],
-          "implicitDependencies": [
-            "@ethio-connect/central-hub-api"
-          ]
+          "implicitDependencies": ["@ethio-connect/central-hub-api"]
         }
       },
       "@ethio-connect/vendor-api-server": {
@@ -2324,19 +1924,12 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "test": {
               "metadata": {
-                "technologies": [
-                  "jest"
-                ],
+                "technologies": ["jest"],
                 "description": "Run Jest Tests",
                 "help": {
                   "command": "pnpm exec jest --help",
@@ -2348,10 +1941,7 @@
                 }
               },
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -2370,13 +1960,8 @@
             },
             "build": {
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -2384,9 +1969,7 @@
                 "{projectRoot}/.next"
               ],
               "metadata": {
-                "technologies": [
-                  "webpack"
-                ],
+                "technologies": ["webpack"],
                 "description": "Runs Webpack build",
                 "help": {
                   "command": "pnpm exec webpack-cli build --help",
@@ -2394,25 +1977,19 @@
                     "options": {
                       "json": "stats.json"
                     },
-                    "args": [
-                      "--profile"
-                    ]
+                    "args": ["--profile"]
                   }
                 }
               },
               "executor": "nx:run-commands",
               "options": {
                 "cwd": "apps/vendor-portal/vendor-api-server",
-                "args": [
-                  "--node-env=production"
-                ],
+                "args": ["--node-env=production"],
                 "command": "webpack-cli build"
               },
               "configurations": {
                 "development": {
-                  "args": [
-                    "--node-env=development"
-                  ]
+                  "args": ["--node-env=development"]
                 }
               },
               "parallelism": true
@@ -2421,9 +1998,7 @@
               "continuous": true,
               "executor": "@nx/js:node",
               "defaultConfiguration": "development",
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "options": {
                 "buildTarget": "@ethio-connect/vendor-api-server:build",
                 "runBuildTargetDependencies": false
@@ -2442,24 +2017,17 @@
               "continuous": true,
               "options": {
                 "cwd": "apps/vendor-portal/vendor-api-server",
-                "args": [
-                  "--node-env=production"
-                ],
+                "args": ["--node-env=production"],
                 "command": "webpack-cli serve"
               },
               "metadata": {
-                "technologies": [
-                  "webpack"
-                ],
+                "technologies": ["webpack"],
                 "description": "Starts Webpack dev server in production mode",
                 "help": {
                   "command": "pnpm exec webpack-cli serve --help",
                   "example": {
                     "options": {
-                      "args": [
-                        "--client-progress",
-                        "--history-api-fallback "
-                      ]
+                      "args": ["--client-progress", "--history-api-fallback "]
                     }
                   }
                 }
@@ -2470,9 +2038,7 @@
             },
             "serve-static": {
               "continuous": true,
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "@nx/web:file-server",
               "options": {
                 "buildTarget": "build",
@@ -2482,9 +2048,7 @@
               "parallelism": true
             },
             "build-deps": {
-              "dependsOn": [
-                "^build"
-              ],
+              "dependsOn": ["^build"],
               "configurations": {},
               "options": {},
               "parallelism": true,
@@ -2492,9 +2056,7 @@
             },
             "watch-deps": {
               "continuous": true,
-              "dependsOn": [
-                "build-deps"
-              ],
+              "dependsOn": ["build-deps"],
               "executor": "nx:run-commands",
               "options": {
                 "command": "pnpm exec nx watch --projects @ethio-connect/vendor-api-server --includeDependentProjects -- pnpm exec nx build-deps @ethio-connect/vendor-api-server"
@@ -2503,10 +2065,7 @@
               "parallelism": true
             },
             "docker:build": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "options": {
                 "cwd": ".",
                 "args": [
@@ -2536,14 +2095,9 @@
                 },
                 "command": "docker build ."
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker build",
                 "help": {
                   "command": "docker build --help",
@@ -2560,30 +2114,20 @@
               "parallelism": true
             },
             "docker:run": {
-              "dependsOn": [
-                "docker:build"
-              ],
+              "dependsOn": ["docker:build"],
               "options": {
                 "cwd": "apps/vendor-portal/vendor-api-server",
                 "command": "docker run {args} apps-vendor-portal-vendor-api-server"
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker run",
                 "help": {
                   "command": "docker run --help",
                   "example": {
                     "options": {
-                      "args": [
-                        "-p",
-                        "3000:3000"
-                      ]
+                      "args": ["-p", "3000:3000"]
                     }
                   }
                 }
@@ -2594,17 +2138,13 @@
             },
             "nx-release-publish": {
               "executor": "@nx/js:release-publish",
-              "dependsOn": [
-                "^nx-release-publish"
-              ],
+              "dependsOn": ["^nx-release-publish"],
               "options": {},
               "configurations": {},
               "parallelism": true
             },
             "prune-lockfile": {
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "cache": true,
               "executor": "@nx/js:prune-lockfile",
               "outputs": [
@@ -2618,9 +2158,7 @@
               "parallelism": true
             },
             "copy-workspace-modules": {
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "cache": true,
               "outputs": [
                 "{workspaceRoot}/dist/apps/vendor-portal/vendor-api-server/workspace_modules"
@@ -2633,20 +2171,14 @@
               "parallelism": true
             },
             "prune": {
-              "dependsOn": [
-                "prune-lockfile",
-                "copy-workspace-modules"
-              ],
+              "dependsOn": ["prune-lockfile", "copy-workspace-modules"],
               "executor": "nx:noop",
               "configurations": {},
               "options": {},
               "parallelism": true
             },
             "container": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/container-metadata.json"
@@ -2666,9 +2198,7 @@
               ]
             },
             "container-push": {
-              "dependsOn": [
-                "container"
-              ],
+              "dependsOn": ["container"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/image.json"
@@ -2681,9 +2211,7 @@
               "parallelism": true
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -2699,11 +2227,7 @@
           "projectType": "application",
           "metadata": {
             "targetGroups": {
-              "Docker": [
-                "docker:build",
-                "docker:run",
-                "nx-release-publish"
-              ]
+              "Docker": ["docker:build", "docker:run", "nx-release-publish"]
             },
             "js": {
               "packageName": "@ethio-connect/vendor-api-server",
@@ -2745,10 +2269,7 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "e2e",
-                "^production"
-              ],
+              "inputs": ["e2e", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/.playwright/{projectRoot}",
                 "{workspaceRoot}/playwright-report/{projectRoot}",
@@ -2765,9 +2286,7 @@
                 "command": "playwright test src/example.spec.ts --output=../../../dist/.playwright/apps/central-hub/public-website-e2e/test-output/src-example-spec-ts"
               },
               "metadata": {
-                "technologies": [
-                  "playwright"
-                ],
+                "technologies": ["playwright"],
                 "description": "Runs Playwright Tests in src/example.spec.ts in CI",
                 "help": {
                   "command": "pnpm exec playwright test --help",
@@ -2780,9 +2299,7 @@
               },
               "dependsOn": [
                 {
-                  "projects": [
-                    "@ethio-connect/public-website"
-                  ],
+                  "projects": ["@ethio-connect/public-website"],
                   "target": "dev"
                 }
               ],
@@ -2792,9 +2309,7 @@
                 "^production",
                 "^{projectRoot}/tsconfig*.json",
                 {
-                  "externalDependencies": [
-                    "@playwright/test"
-                  ]
+                  "externalDependencies": ["@playwright/test"]
                 }
               ],
               "outputs": [
@@ -2813,9 +2328,7 @@
                 "^production",
                 "^{projectRoot}/tsconfig*.json",
                 {
-                  "externalDependencies": [
-                    "@playwright/test"
-                  ]
+                  "externalDependencies": ["@playwright/test"]
                 }
               ],
               "outputs": [
@@ -2831,9 +2344,7 @@
                 }
               ],
               "metadata": {
-                "technologies": [
-                  "playwright"
-                ],
+                "technologies": ["playwright"],
                 "description": "Runs Playwright Tests in CI",
                 "nonAtomizedTarget": "e2e",
                 "help": {
@@ -2857,9 +2368,7 @@
                 "^production",
                 "^{projectRoot}/tsconfig*.json",
                 {
-                  "externalDependencies": [
-                    "@playwright/test"
-                  ]
+                  "externalDependencies": ["@playwright/test"]
                 }
               ],
               "outputs": [
@@ -2870,9 +2379,7 @@
                 "expectedSuites": 1
               },
               "metadata": {
-                "technologies": [
-                  "playwright"
-                ],
+                "technologies": ["playwright"],
                 "description": "Merges Playwright blob reports from atomized tasks to produce unified reports for the configured reporters."
               },
               "configurations": {},
@@ -2884,13 +2391,8 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "test": {
               "executor": "nx:noop",
@@ -2898,10 +2400,7 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -2913,13 +2412,8 @@
               "options": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -2928,9 +2422,7 @@
               ]
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "e2e"
-              ],
+              "dependsOn": ["e2e"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -2970,19 +2462,12 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "test": {
               "metadata": {
-                "technologies": [
-                  "jest"
-                ],
+                "technologies": ["jest"],
                 "description": "Run Jest Tests",
                 "help": {
                   "command": "pnpm exec jest --help",
@@ -2994,10 +2479,7 @@
                 }
               },
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -3016,13 +2498,8 @@
             },
             "build": {
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -3030,9 +2507,7 @@
                 "{projectRoot}/.next"
               ],
               "metadata": {
-                "technologies": [
-                  "webpack"
-                ],
+                "technologies": ["webpack"],
                 "description": "Runs Webpack build",
                 "help": {
                   "command": "pnpm exec webpack-cli build --help",
@@ -3040,25 +2515,19 @@
                     "options": {
                       "json": "stats.json"
                     },
-                    "args": [
-                      "--profile"
-                    ]
+                    "args": ["--profile"]
                   }
                 }
               },
               "executor": "nx:run-commands",
               "options": {
                 "cwd": "apps/central-hub/central-hub-api",
-                "args": [
-                  "--node-env=production"
-                ],
+                "args": ["--node-env=production"],
                 "command": "webpack-cli build"
               },
               "configurations": {
                 "development": {
-                  "args": [
-                    "--node-env=development"
-                  ]
+                  "args": ["--node-env=development"]
                 }
               },
               "parallelism": true
@@ -3067,9 +2536,7 @@
               "continuous": true,
               "executor": "@nx/js:node",
               "defaultConfiguration": "development",
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "options": {
                 "buildTarget": "@ethio-connect/central-hub-api:build",
                 "runBuildTargetDependencies": false
@@ -3088,24 +2555,17 @@
               "continuous": true,
               "options": {
                 "cwd": "apps/central-hub/central-hub-api",
-                "args": [
-                  "--node-env=production"
-                ],
+                "args": ["--node-env=production"],
                 "command": "webpack-cli serve"
               },
               "metadata": {
-                "technologies": [
-                  "webpack"
-                ],
+                "technologies": ["webpack"],
                 "description": "Starts Webpack dev server in production mode",
                 "help": {
                   "command": "pnpm exec webpack-cli serve --help",
                   "example": {
                     "options": {
-                      "args": [
-                        "--client-progress",
-                        "--history-api-fallback "
-                      ]
+                      "args": ["--client-progress", "--history-api-fallback "]
                     }
                   }
                 }
@@ -3116,9 +2576,7 @@
             },
             "serve-static": {
               "continuous": true,
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "@nx/web:file-server",
               "options": {
                 "buildTarget": "build",
@@ -3128,9 +2586,7 @@
               "parallelism": true
             },
             "build-deps": {
-              "dependsOn": [
-                "^build"
-              ],
+              "dependsOn": ["^build"],
               "configurations": {},
               "options": {},
               "parallelism": true,
@@ -3138,9 +2594,7 @@
             },
             "watch-deps": {
               "continuous": true,
-              "dependsOn": [
-                "build-deps"
-              ],
+              "dependsOn": ["build-deps"],
               "executor": "nx:run-commands",
               "options": {
                 "command": "pnpm exec nx watch --projects @ethio-connect/central-hub-api --includeDependentProjects -- pnpm exec nx build-deps @ethio-connect/central-hub-api"
@@ -3149,10 +2603,7 @@
               "parallelism": true
             },
             "docker:build": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "options": {
                 "cwd": ".",
                 "args": [
@@ -3182,14 +2633,9 @@
                 },
                 "command": "docker build ."
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker build",
                 "help": {
                   "command": "docker build --help",
@@ -3206,30 +2652,20 @@
               "parallelism": true
             },
             "docker:run": {
-              "dependsOn": [
-                "docker:build"
-              ],
+              "dependsOn": ["docker:build"],
               "options": {
                 "cwd": "apps/central-hub/central-hub-api",
                 "command": "docker run {args} apps-central-hub-central-hub-api"
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker run",
                 "help": {
                   "command": "docker run --help",
                   "example": {
                     "options": {
-                      "args": [
-                        "-p",
-                        "3000:3000"
-                      ]
+                      "args": ["-p", "3000:3000"]
                     }
                   }
                 }
@@ -3240,17 +2676,13 @@
             },
             "nx-release-publish": {
               "executor": "@nx/js:release-publish",
-              "dependsOn": [
-                "^nx-release-publish"
-              ],
+              "dependsOn": ["^nx-release-publish"],
               "options": {},
               "configurations": {},
               "parallelism": true
             },
             "prune-lockfile": {
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "cache": true,
               "executor": "@nx/js:prune-lockfile",
               "outputs": [
@@ -3264,9 +2696,7 @@
               "parallelism": true
             },
             "copy-workspace-modules": {
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "cache": true,
               "outputs": [
                 "{workspaceRoot}/dist/apps/central-hub/central-hub-api/workspace_modules"
@@ -3279,20 +2709,14 @@
               "parallelism": true
             },
             "prune": {
-              "dependsOn": [
-                "prune-lockfile",
-                "copy-workspace-modules"
-              ],
+              "dependsOn": ["prune-lockfile", "copy-workspace-modules"],
               "executor": "nx:noop",
               "configurations": {},
               "options": {},
               "parallelism": true
             },
             "container": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/container-metadata.json"
@@ -3312,9 +2736,7 @@
               ]
             },
             "container-push": {
-              "dependsOn": [
-                "container"
-              ],
+              "dependsOn": ["container"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/image.json"
@@ -3327,9 +2749,7 @@
               "parallelism": true
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -3345,11 +2765,7 @@
           "projectType": "application",
           "metadata": {
             "targetGroups": {
-              "Docker": [
-                "docker:build",
-                "docker:run",
-                "nx-release-publish"
-              ]
+              "Docker": ["docker:build", "docker:run", "nx-release-publish"]
             },
             "js": {
               "packageName": "@ethio-connect/central-hub-api",
@@ -3382,13 +2798,8 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist",
@@ -3412,9 +2823,7 @@
                 "cwd": "apps/central-hub/public-website",
                 "command": "next start"
               },
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "configurations": {},
               "parallelism": true
@@ -3425,17 +2834,13 @@
                 "cwd": "apps/central-hub/public-website",
                 "command": "next start"
               },
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "configurations": {},
               "parallelism": true
             },
             "build-deps": {
-              "dependsOn": [
-                "^build"
-              ],
+              "dependsOn": ["^build"],
               "configurations": {},
               "options": {},
               "parallelism": true,
@@ -3443,9 +2848,7 @@
             },
             "watch-deps": {
               "continuous": true,
-              "dependsOn": [
-                "build-deps"
-              ],
+              "dependsOn": ["build-deps"],
               "executor": "nx:run-commands",
               "options": {
                 "command": "pnpm exec nx watch --projects @ethio-connect/central-hub-public-dashboard --includeDependentProjects -- pnpm exec nx build-deps @ethio-connect/central-hub-public-dashboard"
@@ -3459,13 +2862,8 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ]
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"]
             },
             "test": {
               "executor": "nx:noop",
@@ -3473,20 +2871,14 @@
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
               ]
             },
             "docker:build": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "options": {
                 "cwd": ".",
                 "args": [
@@ -3516,14 +2908,9 @@
                 },
                 "command": "docker build ."
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker build",
                 "help": {
                   "command": "docker build --help",
@@ -3540,30 +2927,20 @@
               "parallelism": true
             },
             "docker:run": {
-              "dependsOn": [
-                "docker:build"
-              ],
+              "dependsOn": ["docker:build"],
               "options": {
                 "cwd": "apps/central-hub/public-website",
                 "command": "docker run {args} apps-central-hub-public-website"
               },
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "metadata": {
-                "technologies": [
-                  "docker"
-                ],
+                "technologies": ["docker"],
                 "description": "Run Docker run",
                 "help": {
                   "command": "docker run --help",
                   "example": {
                     "options": {
-                      "args": [
-                        "-p",
-                        "3000:3000"
-                      ]
+                      "args": ["-p", "3000:3000"]
                     }
                   }
                 }
@@ -3574,18 +2951,13 @@
             },
             "nx-release-publish": {
               "executor": "@nx/js:release-publish",
-              "dependsOn": [
-                "^nx-release-publish"
-              ],
+              "dependsOn": ["^nx-release-publish"],
               "options": {},
               "configurations": {},
               "parallelism": true
             },
             "container": {
-              "dependsOn": [
-                "build",
-                "^build"
-              ],
+              "dependsOn": ["build", "^build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/container-metadata.json"
@@ -3605,9 +2977,7 @@
               ]
             },
             "container-push": {
-              "dependsOn": [
-                "container"
-              ],
+              "dependsOn": ["container"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/containers/{projectName}/image.json"
@@ -3620,9 +2990,7 @@
               "parallelism": true
             },
             "deploy-metadata": {
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "executor": "nx:run-commands",
               "outputs": [
                 "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
@@ -3637,11 +3005,7 @@
           },
           "metadata": {
             "targetGroups": {
-              "Docker": [
-                "docker:build",
-                "docker:run",
-                "nx-release-publish"
-              ]
+              "Docker": ["docker:build", "docker:run", "nx-release-publish"]
             },
             "js": {
               "packageName": "@ethio-connect/central-hub-public-dashboard",
@@ -3675,17 +3039,10 @@
                 "cwd": "libs/frontend-features",
                 "command": "eslint ."
               },
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ],
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"],
               "metadata": {
-                "technologies": [
-                  "eslint"
-                ],
+                "technologies": ["eslint"],
                 "description": "Runs ESLint on project",
                 "help": {
                   "command": "pnpm exec eslint --help",
@@ -3709,9 +3066,7 @@
                 "command": "jest"
               },
               "metadata": {
-                "technologies": [
-                  "jest"
-                ],
+                "technologies": ["jest"],
                 "description": "Run Jest Tests",
                 "help": {
                   "command": "pnpm exec jest --help",
@@ -3723,10 +3078,7 @@
                 }
               },
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -3737,9 +3089,7 @@
             },
             "nx-release-publish": {
               "executor": "@nx/js:release-publish",
-              "dependsOn": [
-                "^nx-release-publish"
-              ],
+              "dependsOn": ["^nx-release-publish"],
               "options": {
                 "packageRoot": "dist/libs/frontend-features"
               },
@@ -3748,42 +3098,28 @@
             },
             "build": {
               "executor": "@nx/js:tsc",
-              "outputs": [
-                "{options.outputPath}"
-              ],
+              "outputs": ["{options.outputPath}"],
               "options": {
                 "outputPath": "dist/libs/frontend-features",
                 "main": "libs/frontend-features/src/index.ts",
                 "tsConfig": "libs/frontend-features/tsconfig.lib.json",
-                "assets": [
-                  "libs/frontend-features/*.md"
-                ],
+                "assets": ["libs/frontend-features/*.md"],
                 "generatePackageJson": true
               },
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ]
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"]
             },
             "package": {
               "executor": "nx:noop",
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "configurations": {},
               "options": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist"
@@ -3811,9 +3147,7 @@
           "projectType": "library",
           "release": {
             "version": {
-              "manifestRootsToUpdate": [
-                "dist/{projectRoot}"
-              ],
+              "manifestRootsToUpdate": ["dist/{projectRoot}"],
               "currentVersionResolver": "git-tag",
               "fallbackCurrentVersionResolver": "disk"
             }
@@ -3833,17 +3167,10 @@
                 "cwd": "libs/ui-components",
                 "command": "eslint ."
               },
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ],
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"],
               "metadata": {
-                "technologies": [
-                  "eslint"
-                ],
+                "technologies": ["eslint"],
                 "description": "Runs ESLint on project",
                 "help": {
                   "command": "pnpm exec eslint --help",
@@ -3867,9 +3194,7 @@
                 "command": "jest"
               },
               "metadata": {
-                "technologies": [
-                  "jest"
-                ],
+                "technologies": ["jest"],
                 "description": "Run Jest Tests",
                 "help": {
                   "command": "pnpm exec jest --help",
@@ -3881,10 +3206,7 @@
                 }
               },
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -3895,9 +3217,7 @@
             },
             "nx-release-publish": {
               "executor": "@nx/js:release-publish",
-              "dependsOn": [
-                "^nx-release-publish"
-              ],
+              "dependsOn": ["^nx-release-publish"],
               "options": {
                 "packageRoot": "dist/libs/ui-components"
               },
@@ -3906,42 +3226,28 @@
             },
             "build": {
               "executor": "@nx/js:tsc",
-              "outputs": [
-                "{options.outputPath}"
-              ],
+              "outputs": ["{options.outputPath}"],
               "options": {
                 "outputPath": "dist/libs/ui-components",
                 "main": "libs/ui-components/src/index.ts",
                 "tsConfig": "libs/ui-components/tsconfig.lib.json",
-                "assets": [
-                  "libs/ui-components/*.md"
-                ],
+                "assets": ["libs/ui-components/*.md"],
                 "generatePackageJson": true
               },
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ]
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"]
             },
             "package": {
               "executor": "nx:noop",
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "configurations": {},
               "options": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist"
@@ -3969,9 +3275,7 @@
           "projectType": "library",
           "release": {
             "version": {
-              "manifestRootsToUpdate": [
-                "dist/{projectRoot}"
-              ],
+              "manifestRootsToUpdate": ["dist/{projectRoot}"],
               "currentVersionResolver": "git-tag",
               "fallbackCurrentVersionResolver": "disk"
             }
@@ -3991,17 +3295,10 @@
                 "cwd": "libs/api-features",
                 "command": "eslint ."
               },
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ],
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"],
               "metadata": {
-                "technologies": [
-                  "eslint"
-                ],
+                "technologies": ["eslint"],
                 "description": "Runs ESLint on project",
                 "help": {
                   "command": "pnpm exec eslint --help",
@@ -4025,9 +3322,7 @@
                 "command": "jest"
               },
               "metadata": {
-                "technologies": [
-                  "jest"
-                ],
+                "technologies": ["jest"],
                 "description": "Run Jest Tests",
                 "help": {
                   "command": "pnpm exec jest --help",
@@ -4039,10 +3334,7 @@
                 }
               },
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -4053,9 +3345,7 @@
             },
             "nx-release-publish": {
               "executor": "@nx/js:release-publish",
-              "dependsOn": [
-                "^nx-release-publish"
-              ],
+              "dependsOn": ["^nx-release-publish"],
               "options": {
                 "packageRoot": "dist/libs/api-features"
               },
@@ -4064,42 +3354,28 @@
             },
             "build": {
               "executor": "@nx/js:tsc",
-              "outputs": [
-                "{options.outputPath}"
-              ],
+              "outputs": ["{options.outputPath}"],
               "options": {
                 "outputPath": "dist/libs/api-features",
                 "main": "libs/api-features/src/index.ts",
                 "tsConfig": "libs/api-features/tsconfig.lib.json",
-                "assets": [
-                  "libs/api-features/*.md"
-                ],
+                "assets": ["libs/api-features/*.md"],
                 "generatePackageJson": true
               },
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ]
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"]
             },
             "package": {
               "executor": "nx:noop",
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "configurations": {},
               "options": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist"
@@ -4127,9 +3403,7 @@
           "projectType": "library",
           "release": {
             "version": {
-              "manifestRootsToUpdate": [
-                "dist/{projectRoot}"
-              ],
+              "manifestRootsToUpdate": ["dist/{projectRoot}"],
               "currentVersionResolver": "git-tag",
               "fallbackCurrentVersionResolver": "disk"
             }
@@ -4149,17 +3423,10 @@
                 "cwd": "libs/ethioconnect",
                 "command": "eslint ."
               },
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ],
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"],
               "metadata": {
-                "technologies": [
-                  "eslint"
-                ],
+                "technologies": ["eslint"],
                 "description": "Runs ESLint on project",
                 "help": {
                   "command": "pnpm exec eslint --help",
@@ -4183,9 +3450,7 @@
                 "command": "jest"
               },
               "metadata": {
-                "technologies": [
-                  "jest"
-                ],
+                "technologies": ["jest"],
                 "description": "Run Jest Tests",
                 "help": {
                   "command": "pnpm exec jest --help",
@@ -4197,10 +3462,7 @@
                 }
               },
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -4211,9 +3473,7 @@
             },
             "nx-release-publish": {
               "executor": "@nx/js:release-publish",
-              "dependsOn": [
-                "^nx-release-publish"
-              ],
+              "dependsOn": ["^nx-release-publish"],
               "options": {
                 "packageRoot": "dist/libs/ethioconnect"
               },
@@ -4222,42 +3482,28 @@
             },
             "build": {
               "executor": "@nx/js:tsc",
-              "outputs": [
-                "{options.outputPath}"
-              ],
+              "outputs": ["{options.outputPath}"],
               "options": {
                 "outputPath": "dist/libs/ethioconnect",
                 "main": "libs/ethioconnect/src/index.ts",
                 "tsConfig": "libs/ethioconnect/tsconfig.lib.json",
-                "assets": [
-                  "libs/ethioconnect/*.md"
-                ],
+                "assets": ["libs/ethioconnect/*.md"],
                 "generatePackageJson": true
               },
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ]
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"]
             },
             "package": {
               "executor": "nx:noop",
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "configurations": {},
               "options": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist"
@@ -4285,9 +3531,7 @@
           "projectType": "library",
           "release": {
             "version": {
-              "manifestRootsToUpdate": [
-                "dist/{projectRoot}"
-              ],
+              "manifestRootsToUpdate": ["dist/{projectRoot}"],
               "currentVersionResolver": "git-tag",
               "fallbackCurrentVersionResolver": "disk"
             }
@@ -4307,17 +3551,10 @@
                 "cwd": "libs/api-common",
                 "command": "eslint ."
               },
-              "inputs": [
-                "default",
-                "^default"
-              ],
-              "outputs": [
-                "{options.outputFile}"
-              ],
+              "inputs": ["default", "^default"],
+              "outputs": ["{options.outputFile}"],
               "metadata": {
-                "technologies": [
-                  "eslint"
-                ],
+                "technologies": ["eslint"],
                 "description": "Runs ESLint on project",
                 "help": {
                   "command": "pnpm exec eslint --help",
@@ -4341,9 +3578,7 @@
                 "command": "jest"
               },
               "metadata": {
-                "technologies": [
-                  "jest"
-                ],
+                "technologies": ["jest"],
                 "description": "Run Jest Tests",
                 "help": {
                   "command": "pnpm exec jest --help",
@@ -4355,10 +3590,7 @@
                 }
               },
               "cache": true,
-              "inputs": [
-                "ci",
-                "^production"
-              ],
+              "inputs": ["ci", "^production"],
               "outputs": [
                 "{workspaceRoot}/coverage/{projectRoot}",
                 "{projectRoot}/test-results"
@@ -4369,9 +3601,7 @@
             },
             "nx-release-publish": {
               "executor": "@nx/js:release-publish",
-              "dependsOn": [
-                "^nx-release-publish"
-              ],
+              "dependsOn": ["^nx-release-publish"],
               "options": {
                 "packageRoot": "dist/libs/api-common"
               },
@@ -4380,42 +3610,28 @@
             },
             "build": {
               "executor": "@nx/js:tsc",
-              "outputs": [
-                "{options.outputPath}"
-              ],
+              "outputs": ["{options.outputPath}"],
               "options": {
                 "outputPath": "dist/libs/api-common",
                 "main": "libs/api-common/src/index.ts",
                 "tsConfig": "libs/api-common/tsconfig.lib.json",
-                "assets": [
-                  "libs/api-common/*.md"
-                ],
+                "assets": ["libs/api-common/*.md"],
                 "generatePackageJson": true
               },
               "configurations": {},
               "parallelism": true,
               "cache": true,
-              "dependsOn": [
-                "^build"
-              ],
-              "inputs": [
-                "production",
-                "^production"
-              ]
+              "dependsOn": ["^build"],
+              "inputs": ["production", "^production"]
             },
             "package": {
               "executor": "nx:noop",
-              "dependsOn": [
-                "build"
-              ],
+              "dependsOn": ["build"],
               "configurations": {},
               "options": {},
               "parallelism": true,
               "cache": true,
-              "inputs": [
-                "production",
-                "^production"
-              ],
+              "inputs": ["production", "^production"],
               "outputs": [
                 "{workspaceRoot}/dist/{projectRoot}",
                 "{projectRoot}/dist"
@@ -4443,9 +3659,7 @@
           "projectType": "library",
           "release": {
             "version": {
-              "manifestRootsToUpdate": [
-                "dist/{projectRoot}"
-              ],
+              "manifestRootsToUpdate": ["dist/{projectRoot}"],
               "currentVersionResolver": "git-tag",
               "fallbackCurrentVersionResolver": "disk"
             }
@@ -4460,9 +3674,7 @@
           "root": ".",
           "name": "@ethio-connect/source",
           "includedScripts": [],
-          "tags": [
-            "npm:private"
-          ],
+          "tags": ["npm:private"],
           "metadata": {
             "targetGroups": {},
             "js": {
