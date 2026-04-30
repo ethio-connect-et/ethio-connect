@@ -1,10 +1,37 @@
 {
-  "name": "@ethio-connect/public-website-e2e",
+  "name": "@ethio-connect/central-hub-public-dashboard-e2e",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "sourceRoot": "apps/central-hub/public-website-e2e/src",
-  "tags": [],
-  "implicitDependencies": ["@ethio-connect/public-website"],
+  "tags": [
+    "domain:central-hub",
+    "platform:e2e",
+    "scope:central-hub",
+    "type:app"
+  ],
+  "implicitDependencies": ["@ethio-connect/central-hub-public-dashboard"],
   "// targets": "to see all targets run: nx show project @ethio-connect/public-website-e2e --web",
-  "targets": {}
+  "targets": {
+    "lint": {
+      "executor": "nx:noop"
+    },
+    "test": {
+      "executor": "nx:noop"
+    },
+    "build": {
+      "executor": "nx:noop"
+    },
+    "e2e": {
+      "executor": "nx:noop"
+    },
+    "deploy-metadata": {
+      "dependsOn": ["e2e"],
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/deploy-metadata/{projectName}.json"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"{projectName}\",\\n  \"root\": \"{projectRoot}\",\\n  \"type\": \"e2e\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/{projectName}.json"
+      }
+    }
+  }
 }
