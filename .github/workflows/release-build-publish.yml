@@ -124,14 +124,59 @@ jobs:
             pnpm nx release version "$docker_version" --groups "$group" --dockerVersion "$docker_version" --stage-changes=false --git-commit=false --git-tag=false
           done
 
-      - name: Publish all release groups
+      - name: Build and publish docker images via Nx targets
+        id: publish-targets
         shell: bash
         run: |
           set -euo pipefail
+          docker_version="${{ steps.release-metadata.outputs.docker_version }}"
+          short_sha="${{ steps.release-metadata.outputs.short_sha }}"
+
+          shared_libs_projects="@ethio-connect/api-common,@ethio-connect/api-features,@ethio-connect/frontend-features,@ethio-connect/ui-components,@ethio-connect/ethioconnect"
+          central_hub_projects="@ethio-connect/central-hub-api,@ethio-connect/central-hub-dashboard,@ethio-connect/central-hub-public-dashboard"
+          customer_portal_projects="@ethio-connect/customer-portal-api,@ethio-connect/customer-portal-dashboard"
+          vendor_portal_projects="@ethio-connect/vendor-api-server,@ethio-connect/vendor-portal-dashboard"
+
+          export IMAGE_TAG="$docker_version"
+          export BRANCH_TAG="$short_sha"
+          export BUILD_NUMBER="$short_sha"
+          export COMMIT_SHA="${GITHUB_SHA}"
+          export VERSION="$docker_version"
+
+          echo "Building docker images for docker-enabled release groups"
+          pnpm nx run-many -t docker:build --projects "$central_hub_projects,$customer_portal_projects,$vendor_portal_projects"
+
+          : > release-publish.log
+          : > published-images.md
+          echo "### Published Docker Images" >> published-images.md
+          echo "" >> published-images.md
           for group in shared-libs central-hub customer-portal vendor-portal; do
-            echo "Publishing release group: $group"
-            pnpm nx release publish --groups "$group" --yes
+            case "$group" in
+              shared-libs) group_projects="$shared_libs_projects" ;;
+              central-hub) group_projects="$central_hub_projects" ;;
+              customer-portal) group_projects="$customer_portal_projects" ;;
+              vendor-portal) group_projects="$vendor_portal_projects" ;;
+              *) echo "::error::Unknown release group '$group'" ; exit 1 ;;
+            esac
+
+            echo "Publishing release group through target execution: $group"
+            pnpm nx run-many -t nx-release-publish --projects "$group_projects" --output-style=stream | tee -a release-publish.log
+
+            IFS=',' read -ra projects <<< "$group_projects"
+            for project in "${projects[@]}"; do
+              image="${project#@ethio-connect/}"
+              echo "- ghcr.io/ethio-connect-et/${image}:${docker_version}" >> published-images.md
+              echo "  - ghcr.io/ethio-connect-et/${image}:${short_sha}" >> published-images.md
+            done
           done
+
+          cat published-images.md >> "$GITHUB_STEP_SUMMARY"
+
+          {
+            echo "images_markdown<<EOF"
+            cat published-images.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Generate release changelog from git history
         id: changelog
@@ -171,6 +216,8 @@ jobs:
             else
               echo "- No workspace changes detected in the release range."
             fi
+            echo ""
+            echo "${{ steps.publish-targets.outputs.images_markdown }}"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
