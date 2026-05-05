@@ -10,8 +10,6 @@ on:
         required: true
         type: string
     secrets:
-      GITHUB_TOKEN:
-        required: true
       NX_CLOUD_ACCESS_TOKEN:
         required: true
     outputs:
@@ -37,7 +35,7 @@ jobs:
     outputs:
       image_tag: ${{ steps.publish-context.outputs.image_tag }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with: { fetch-depth: 0, filter: 'tree:0' }
 
       - uses: pnpm/action-setup@v4

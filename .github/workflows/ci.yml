@@ -48,7 +48,7 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           fetch-depth: 1
 
@@ -168,7 +168,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           fetch-depth: 1
       - name: Validate workflow contract
@@ -202,7 +202,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           fetch-depth: 1
 
@@ -264,7 +264,7 @@ jobs:
               core.setOutput('enabled', enabled ? 'true' : 'false');
             } catch (error) { core.warning(`Unable to determine Advanced Security status: ${error.message}`); core.setOutput('enabled', 'false'); }
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         if: steps.advanced-security.outputs.enabled == 'true'
         with: { fetch-depth: 1 }
 
@@ -322,7 +322,7 @@ jobs:
     if: github.event_name == 'push' && contains(fromJSON('["testing","staging","main"]'), github.ref_name)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
       - uses: pnpm/action-setup@v4
         with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
       - uses: actions/setup-node@v4
@@ -357,7 +357,6 @@ jobs:
       ref_name: ${{ github.ref_name }}
       event_name: ${{ github.event_name }}
     secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
   dispatch_to_manifest:
@@ -370,7 +369,7 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with: { fetch-depth: 1 }
 
       - uses: pnpm/action-setup@v4
@@ -430,7 +429,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with: { fetch-depth: 0 }
 
       - name: Generate draft release notes
