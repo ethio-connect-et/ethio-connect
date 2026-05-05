@@ -30,7 +30,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           fetch-depth: 1
 
@@ -51,7 +51,7 @@ jobs:
         uses: sigstore/cosign-installer@v3.8.1
 
       - name: Download promotion attestation artifact
-        uses: actions/download-artifact@95815c38cf65f14a6c5cae202f3b0f9b651f1f59
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           name: promotion-attestation
 
