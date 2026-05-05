@@ -37,7 +37,18 @@
       "executor": "nx:noop"
     },
     "build": {
-      "executor": "nx:noop"
+      "executor": "@nx/next:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/vendor-portal/vendor-portal-dashboard"
+      },
+      "configurations": {
+        "development": {
+          "outputPath": "apps/vendor-portal/vendor-portal-dashboard"
+        },
+        "production": {}
+      }
     },
     "deploy-metadata": {
       "dependsOn": ["build"],
