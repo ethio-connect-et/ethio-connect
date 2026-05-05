@@ -101,15 +101,15 @@ And join the Nx community:
 
 ### Promotion Contract Configuration
 
-| Key               | Value                                     |
-| ----------------- | ----------------------------------------- | ------- | ------------- |
-| Contract Version  | `1.0`                                     |
-| Registry Prefix   | `ghcr.io/ethio-connect-et`                |
-| Manifest Repo     | `ethio-connect-et/ethio-connect-manifest` |
-| Required Envs     | `^(testing                                | staging | main)$`       |
-| Target Envs       | `^(testing                                | staging | production)$` |
-| Digest Regex      | `^sha256:[0-9a-f]{64}$`                   |
-| App Regex         | `^[a-z0-9][a-z0-9-]*$`                    |
-| IDP Lookback Days | `14`                                      |
+| Key               | Value                                      |
+| ----------------- | ------------------------------------------ |
+| Contract Version  | `1.0`                                      |
+| Registry Prefix   | `ghcr.io/ethio-connect-et`                 |
+| Manifest Repo     | `ethio-connect-et/ethio-connect-manifest`  |
+| Required Envs     | `^(testing&#124;staging&#124;main)$`       |
+| Target Envs       | `^(testing&#124;staging&#124;production)$` |
+| Digest Regex      | `^sha256:[0-9a-f]{64}$`                    |
+| App Regex         | `^[a-z0-9][a-z0-9-]*$`                     |
+| IDP Lookback Days | `14`                                       |
 
 <!-- CONTRACT_END -->

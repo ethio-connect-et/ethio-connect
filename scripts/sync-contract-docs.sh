@@ -22,14 +22,15 @@ cat << 'EOF' > "$TMP_SNIPPET"
 EOF
 
 jq -r '
-  "| Contract Version | `\(.contract_version)` |",
-  "| Registry Prefix | `\(.registry_prefix)` |",
-  "| Manifest Repo | `\(.manifest_repo)` |",
-  "| Required Envs | `\(.regexes.required_envs)` |",
-  "| Target Envs | `\(.regexes.target_envs)` |",
-  "| Digest Regex | `\(.regexes.digest)` |",
-  "| App Regex | `\(.regexes.app)` |",
-  "| IDP Lookback Days | `\(.idp_lookback_days)` |"
+  def esc_md_pipe: gsub("\\|"; "&#124;");
+  "| Contract Version | `\(.contract_version | esc_md_pipe)` |",
+  "| Registry Prefix | `\(.registry_prefix | esc_md_pipe)` |",
+  "| Manifest Repo | `\(.manifest_repo | esc_md_pipe)` |",
+  "| Required Envs | `\(.regexes.required_envs | esc_md_pipe)` |",
+  "| Target Envs | `\(.regexes.target_envs | esc_md_pipe)` |",
+  "| Digest Regex | `\(.regexes.digest | esc_md_pipe)` |",
+  "| App Regex | `\(.regexes.app | esc_md_pipe)` |",
+  "| IDP Lookback Days | `\(.idp_lookback_days | tostring | esc_md_pipe)` |"
 ' "$CONTRACT_FILE" >> "$TMP_SNIPPET"
 
 echo "<!-- CONTRACT_END -->" >> "$TMP_SNIPPET"
@@ -53,5 +54,9 @@ awk -v snippet_file="$TMP_SNIPPET" '
 
 mv "${README_FILE}.tmp" "$README_FILE"
 rm "$TMP_SNIPPET"
+
+if command -v pnpm >/dev/null 2>&1; then
+  pnpm nx format:write --files="$README_FILE" >/dev/null
+fi
 
 echo "Successfully synced contract docs to $README_FILE."
