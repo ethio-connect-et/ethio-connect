@@ -7,6 +7,7 @@ readonly DIGEST_REGEX='^sha256:[0-9a-f]{64}$'
 readonly APP_REGEX='^[a-z0-9][a-z0-9-]*$'
 readonly MANIFEST_REPO='ethio-connect-et/ethio-connect-manifest'
 readonly REGISTRY_PREFIX='ghcr.io/ethio-connect-et'
+readonly IDP_LOOKBACK_DAYS='14'
 
 map_source_to_target_env() {
   local source_env="$1"
@@ -78,6 +79,9 @@ build_dispatch_payload() {
   [[ "$digest" =~ $DIGEST_REGEX ]] || { echo "Invalid digest: ${digest}" >&2; return 1; }
   [[ "$target_env" =~ $TARGET_ENVS_REGEX ]] || { echo "Invalid target env: ${target_env}" >&2; return 1; }
 
+  local promotion_key
+  promotion_key="$(build_promotion_key "$app" "$digest" "$target_env")"
+
   local payload
   payload="$(jq -nc \
     --arg app "$app" \
@@ -88,6 +92,7 @@ build_dispatch_payload() {
     --arg source_commit "$source_commit" \
     --arg release_id "$release_id" \
     --arg release_created_at "$release_created_at" \
+    --arg promotion_key "$promotion_key" \
     --arg signed_metadata "$signed_metadata" \
     --arg attestation_bundle "$attestation_bundle" \
     '{
@@ -101,6 +106,7 @@ build_dispatch_payload() {
         source_commit:$source_commit,
         release_id:$release_id,
         release_created_at:$release_created_at,
+        promotion_key:$promotion_key,
         signed_metadata:$signed_metadata,
         attestation_bundle:$attestation_bundle
       }
@@ -112,6 +118,57 @@ build_dispatch_payload() {
   fi
 
   echo "$payload"
+}
+
+build_promotion_key() {
+  local app="$1"
+  local digest="$2"
+  local target_env="$3"
+
+  [[ "$app" =~ $APP_REGEX ]] || { echo "Invalid app name: ${app}" >&2; return 1; }
+  [[ "$digest" =~ $DIGEST_REGEX ]] || { echo "Invalid digest: ${digest}" >&2; return 1; }
+  [[ "$target_env" =~ $TARGET_ENVS_REGEX ]] || { echo "Invalid target env: ${target_env}" >&2; return 1; }
+
+  jq -nc --arg app "$app" --arg digest "$digest" --arg env "$target_env" \
+    '{app:$app,digest:$digest,env:$env}' \
+    | sha256sum | awk '{print $1}'
+}
+
+is_promotion_already_processed() {
+  local promotion_key="$1"
+  local since
+  since="$(date -u -d "${IDP_LOOKBACK_DAYS} days ago" +%Y-%m-%dT%H:%M:%SZ)"
+
+  local query
+  query="${since} ${promotion_key}"
+
+  local matches
+  matches="$(gh api -X GET "/search/commits" \
+    -H "Accept: application/vnd.github.cloak-preview+json" \
+    -f q="repo:${MANIFEST_REPO} ${query}" \
+    --jq '.total_count')"
+
+  [[ "${matches:-0}" =~ ^[0-9]+$ ]] || matches=0
+  if (( matches > 0 )); then
+    return 0
+  fi
+
+  local runs_count
+  runs_count="$(gh api -X GET "/repos/${MANIFEST_REPO}/actions/runs" \
+    -f event="repository_dispatch" \
+    -f per_page=100 \
+    --jq --arg key "$promotion_key" --arg since "$since" '[.workflow_runs[] | select(.created_at >= $since and ((.display_title // "") | contains($key) or (.name // "") | contains($key)))] | length')"
+  [[ "${runs_count:-0}" =~ ^[0-9]+$ ]] || runs_count=0
+  (( runs_count > 0 )) && return 0
+
+  local artifacts_count
+  artifacts_count="$(gh api -X GET "/repos/${MANIFEST_REPO}/actions/artifacts" \
+    -f per_page=100 \
+    --jq --arg key "$promotion_key" --arg since "$since" '[.artifacts[] | select(.created_at >= $since and ((.name // "") | contains($key)))] | length')"
+  [[ "${artifacts_count:-0}" =~ ^[0-9]+$ ]] || artifacts_count=0
+  (( artifacts_count > 0 )) && return 0
+
+  return 1
 }
 
 
