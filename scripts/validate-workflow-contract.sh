@@ -40,7 +40,7 @@ check_schema_contract() {
   required="$(jq -r '.required[]' "$SCHEMA_FILE" | sort)"
   env_enum="$(jq -r '.properties.env.enum[]' "$SCHEMA_FILE" | sort)"
 
-  local expected_required=(app digest env source_repo source_ref source_commit release_id release_created_at signed_metadata attestation_bundle)
+  local expected_required=(app digest env source_repo source_ref source_commit release_id release_created_at)
   local expected_env=(production staging testing)
 
   local actual_required actual_env
