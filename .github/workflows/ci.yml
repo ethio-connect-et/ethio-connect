@@ -387,6 +387,64 @@ jobs:
             pnpm nx show projects --withTarget docker:build | awk '/^@ethio-connect\// { printf("| `%s` | `%s` |\n", $0, "'"$image_tag"'") }'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Dispatch promoted images to manifest repository
+        env:
+          GH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
+          IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "::error::MANIFEST_REPOSITORY_DISPATCH_TOKEN is required for repository_dispatch."
+            exit 1
+          fi
+
+          case "${{ github.ref_name }}" in
+            testing|staging|main) ;;
+            *)
+              echo "::error::Unsupported target environment: ${{ github.ref_name }}"
+              exit 1
+              ;;
+          esac
+
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            target_env="production"
+          else
+            target_env="${{ github.ref_name }}"
+          fi
+
+          projects="$(pnpm nx show projects --withTarget docker:build --json | jq -r '.[]')"
+
+          {
+            echo ""
+            echo "## Manifest Dispatch"
+            echo ""
+            echo "| App | Digest | Env |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          while IFS= read -r project; do
+            [[ -z "$project" ]] && continue
+            app="${project#@ethio-connect/}"
+            image="ghcr.io/ethio-connect-et/${app}:${IMAGE_TAG}"
+            digest="$(docker buildx imagetools inspect "$image" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+
+            if [[ -z "$digest" || "$digest" != sha256:* ]]; then
+              echo "::error::Unable to resolve digest for ${image}"
+              exit 1
+            fi
+
+            gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
+              -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -f event_type='promote-image' \
+              -f client_payload[app]="$app" \
+              -f client_payload[digest]="$digest" \
+              -f client_payload[env]="$target_env"
+
+            echo "| \`${app}\` | \`${digest}\` | \`${target_env}\` |" >> "$GITHUB_STEP_SUMMARY"
+          done <<< "$projects"
+
   release_draft:
     name: Release · Draft
     needs: [quality_gate]
