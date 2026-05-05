@@ -308,7 +308,9 @@ jobs:
 
           promoted_count=0
           skipped_count=0
+          failed_count=0
           decisions='[]'
+          dispatch_results='[]'
 
           jq -e --arg version "$release_version" --arg docker_version "$docker_version" --arg sha "$release_sha" --arg short_sha "$short_sha" '
             .version == $version and
@@ -358,13 +360,48 @@ jobs:
               '{signature_algorithm:$signature_algorithm,key_id:$key_id,cert_chain:[$cert_leaf],signature:$signature,canonical_payload:$canonical_payload}')"
 
             payload="$(build_dispatch_payload "$app" "$digest" "production" "$GITHUB_REPOSITORY" "$GITHUB_REF" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$signed_metadata" "$signed_payload")"
-            gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
-              -H "Accept: application/vnd.github+json" \
-              --method POST \
-              --input - <<<"$payload"
-            decisions="$(jq -c --arg app "$app" --arg digest "$digest" --arg key "$promotion_key" '. + [{app:$app,digest:$digest,promotion_key:$key,decision:"dispatched"}]' <<<"$decisions")"
-            promoted_count=$((promoted_count + 1))
+            max_attempts=5
+            attempt=1
+            backoff_seconds=2
+            dispatch_success=false
+            dispatch_error=""
+
+            while (( attempt <= max_attempts )); do
+              echo "Dispatch attempt ${attempt}/${max_attempts} for app=${app} promotion_key=${promotion_key}"
+              if dispatch_output="$(gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
+                -H "Accept: application/vnd.github+json" \
+                --method POST \
+                --input - <<<"$payload" 2>&1)"; then
+                dispatch_success=true
+                break
+              fi
+
+              dispatch_error="$dispatch_output"
+              if (( attempt < max_attempts )); then
+                echo "Dispatch attempt ${attempt} failed for app=${app}. Retrying in ${backoff_seconds}s."
+                sleep "$backoff_seconds"
+                backoff_seconds=$((backoff_seconds * 2))
+              fi
+              attempt=$((attempt + 1))
+            done
+
+            if [[ "$dispatch_success" == "true" ]]; then
+              decisions="$(jq -c --arg app "$app" --arg digest "$digest" --arg key "$promotion_key" '. + [{app:$app,digest:$digest,promotion_key:$key,decision:"dispatched"}]' <<<"$decisions")"
+              dispatch_results="$(jq -c --arg app "$app" --arg digest "$digest" --arg key "$promotion_key" --argjson attempts "$attempt" '. + [{app:$app,digest:$digest,promotion_key:$key,status:"success",attempts:$attempts}]' <<<"$dispatch_results")"
+              promoted_count=$((promoted_count + 1))
+            else
+              failed_count=$((failed_count + 1))
+              replay_file="failed-dispatch-payload-${app}.json"
+              printf '%s\n' "$payload" > "$replay_file"
+              replay_command="gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches -H \"Accept: application/vnd.github+json\" --method POST --input ${replay_file}"
+              echo "::error::Dispatch failed for app=${app} after ${max_attempts} attempts. replay_file=${replay_file}"
+              echo "Manual replay command for app=${app}: ${replay_command}"
+              decisions="$(jq -c --arg app "$app" --arg digest "$digest" --arg key "$promotion_key" --arg reason "dispatch failed after retries" '. + [{app:$app,digest:$digest,promotion_key:$key,decision:"failed",reason:$reason}]' <<<"$decisions")"
+              dispatch_results="$(jq -c --arg app "$app" --arg digest "$digest" --arg key "$promotion_key" --argjson attempts "$max_attempts" --arg replay_file "$replay_file" --arg replay_command "$replay_command" --arg error "$dispatch_error" '. + [{app:$app,digest:$digest,promotion_key:$key,status:"failed",attempts:$attempts,replay_file:$replay_file,replay_command:$replay_command,error:$error}]' <<<"$dispatch_results")"
+            fi
           done < <(jq -c '.apps[]' promotion-attestation.json)
+
+          jq -cS . <<<"$dispatch_results" > promotion-dispatch-results.json
 
           {
             echo "## Promotion Idempotency Summary"
@@ -372,8 +409,21 @@ jobs:
             echo "- force_promote: \\`${force_promote}\\`"
             echo "- dispatched: ${promoted_count}"
             echo "- skipped: ${skipped_count}"
+            echo "- failed: ${failed_count}"
             echo ""
             echo "| app | digest | promotion_key | decision | reason |"
             echo "| --- | --- | --- | --- | --- |"
             jq -r '.[] | "| \(.app) | \(.digest) | `\(.promotion_key)` | \(.decision) | \(.reason // "-") |"' <<<"$decisions"
           } >> "$GITHUB_STEP_SUMMARY"
+
+          if (( failed_count > 0 )); then
+            echo "::error::One or more promotion dispatches failed after retries. See promotion-dispatch-results.json for details."
+            exit 1
+          fi
+
+      - name: Upload promotion dispatch results artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: promotion-dispatch-results
+          path: promotion-dispatch-results.json
