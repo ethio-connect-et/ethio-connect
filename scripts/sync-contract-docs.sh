@@ -55,8 +55,13 @@ awk -v snippet_file="$TMP_SNIPPET" '
 mv "${README_FILE}.tmp" "$README_FILE"
 rm "$TMP_SNIPPET"
 
+# Enforce formatting to avoid drift with nx format:check
 if command -v pnpm >/dev/null 2>&1; then
+  echo "Formatting $README_FILE with pnpm nx format:write..."
   pnpm nx format:write --files="$README_FILE" >/dev/null
+elif command -v npx >/dev/null 2>&1; then
+  echo "Formatting $README_FILE with npx prettier..."
+  npx prettier --write "$README_FILE" >/dev/null 2>&1 || true
 fi
 
 echo "Successfully synced contract docs to $README_FILE."
