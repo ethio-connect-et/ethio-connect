@@ -301,6 +301,9 @@ jobs:
         run: "echo 'Skipping CodeQL: Advanced Security not enabled.'"
 
   call-build-test-lint:
+    permissions:
+      actions: read
+      contents: read
     uses: ./.github/workflows/reusable-build-test-lint.yml
     needs: [governance_branch_policy, security_sast, security_codeql]
     if: |
@@ -350,6 +353,9 @@ jobs:
 
   call-container-publish:
     name: Container · Publish
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/reusable-container-publish.yml
     needs: [call-build-test-lint, manifest_dispatch_contract]
     if: github.event_name == 'push' && contains(fromJSON('["testing","staging","main"]'), github.ref_name)
@@ -433,5 +439,5 @@ jobs:
         with: { fetch-depth: 0 }
 
       - name: Generate draft release notes
-        uses: release-drafter/release-drafter@df0fe8fe3982bbd7271604b2b8a4b8aee0f6a7ad
+        uses: release-drafter/release-drafter@563bf132657a13ded0b01fcb723c5a58cdd824e2
         env: { GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
