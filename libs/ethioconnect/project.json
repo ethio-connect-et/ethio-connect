@@ -8,7 +8,8 @@
       "manifestRootsToUpdate": ["dist/{projectRoot}"],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk"
-    }
+    },
+    "publish": false
   },
   "tags": ["scope:shared", "type:util", "domain:shared", "platform:cross"],
   "targets": {
@@ -24,9 +25,7 @@
       }
     },
     "nx-release-publish": {
-      "options": {
-        "packageRoot": "dist/{projectRoot}"
-      }
+      "executor": "nx:noop"
     },
     "package": {
       "executor": "nx:noop",

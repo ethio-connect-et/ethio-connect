@@ -38,7 +38,7 @@ jobs:
 
       - name: Resolve, validate, and dispatch non-prod manifest promotions
         env:
-          GH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MANIFEST_REPOSITORY_DISPATCH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
           PROMOTED_TAG: ${{ github.ref_name }}
         shell: bash
@@ -86,7 +86,7 @@ jobs:
             local delay_seconds=2
 
             while (( attempt <= max_attempts )); do
-              if gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
+              if GH_TOKEN="$MANIFEST_REPOSITORY_DISPATCH_TOKEN" gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
                 --method POST \
                 -H "Accept: application/vnd.github+json" \
                 --input - <<<"$payload"; then
