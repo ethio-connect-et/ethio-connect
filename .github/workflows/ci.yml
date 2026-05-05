@@ -43,7 +43,7 @@ concurrency:
 jobs:
   governance_branch_policy:
     name: Governance · Branch Policy
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 5
     permissions:
       contents: read
@@ -164,7 +164,7 @@ jobs:
   workflow_contract_guard:
     name: Governance · Workflow Contract Guard
     needs: [governance_branch_policy]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 5
     permissions:
       contents: read
@@ -212,7 +212,7 @@ jobs:
       always() && needs.governance_branch_policy.result == 'success' &&
       (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
       (github.event_name != 'push' || contains(fromJSON('["development","testing","staging","main"]'), github.ref_name))
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 15
     permissions:
       actions: read
@@ -260,7 +260,7 @@ jobs:
       always() && needs.governance_branch_policy.result == 'success' &&
       (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
       (github.event_name != 'push' || contains(fromJSON('["development","testing","staging","main"]'), github.ref_name))
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 20
     permissions:
       actions: read
@@ -340,7 +340,7 @@ jobs:
     name: Contract · Manifest Dispatch
     needs: [call-build-test-lint, workflow_contract_guard]
     if: github.event_name == 'push' && contains(fromJSON('["testing","staging","main"]'), github.ref_name)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
@@ -386,7 +386,7 @@ jobs:
     name: Manifest · Dispatch
     needs: [call-container-publish]
     if: github.event_name == 'push' && contains(fromJSON('["testing","staging","main"]'), github.ref_name)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 10
     permissions:
       contents: read
@@ -453,7 +453,7 @@ jobs:
     name: Release · Draft
     needs: [call-build-test-lint]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 10
     permissions:
       contents: write
