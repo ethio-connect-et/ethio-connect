@@ -331,8 +331,8 @@ jobs:
     with:
       ref_name: ${{ github.ref_name }}
       event_name: ${{ github.event_name }}
-      pull_request_draft: ${{ github.event.pull_request.draft }}
-      pull_request_number: ${{ github.event.pull_request.number }}
+      pull_request_draft: ${{ github.event.pull_request.draft || false }}
+      pull_request_number: ${{ github.event.pull_request.number || 0 }}
     secrets:
       NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
