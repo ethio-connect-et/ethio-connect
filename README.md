@@ -96,3 +96,20 @@ And join the Nx community:
 - [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
 - [Our Youtube channel](https://www.youtube.com/@nxdevtools)
 - [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+
+<!-- CONTRACT_START -->
+
+### Promotion Contract Configuration
+
+| Key               | Value                                     |
+| ----------------- | ----------------------------------------- | ------- | ------------- |
+| Contract Version  | `1.0`                                     |
+| Registry Prefix   | `ghcr.io/ethio-connect-et`                |
+| Manifest Repo     | `ethio-connect-et/ethio-connect-manifest` |
+| Required Envs     | `^(testing                                | staging | main)$`       |
+| Target Envs       | `^(testing                                | staging | production)$` |
+| Digest Regex      | `^sha256:[0-9a-f]{64}$`                   |
+| App Regex         | `^[a-z0-9][a-z0-9-]*$`                    |
+| IDP Lookback Days | `14`                                      |
+
+<!-- CONTRACT_END -->
