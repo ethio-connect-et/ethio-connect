@@ -1,4 +1,4 @@
-FROM gcr.io/distroless/nodejs20-debian12:nonroot@sha256:2cd820156cf039c8b54ae2d2a97e424b6729070714de8707a6b79f20d56f6a9a AS runtime-base
+FROM gcr.io/distroless/nodejs20-debian12@sha256:2cd820156cf039c8b54ae2d2a97e424b6729070714de8707a6b79f20d56f6a9a AS runtime-base
 
 FROM busybox:1.36.1 AS runtime-fs
 COPY --from=runtime-base / /rootfs
@@ -23,7 +23,7 @@ COPY --chown=65532:65532 dist/apps/central-hub/public-website/.next/standalone/a
 COPY --chown=65532:65532 dist/apps/central-hub/public-website/.next/standalone/dist ./dist
 COPY --chown=65532:65532 dist/apps/central-hub/public-website/.next/standalone/node_modules ./node_modules
 COPY --chown=65532:65532 dist/apps/central-hub/public-website/.next/standalone/package.json ./package.json
-COPY --chown=65532:65532 dist/apps/central-hub/public-website/.next/standalone/workspace_modules ./workspace_modules
+COPY --chown=65532:65532 dist/apps/central-hub/public-website/workspace_modules ./workspace_modules
 COPY --chown=65532:65532 dist/apps/central-hub/public-website/.next/static ./dist/apps/central-hub/public-website/.next/static
 
 EXPOSE 3000

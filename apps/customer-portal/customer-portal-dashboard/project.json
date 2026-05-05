@@ -37,7 +37,18 @@
       "executor": "nx:noop"
     },
     "build": {
-      "executor": "nx:noop"
+      "executor": "@nx/next:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/customer-portal/customer-portal-dashboard"
+      },
+      "configurations": {
+        "development": {
+          "outputPath": "apps/customer-portal/customer-portal-dashboard"
+        },
+        "production": {}
+      }
     },
     "deploy-metadata": {
       "dependsOn": ["build"],
