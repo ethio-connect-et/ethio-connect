@@ -67,3 +67,38 @@ build_dispatch_payload() {
     --arg env "$target_env" \
     '{event_type:"promote-image", client_payload:{app:$app, digest:$digest, env:$env}}'
 }
+
+
+verify_release_digest() {
+  local app="$1"
+  local digest="$2"
+  local docker_version="$3"
+  local release_sha="$4"
+  local release_version="$5"
+  local image_ref="${REGISTRY_PREFIX}/${app}@${digest}"
+
+  [[ "$digest" =~ $DIGEST_REGEX ]] || { echo "Invalid digest for ${app}: ${digest}" >&2; return 1; }
+
+  docker buildx imagetools inspect "$image_ref" >/dev/null
+
+  local config_digest
+  config_digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Image}}' | jq -r '.digest // empty')"
+  [[ "$config_digest" =~ $DIGEST_REGEX ]] || { echo "Unable to resolve config digest for ${image_ref}" >&2; return 1; }
+
+  local labels_json
+  labels_json="$(docker buildx imagetools inspect "${REGISTRY_PREFIX}/${app}@${config_digest}" --format '{{json .Image.Config.Labels}}')"
+
+  local actual_sha actual_version
+  actual_sha="$(jq -r '.["org.opencontainers.image.revision"] // empty' <<< "$labels_json")"
+  actual_version="$(jq -r '.["org.opencontainers.image.version"] // empty' <<< "$labels_json")"
+
+  [[ "$actual_sha" == "$release_sha" ]] || {
+    echo "Digest ${digest} for ${app} does not match release sha ${release_sha}. Found ${actual_sha}" >&2
+    return 1
+  }
+
+  [[ "$actual_version" == "$docker_version" || "$actual_version" == "$release_version" ]] || {
+    echo "Digest ${digest} for ${app} does not match release version ${release_version}/${docker_version}. Found ${actual_version}" >&2
+    return 1
+  }
+}
