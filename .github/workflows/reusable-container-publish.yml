@@ -27,7 +27,7 @@ env:
 jobs:
   container_publish:
     name: Container · Publish
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
       contents: read
@@ -49,10 +49,12 @@ jobs:
           short_sha="$(git rev-parse --short=12 "${GITHUB_SHA}")"
           image_tag="${branch_label}-${short_sha}"
           build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "image_tag=${image_tag}" >> "$GITHUB_OUTPUT"
-          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
-          echo "branch_label=${branch_label}" >> "$GITHUB_OUTPUT"
-          echo "build_date=${build_date}" >> "$GITHUB_OUTPUT"
+          {
+            echo "image_tag=${image_tag}"
+            echo "short_sha=${short_sha}"
+            echo "branch_label=${branch_label}"
+            echo "build_date=${build_date}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
