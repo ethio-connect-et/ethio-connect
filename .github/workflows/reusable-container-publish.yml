@@ -35,6 +35,10 @@ jobs:
     outputs:
       image_tag: ${{ steps.publish-context.outputs.image_tag }}
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
       - uses: ./.github/actions/setup-nx-node
         with:
           node-version: ${{ env.NODE_VERSION }}
