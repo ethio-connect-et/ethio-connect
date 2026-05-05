@@ -232,7 +232,12 @@
   "release": {
     "version": {
       "conventionalCommits": true,
-      "preVersionCommand": "pnpm nx run-many -t build --projects=@ethio-connect/api-common,@ethio-connect/api-features,@ethio-connect/frontend-features,@ethio-connect/ui-components,@ethio-connect/ethioconnect"
+      "fallbackCurrentVersionResolver": "disk",
+      "preVersionCommand": "pnpm nx run-many -t build --projects=@ethio-connect/api-common,@ethio-connect/api-features,@ethio-connect/frontend-features,@ethio-connect/ui-components,@ethio-connect/ethioconnect",
+      "git": {
+        "commit": true,
+        "tag": true
+      }
     },
     "projectsRelationship": "independent",
     "groups": {
@@ -269,16 +274,15 @@
         ]
       }
     },
-    "git": {
-      "commit": true,
-      "tag": true,
-      "conventionalCommits": true
-    },
     "changelog": {
       "workspaceChangelog": {
         "createRelease": "github"
       },
-      "projectChangelogs": true
+      "projectChangelogs": true,
+      "git": {
+        "commit": true,
+        "tag": true
+      }
     }
   }
 }

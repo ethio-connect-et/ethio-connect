@@ -37,7 +37,18 @@
       "executor": "nx:noop"
     },
     "build": {
-      "executor": "nx:noop"
+      "executor": "@nx/next:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/central-hub/public-website"
+      },
+      "configurations": {
+        "development": {
+          "outputPath": "apps/central-hub/public-website"
+        },
+        "production": {}
+      }
     },
     "deploy-metadata": {
       "dependsOn": ["build"],
