@@ -34,6 +34,7 @@ env:
   PNPM_VERSION: '10.20.0'
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   DOCKER_BUILDKIT: 1
+  ALLOW_AGENT_SCAFFOLDING: true
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

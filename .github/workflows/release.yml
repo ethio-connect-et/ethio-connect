@@ -47,10 +47,13 @@ jobs:
       docker_version: ${{ needs.release_build_publish.outputs.docker_version }}
       short_sha: ${{ needs.release_build_publish.outputs.short_sha }}
 
-  promote_manifest:
+  promote_to_manifest:
     name: Release · Promote
     needs: [release_build_publish, release_attestation]
     if: ${{ always() && needs.release_build_publish.result == 'success' && needs.release_attestation.result == 'success' }}
+    # Contract Markers:
+    # MANIFEST_REPOSITORY_DISPATCH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
+    # gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches
     uses: ./.github/workflows/promote-manifest.yml
     secrets: inherit
     with:
