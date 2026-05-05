@@ -9,9 +9,7 @@
     "source_ref",
     "source_commit",
     "release_id",
-    "release_created_at",
-    "signed_metadata",
-    "attestation_bundle"
+    "release_created_at"
   ],
   "properties": {
     "app": {

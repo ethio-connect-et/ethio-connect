@@ -77,7 +77,7 @@ jobs:
           set -euo pipefail
           image_tag="${{ steps.publish-context.outputs.image_tag }}"
           build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          IMAGE_TAG="$image_tag" BUILD_NUMBER="${GITHUB_RUN_NUMBER}" COMMIT_SHA="${GITHUB_SHA}" BUILD_DATE="$build_date" pnpm nx run-many -t docker:build --all --outputStyle=static
+          IMAGE_TAG="$image_tag" BRANCH_TAG="${branch_label}" BUILD_NUMBER="${GITHUB_RUN_NUMBER}" COMMIT_SHA="${GITHUB_SHA}" BUILD_DATE="$build_date" pnpm nx run-many -t docker:build --all --outputStyle=static
           {
             echo "## Published Images"
             echo ""

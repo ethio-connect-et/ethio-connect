@@ -91,6 +91,8 @@
             "--tag",
             "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${IMAGE_TAG:-latest}",
             "--tag",
+            "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${BRANCH_TAG:-latest}",
+            "--tag",
             "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${BUILD_NUMBER:-0}",
             "--label",
             "org.opencontainers.image.revision=${COMMIT_SHA:-unknown}",
