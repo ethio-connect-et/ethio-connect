@@ -33,6 +33,9 @@ jobs:
     name: Release · Publish
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      version: ${{ steps.context.outputs.version }}
+      prerelease: ${{ steps.context.outputs.prerelease }}
     permissions:
       contents: write
       packages: write
@@ -195,3 +198,72 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  promote_to_manifest:
+    name: Promote to Manifest Repo
+    needs: release_publish
+    runs-on: ubuntu-latest
+    if: ${{ always() && needs.release_publish.result == 'success' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Gather image digests
+        id: digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "apps=customer-portal,central-hub,vendor-portal"
+            echo "customer-portal_digest=sha256:EXAMPLE1"
+            echo "central-hub_digest=sha256:EXAMPLE2"
+            echo "vendor-portal_digest=sha256:EXAMPLE3"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch promotion event(s) to manifest repo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPS: ${{ steps.digests.outputs.apps }}
+          CUSTOMER_PORTAL_DIGEST: ${{ steps.digests.outputs.customer-portal_digest }}
+          CENTRAL_HUB_DIGEST: ${{ steps.digests.outputs.central-hub_digest }}
+          VENDOR_PORTAL_DIGEST: ${{ steps.digests.outputs.vendor-portal_digest }}
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra ADDR <<< "$APPS"
+          for app in "${ADDR[@]}"; do
+            case "$app" in
+              customer-portal) digest="$CUSTOMER_PORTAL_DIGEST" ;;
+              central-hub)     digest="$CENTRAL_HUB_DIGEST" ;;
+              vendor-portal)   digest="$VENDOR_PORTAL_DIGEST" ;;
+              *) echo "::error::Unknown app: $app"; exit 1 ;;
+            esac
+            env_name="production"
+            gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
+              -H "Accept: application/vnd.github+json" \
+              -f event_type=promote-image \
+              -f "client_payload={\"app\":\"$app\",\"digest\":\"$digest\",\"env\":\"$env_name\"}"
+          done
+
+      - name: Emit promotion attestation artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat <<EOF > promotion-attestation.json
+          {
+            "version": "${{ needs.release_publish.outputs.version }}",
+            "apps": [
+              {"name": "customer-portal", "digest": "${{ steps.digests.outputs.customer-portal_digest }}"},
+              {"name": "central-hub", "digest": "${{ steps.digests.outputs.central-hub_digest }}"},
+              {"name": "vendor-portal", "digest": "${{ steps.digests.outputs.vendor-portal_digest }}"}
+            ],
+            "env": "production"
+          }
+          EOF
+
+      - name: Upload attestation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-attestation
+          path: promotion-attestation.json

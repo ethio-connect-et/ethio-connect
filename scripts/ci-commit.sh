@@ -12,7 +12,7 @@ if ! git ls-remote "$REPO_HTTPS" &>/dev/null; then
 fi
 
 # Step 2: Run format and lint with explicit error handling
-pnpm exec actionlint -color && pnpm exec nx repair
+pnpm exec actionlint -color
 
 pnpm exec nx format:write --all && pnpm exec prettier --write nx.json
 
