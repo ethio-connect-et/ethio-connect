@@ -19,6 +19,11 @@ on:
         required: false
         type: boolean
         default: false
+      force_promote:
+        description: 'Force manifest promotion even if duplicate key is detected'
+        required: false
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -290,10 +295,15 @@ jobs:
           docker_version: ${{ needs.release_publish.outputs.docker_version }}
           release_sha: ${{ github.sha }}
           short_sha: ${{ needs.release_publish.outputs.short_sha }}
+          force_promote: ${{ github.event.inputs.force_promote || 'false' }}
         shell: bash
         run: |
           set -euo pipefail
           source scripts/manifest-dispatch.sh
+
+          promoted_count=0
+          skipped_count=0
+          decisions='[]'
 
           jq -e --arg version "$release_version" --arg docker_version "$docker_version" --arg sha "$release_sha" --arg short_sha "$short_sha" '
             .version == $version and
@@ -308,9 +318,36 @@ jobs:
             app="$(jq -r '.app' <<< "$item")"
             digest="$(jq -r '.digest' <<< "$item")"
             verify_release_digest "$app" "$digest" "$docker_version" "$release_sha" "$release_version"
+            promotion_key="$(build_promotion_key "$app" "$digest" "production")"
+
+            if [[ "${force_promote}" != "true" ]] && is_promotion_already_processed "$promotion_key"; then
+              echo "Skipping dispatch for app=${app} digest=${digest} env=production promotion_key=${promotion_key} (already processed)."
+              decisions="$(jq -c --arg app "$app" --arg digest "$digest" --arg key "$promotion_key" '. + [{app:$app,digest:$digest,promotion_key:$key,decision:"skipped",reason:"already processed"}]' <<<"$decisions")"
+              skipped_count=$((skipped_count + 1))
+              continue
+            fi
+
+            if [[ "${force_promote}" == "true" ]]; then
+              echo "force_promote=true: dispatching app=${app} digest=${digest} env=production promotion_key=${promotion_key}."
+            fi
+
             payload="$(build_dispatch_payload "$app" "$digest" "production")"
             gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
               -H "Accept: application/vnd.github+json" \
               --method POST \
               --input - <<<"$payload"
+            decisions="$(jq -c --arg app "$app" --arg digest "$digest" --arg key "$promotion_key" '. + [{app:$app,digest:$digest,promotion_key:$key,decision:"dispatched"}]' <<<"$decisions")"
+            promoted_count=$((promoted_count + 1))
           done < <(jq -c '.apps[]' promotion-attestation.json)
+
+          {
+            echo "## Promotion Idempotency Summary"
+            echo ""
+            echo "- force_promote: \\`${force_promote}\\`"
+            echo "- dispatched: ${promoted_count}"
+            echo "- skipped: ${skipped_count}"
+            echo ""
+            echo "| app | digest | promotion_key | decision | reason |"
+            echo "| --- | --- | --- | --- | --- |"
+            jq -r '.[] | "| \(.app) | \(.digest) | `\(.promotion_key)` | \(.decision) | \(.reason // "-") |"' <<<"$decisions"
+          } >> "$GITHUB_STEP_SUMMARY"
