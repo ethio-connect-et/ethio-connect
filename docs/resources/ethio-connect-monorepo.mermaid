@@ -1,49 +1,135 @@
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '24px', 'fontFamily': 'arial', 'primaryColor': '#e8f5e9', 'primaryTextColor': '#ff0000ff', 'edgeLabelBackground':'#ffffff' }, 'flowchart': {'nodeSpacing': 70, 'rankSpacing': 70}}}%%
-graph TD
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'primaryColor': '#e8f5e9', 'primaryTextColor': '#1b1b1b', 'edgeLabelBackground':'#ffffff' }, 'flowchart': {'nodeSpacing': 55, 'rankSpacing': 70}}}%%
+flowchart TD
     classDef app fill:#e3f2fd,stroke:#1565c0,stroke-width:3px,font-weight:bold;
     classDef lib fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,stroke-dasharray: 5 5;
     classDef ci fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
-    classDef infra fill:#eceff1,stroke:#546e7a,stroke-width:4px;
+    classDef infra fill:#eceff1,stroke:#546e7a,stroke-width:3px;
+    classDef security fill:#ffebee,stroke:#c62828,stroke-width:3px;
+    classDef cache fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,stroke-dasharray: 3 3;
+    classDef artifact fill:#ede7f6,stroke:#512da8,stroke-width:2px;
 
-    subgraph "Workspace Root"
-        direction LR
-        subgraph "Nx Monorepo (ethio-connect)"
-            direction TB
-            subgraph "Apps"
-                A[vendor-portal-dashboard]:::app
-                B[central-hub-dashboard]:::app
-                C[customer-portal-dashboard]:::app
-                D[central-hub-api]:::app
-                E[customer-portal-api]:::app
-                F[vendor-api-server]:::app
+    subgraph Product["Ethio Connect Product Platform"]
+        direction TB
+
+        subgraph Repository["Repository: ethio-connect | Workspace package: @ethio-connect/source"]
+            direction LR
+
+            subgraph Apps["Applications"]
+                direction TB
+                VendorDash["@ethio-connect/vendor-portal-dashboard"]:::app
+                VendorApi["@ethio-connect/vendor-api-server"]:::app
+                CustomerDash["@ethio-connect/customer-portal-dashboard"]:::app
+                CustomerApi["@ethio-connect/customer-portal-api"]:::app
+                HubDash["@ethio-connect/central-hub-dashboard"]:::app
+                HubPublic["@ethio-connect/central-hub-public-dashboard"]:::app
+                HubApi["@ethio-connect/central-hub-api"]:::app
             end
 
-            subgraph "Libs"
-                G[api-common]:::lib
-                H[api-features]:::lib
-                I[ethioconnect]:::lib
-                J[frontend-features]:::lib
-                K[ui-components]:::lib
+            subgraph Libs["Shared Libraries"]
+                direction TB
+                ApiCommon["@ethio-connect/api-common"]:::lib
+                ApiFeatures["@ethio-connect/api-features"]:::lib
+                ProductLib["@ethio-connect/ethioconnect"]:::lib
+                FrontendFeatures["@ethio-connect/frontend-features"]:::lib
+                UiComponents["@ethio-connect/ui-components"]:::lib
             end
-
-            subgraph "CI/CD"
-                CI_Main("ci.yml"):::ci
-                CI_Build("reusable-build-test-lint.yml"):::ci
-                CI_Publish("reusable-container-publish.yml"):::ci
-            end
-
-            CI_Main --> CI_Build
-            CI_Main --> CI_Publish
-            CI_Build -->|Builds| GHCR["GHCR (Container Registry)"]:::infra
-            CI_Publish -->|Publishes| GHCR
-
-            A & B & C & D & E & F -->|depends on| G & H & I & J & K
         end
 
-        subgraph "DevOps"
-            SC("GitHub") --> CI_Main
-            CI_Publish -->|Deployment Manifests| GR["GitOps Repo"]:::infra
-            GHCR -->|Images| GR
-            GR --> ArgoCD("ArgoCD"):::infra
+        subgraph CI["CI Boundary - GitHub Actions"]
+            direction TB
+            
+            subgraph CacheLane["Cache Lanes"]
+                direction LR
+                PnpmCache["pnpm cache\npnpm-lock.yaml"]:::cache
+                NxCloudCache["Nx Cloud cache\naffected task results"]:::cache
+            end
+
+            subgraph Build["Build - Quality Reusable Workflow"]
+                direction TB
+                CIWorkflow["ci.yml"]:::ci
+                QualityWorkflow["reusable-build-test-lint.yml"]:::ci
+                NxLint["Nx target: lint"]:::ci
+                NxTest["Nx target: test"]:::ci
+                NxBuild["Nx target: build"]:::ci
+            end
+
+            subgraph Publish["Publish - Container Reusable Workflow"]
+                direction TB
+                ContainerWorkflow["reusable-container-publish.yml"]:::ci
+                DockerBuild["Nx target: docker:build"]:::ci
+                NxReleasePublish["Nx target: nx-release-publish"]:::ci
+                GHCR["GHCR\ncontainer images by immutable digest"]:::infra
+                PublishManifest["publish-manifest artifact\nimage_ref + digest + source_sha"]:::artifact
+            end
+
+            subgraph Attest["Attest - Release Evidence"]
+                direction TB
+                ReleaseWorkflow["release.yml\nrelease orchestrator"]:::ci
+                ReleaseBuildPublish["release-build-publish.yml"]:::ci
+                ReleaseAttestation["release-attestation.yml"]:::security
+                PromotionAttestation["promotion-attestation artifact\nversion + docker_version + app digests"]:::artifact
+            end
+
+            subgraph Promote["Promote - Manifest Dispatch"]
+                direction TB
+                PromoteManifest["promote-manifest.yml"]:::ci
+                SignedDispatch["signed repository_dispatch payload"]:::security
+                ManifestRepo["ethio-connect-manifest\nGitOps manifest repository"]:::infra
+            end
+        end
+
+        subgraph Deploy["Deploy - GitOps Runtime"]
+            direction LR
+            ArgoCD["ArgoCD"]:::infra
+            NonProd["testing / staging deployments"]:::infra
+            Production["production deployments"]:::infra
         end
     end
+
+    VendorDash --> FrontendFeatures
+    VendorDash --> UiComponents
+    CustomerDash --> FrontendFeatures
+    CustomerDash --> UiComponents
+    HubDash --> FrontendFeatures
+    HubDash --> UiComponents
+    HubPublic --> FrontendFeatures
+    HubPublic --> UiComponents
+    VendorApi --> ApiCommon
+    VendorApi --> ApiFeatures
+    CustomerApi --> ApiCommon
+    CustomerApi --> ApiFeatures
+    HubApi --> ApiCommon
+    HubApi --> ApiFeatures
+    ApiFeatures --> ProductLib
+    FrontendFeatures --> ProductLib
+
+    CIWorkflow --> QualityWorkflow
+    QualityWorkflow --> NxLint
+    QualityWorkflow --> NxTest
+    QualityWorkflow --> NxBuild
+    PnpmCache -.-> QualityWorkflow
+    NxCloudCache -.-> NxLint
+    NxCloudCache -.-> NxTest
+    NxCloudCache -.-> NxBuild
+
+    CIWorkflow --> ContainerWorkflow
+    ContainerWorkflow --> DockerBuild
+    DockerBuild --> GHCR
+    GHCR --> NxReleasePublish
+    NxReleasePublish --> PublishManifest
+    PnpmCache -.-> ContainerWorkflow
+    NxCloudCache -.-> DockerBuild
+    NxCloudCache -.-> NxReleasePublish
+
+    ReleaseWorkflow --> ReleaseBuildPublish
+    ReleaseBuildPublish --> ReleaseAttestation
+    ReleaseAttestation --> PromotionAttestation
+    ReleaseWorkflow --> PromoteManifest
+    PromotionAttestation --> PromoteManifest
+    GHCR --> PromoteManifest
+    PromoteManifest --> SignedDispatch
+    SignedDispatch --> ManifestRepo
+    PublishManifest --> ManifestRepo
+    ManifestRepo --> ArgoCD
+    ArgoCD --> NonProd
+    ArgoCD --> Production
