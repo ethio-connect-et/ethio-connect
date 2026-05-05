@@ -12,8 +12,9 @@ concurrency:
 
 env:
   CI: true
-  NODE_VERSION: '22.20.0'
+  NODE_VERSION: '24.11.0'
   PNPM_VERSION: '10.20.0'
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   DOCKER_BUILDKIT: 1
 
 jobs:
@@ -24,31 +25,16 @@ jobs:
     permissions:
       contents: read
       packages: read
+      actions: read
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
 
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with:
-          version: ${{ env.PNPM_VERSION }}
-          run_install: false
-
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+      - uses: ./.github/actions/setup-nx-node
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
-
-      - name: Log in to GHCR
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
 
       - name: Resolve, validate, and dispatch non-prod manifest promotions
         env:
@@ -63,14 +49,34 @@ jobs:
           projects_json="$(pnpm nx show projects --withTarget docker:build --json)"
           projects="$(jq -r '.[]' <<< "$projects_json")"
           validate_dispatch_preconditions "${{ github.ref_name }}" "$projects"
-
           target_env="$(map_source_to_target_env "${{ github.ref_name }}")"
+          artifact_name="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs" \
+            -f event=push \
+            -f head_sha="${GITHUB_SHA}" \
+            -f branch="${{ github.ref_name }}" \
+            -f per_page=20 \
+            --jq '.workflow_runs[] | select(.name == "CI") | .id' | head -n 1)"
+          [[ -n "$artifact_name" ]] || { echo "::error::Unable to locate CI run for sha ${GITHUB_SHA}"; exit 1; }
+          artifact_run_id="$artifact_name"
+          artifact_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${artifact_run_id}/artifacts" \
+            --jq '.artifacts[] | select((.name | startswith("publish-manifest-'${{ github.ref_name }}'-")) and .expired == false) | .id' | head -n 1)"
+          [[ -n "$artifact_id" ]] || { echo "::error::Unable to locate publish-manifest artifact for run ${artifact_run_id}"; exit 1; }
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > publish-manifest.zip
+          unzip -o publish-manifest.zip -d artifacts >/dev/null
+          manifest_path="$(find artifacts -type f -name 'publish-manifest-*.json' | head -n 1)"
+          [[ -n "$manifest_path" ]] || { echo "::error::publish-manifest JSON not found after download"; exit 1; }
+
+          jq -e --arg sha "$GITHUB_SHA" '
+            type=="array" and length>0 and
+            all(.[]; has("project") and has("app") and has("image_ref") and has("source_sha") and has("tag")) and
+            all(.[]; .source_sha == $sha)
+          ' "$manifest_path" >/dev/null
 
           {
             echo "## Manifest Dispatch (Non-Prod)"
             echo ""
-            echo "| App | Source Branch | Source Image | Digest | Target Env |"
-            echo "|---|---|---|---|---|"
+            echo "| App | Source Branch | Source Image | Digest | Target Env | Artifact Run ID | Attestation |"
+            echo "|---|---|---|---|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
 
           dispatch_with_retry() {
@@ -99,34 +105,36 @@ jobs:
             done
           }
 
-          while IFS= read -r project; do
-            [[ -z "$project" ]] && continue
-            app="${project#@ethio-connect/}"
-            image_ref="ghcr.io/ethio-connect-et/${app}:${PROMOTED_TAG}"
+          while IFS= read -r item; do
+            app="$(jq -r '.app' <<< "$item")"
+            image_ref="$(jq -r '.image_ref' <<< "$item")"
+            digest="$(jq -r '.digest // empty' <<< "$item")"
+            source_sha="$(jq -r '.source_sha' <<< "$item")"
+            attestation_status="$(jq -r '.attestation_status // "not-required"' <<< "$item")"
 
-            echo "Resolving digest for ${image_ref}..."
-            
-            # Add retry loop to handle race condition with build workflow
-            digest=""
-            max_inspect_attempts=15
-            inspect_attempt=1
-            while (( inspect_attempt <= max_inspect_attempts )); do
-              digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest.Digest}}' 2>/dev/null | tr -d '"' || echo "")"
-              if [[ -n "$digest" && "$digest" =~ $DIGEST_REGEX ]]; then
-                break
-              fi
-              echo "Waiting for image ${image_ref} to be available (attempt ${inspect_attempt}/${max_inspect_attempts})..."
-              sleep 20
-              inspect_attempt=$(( inspect_attempt + 1 ))
-            done
-
-            [[ "$digest" =~ $DIGEST_REGEX ]] || {
-              echo "::error::Invalid digest for ${image_ref} after ${max_inspect_attempts} attempts: ${digest}"
-              exit 1
-            }
-
+            [[ "$source_sha" == "$GITHUB_SHA" ]] || { echo "::error::source_sha mismatch for ${app}"; exit 1; }
+            [[ "$digest" =~ $DIGEST_REGEX ]] || { echo "::error::Invalid immutable digest for ${app}: ${digest}"; exit 1; }
             payload="$(build_dispatch_payload "$app" "$digest" "$target_env")"
             dispatch_with_retry "$payload"
+            echo "| \`${app}\` | \`${{ github.ref_name }}\` | \`${image_ref}\` | \`${digest}\` | \`${target_env}\` | \`${artifact_run_id}\` | \`${attestation_status}\` |" >> "$GITHUB_STEP_SUMMARY"
+          done < <(jq -c '.[]' "$manifest_path")
 
-            echo "| \`${app}\` | \`${{ github.ref_name }}\` | \`${image_ref}\` | \`${digest}\` | \`${target_env}\` |" >> "$GITHUB_STEP_SUMMARY"
-          done <<< "$projects"
+      - name: Create non-prod promotion evidence artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          jq -n \
+            --arg ref_name "${{ github.ref_name }}" \
+            --arg sha "${GITHUB_SHA}" \
+            --arg run_id "${{ github.run_id }}" \
+            --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{ref_name:$ref_name,sha:$sha,run_id:$run_id,generated_at:$generated_at}' \
+            > artifacts/nonprod-promotion-evidence-${{ github.ref_name }}-${{ github.run_id }}.json
+
+      - name: Upload non-prod promotion evidence artifact
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: nonprod-promotion-evidence-${{ github.ref_name }}-${{ github.run_id }}
+          path: artifacts/nonprod-promotion-evidence-${{ github.ref_name }}-${{ github.run_id }}.json
+          retention-days: 30

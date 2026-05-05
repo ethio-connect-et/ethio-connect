@@ -13,6 +13,9 @@ on:
       changelog:
         required: false
         type: string
+    secrets:
+      NX_CLOUD_ACCESS_TOKEN:
+        required: true
     outputs:
       version:
         value: ${{ jobs.build_publish.outputs.version }}
@@ -39,6 +42,10 @@ jobs:
       contents: write
       packages: write
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
       - name: Resolve release context and validate version
         id: context
         shell: bash
@@ -64,10 +71,10 @@ jobs:
             echo "prerelease=$prerelease"
           } >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - uses: ./.github/actions/setup-nx-node
         with:
-          fetch-depth: 0
-          filter: tree:0
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
 
       - name: Ensure release commit belongs to main
         shell: bash
@@ -78,22 +85,6 @@ jobs:
             echo "::error::Releases are only allowed from commits reachable from origin/main. Tagged commit: $GITHUB_SHA"
             exit 1
           fi
-
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with:
-          version: ${{ env.PNPM_VERSION }}
-          run_install: false
-
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: |
-          pnpm fetch --frozen-lockfile
-          pnpm install --frozen-lockfile --prefer-offline
 
       - name: Resolve release metadata
         id: release-metadata
@@ -124,14 +115,59 @@ jobs:
             pnpm nx release version "$docker_version" --groups "$group" --dockerVersion "$docker_version" --stage-changes=false --git-commit=false --git-tag=false
           done
 
-      - name: Publish all release groups
+      - name: Build and publish docker images via Nx targets
+        id: publish-targets
         shell: bash
         run: |
           set -euo pipefail
+          docker_version="${{ steps.release-metadata.outputs.docker_version }}"
+          short_sha="${{ steps.release-metadata.outputs.short_sha }}"
+
+          shared_libs_projects="@ethio-connect/api-common,@ethio-connect/api-features,@ethio-connect/frontend-features,@ethio-connect/ui-components,@ethio-connect/ethioconnect"
+          central_hub_projects="@ethio-connect/central-hub-api,@ethio-connect/central-hub-dashboard,@ethio-connect/central-hub-public-dashboard"
+          customer_portal_projects="@ethio-connect/customer-portal-api,@ethio-connect/customer-portal-dashboard"
+          vendor_portal_projects="@ethio-connect/vendor-api-server,@ethio-connect/vendor-portal-dashboard"
+
+          export IMAGE_TAG="$docker_version"
+          export BRANCH_TAG="$short_sha"
+          export BUILD_NUMBER="$short_sha"
+          export COMMIT_SHA="${GITHUB_SHA}"
+          export VERSION="$docker_version"
+
+          echo "Building docker images for docker-enabled release groups"
+          pnpm nx run-many -t docker:build --projects "$central_hub_projects,$customer_portal_projects,$vendor_portal_projects"
+
+          : > release-publish.log
+          : > published-images.md
+          echo "### Published Docker Images" >> published-images.md
+          echo "" >> published-images.md
           for group in shared-libs central-hub customer-portal vendor-portal; do
-            echo "Publishing release group: $group"
-            pnpm nx release publish --groups "$group" --yes
+            case "$group" in
+              shared-libs) group_projects="$shared_libs_projects" ;;
+              central-hub) group_projects="$central_hub_projects" ;;
+              customer-portal) group_projects="$customer_portal_projects" ;;
+              vendor-portal) group_projects="$vendor_portal_projects" ;;
+              *) echo "::error::Unknown release group '$group'" ; exit 1 ;;
+            esac
+
+            echo "Publishing release group through target execution: $group"
+            pnpm nx run-many -t nx-release-publish --projects "$group_projects" --output-style=stream | tee -a release-publish.log
+
+            IFS=',' read -ra projects <<< "$group_projects"
+            for project in "${projects[@]}"; do
+              image="${project#@ethio-connect/}"
+              echo "- ghcr.io/ethio-connect-et/${image}:${docker_version}" >> published-images.md
+              echo "  - ghcr.io/ethio-connect-et/${image}:${short_sha}" >> published-images.md
+            done
           done
+
+          cat published-images.md >> "$GITHUB_STEP_SUMMARY"
+
+          {
+            echo "images_markdown<<EOF"
+            cat published-images.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Generate release changelog from git history
         id: changelog
@@ -171,6 +207,8 @@ jobs:
             else
               echo "- No workspace changes detected in the release range."
             fi
+            echo ""
+            echo "${{ steps.publish-targets.outputs.images_markdown }}"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -186,3 +224,54 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release evidence payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          jq -n \
+            --arg version "${{ steps.context.outputs.version }}" \
+            --arg docker_version "${{ steps.release-metadata.outputs.docker_version }}" \
+            --arg short_sha "${{ steps.release-metadata.outputs.short_sha }}" \
+            --arg release_sha "${GITHUB_SHA}" \
+            --arg created_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{version:$version,docker_version:$docker_version,short_sha:$short_sha,release_sha:$release_sha,created_at:$created_at}' \
+            > "artifacts/release-evidence-${{ steps.context.outputs.version }}-${{ github.run_id }}.json"
+
+      - name: Upload release evidence artifact
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: release-evidence-${{ steps.context.outputs.version }}-${{ github.run_id }}
+          path: artifacts/release-evidence-${{ steps.context.outputs.version }}-${{ github.run_id }}.json
+          retention-days: 90
+
+      - name: Create release publish manifest artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          docker_version="${{ steps.release-metadata.outputs.docker_version }}"
+          manifest_path="artifacts/publish-manifest-${{ steps.context.outputs.version }}-${{ github.run_id }}.json"
+          while IFS= read -r project; do
+            app="${project#@ethio-connect/}"
+            image_ref="ghcr.io/ethio-connect-et/${app}:${docker_version}"
+            digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+            jq -nc \
+              --arg project "$project" \
+              --arg app "$app" \
+              --arg image_ref "$image_ref" \
+              --arg digest "$digest" \
+              --arg source_sha "${GITHUB_SHA}" \
+              --arg tag "$docker_version" \
+              --arg artifact_run_id "${GITHUB_RUN_ID}" \
+              '{project:$project,app:$app,image_ref:$image_ref,digest:$digest,source_sha:$source_sha,tag:$tag,artifact_run_id:$artifact_run_id,attestation_status:"pending"}'
+          done < <(pnpm nx show projects --withTarget nx-release-publish --json | jq -r '.[] | select(startswith("@ethio-connect/"))') \
+            | jq -sc . > "$manifest_path"
+
+      - name: Upload release publish manifest artifact
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: publish-manifest-${{ steps.context.outputs.version }}-${{ github.run_id }}
+          path: artifacts/publish-manifest-${{ steps.context.outputs.version }}-${{ github.run_id }}.json
+          retention-days: 90

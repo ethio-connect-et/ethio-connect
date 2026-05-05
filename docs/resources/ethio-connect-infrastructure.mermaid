@@ -1,34 +1,111 @@
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '24px', 'fontFamily': 'arial', 'primaryColor': '#e8f5e9', 'edgeLabelBackground':'#ffffff' }, 'flowchart': {'nodeSpacing': 70, 'rankSpacing': 70}}}%%
-graph TD
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'primaryColor': '#e8f5e9', 'primaryTextColor': '#1b1b1b', 'edgeLabelBackground':'#ffffff' }, 'flowchart': {'nodeSpacing': 55, 'rankSpacing': 70}}}%%
+flowchart TD
+    classDef ci fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
+    classDef infra fill:#eceff1,stroke:#546e7a,stroke-width:3px;
     classDef cluster fill:#f1f8e9,stroke:#33691e,stroke-width:4px,font-weight:bold;
-    classDef ns fill:#ffffff,stroke:#33691e,stroke-width:2px;
     classDef gitops fill:#e1f5fe,stroke:#01579b,stroke-width:3px;
-    classDef vcluster fill:#fff3e0,stroke:#e65100,stroke-width:2px,stroke-dasharray:5 5;
+    classDef security fill:#ffebee,stroke:#c62828,stroke-width:3px;
+    classDef artifact fill:#ede7f6,stroke:#512da8,stroke-width:2px;
+    classDef cache fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,stroke-dasharray: 3 3;
 
-    subgraph "GitOps Flow"
-        A["Nx Monorepo (Source)"] --> B{"GitHub Actions"}
-        C["GitOps Repo (ethio-connect-manifest)"]:::gitops --> ArgoCD("ArgoCD"):::gitops
-    end
-
-    subgraph "Production Cluster"
+    subgraph Source["CI Boundary - ethio-connect repository"]
         direction TB
-        P_NS_Vendor[Namespace: vendor-prod]:::ns
-        P_NS_Customer[Namespace: customer-prod]:::ns
-        P_NS_Central[Namespace: central-hub-prod]:::ns
-    end
 
-    subgraph "Development Cluster"
-        direction TB
-        subgraph "Virtual Clusters"
-            T_vCluster[vcluster: testing-env]:::vcluster
-            S_vCluster[vcluster: staging-env]:::vcluster
+        subgraph Build["Build"]
+            direction TB
+            CIWorkflow["ci.yml"]:::ci
+            QualityWorkflow["reusable-build-test-lint.yml"]:::ci
+            QualityTargets["Nx targets\nlint / test / build"]:::ci
+            PnpmCache["pnpm cache"]:::cache
+            NxCloudCache["Nx Cloud cache"]:::cache
+        end
+
+        subgraph Publish["Publish"]
+            direction TB
+            ContainerWorkflow["reusable-container-publish.yml"]:::ci
+            DockerTarget["Nx target: docker:build"]:::ci
+            PublishTarget["Nx target: nx-release-publish"]:::ci
+            GHCR["GHCR\nghcr.io/ethio-connect-et/*"]:::infra
+            DigestResolve["deterministic digest resolution\ndocker buildx imagetools inspect"]:::security
+            PublishManifest["publish-manifest artifact\napp + image_ref + sha256 digest"]:::artifact
+        end
+
+        subgraph Attest["Attest"]
+            direction TB
+            ReleaseWorkflow["release.yml"]:::ci
+            ReleaseBuildPublish["release-build-publish.yml"]:::ci
+            ReleaseAttestation["release-attestation.yml"]:::security
+            PromotionAttestation["promotion-attestation artifact"]:::artifact
+            VerifyBeforeProd["signature and attestation verification\ncosign + digest validation"]:::security
+        end
+
+        subgraph Promote["Promote"]
+            direction TB
+            NonProdPromote["promote-manifest-nonprod.yml\ntesting / staging"]:::ci
+            ProdPromote["promote-manifest.yml\nproduction"]:::ci
+            NonProdDispatch["repository_dispatch\napp + digest + target_env"]:::gitops
+            ProdSignedDispatch["signed repository_dispatch\napp + digest + provenance"]:::security
         end
     end
 
-    ArgoCD -->|Syncs| P_NS_Vendor
-    ArgoCD -->|Syncs| P_NS_Customer
-    ArgoCD -->|Syncs| P_NS_Central
-    ArgoCD -->|Syncs| T_vCluster
-    ArgoCD -->|Syncs| S_vCluster
-    class B cluster;
-    class P_NS_Vendor,P_NS_Customer,P_NS_Central,ArgoCD,T_vCluster,S_vCluster cluster;
+    subgraph Manifest["Infra Boundary - ethio-connect-manifest repository"]
+        direction TB
+        ManifestDispatch["repository_dispatch receiver"]:::gitops
+        TestingOverlay["testing manifests"]:::gitops
+        StagingOverlay["staging manifests"]:::gitops
+        ProductionOverlay["production manifests"]:::gitops
+        ArgoCD["ArgoCD"]:::gitops
+    end
+
+    subgraph Deploy["Deploy"]
+        direction TB
+        subgraph NonProdClusters["Non-Production Promotion Paths"]
+            direction LR
+            TestingVCluster["vcluster: testing-env"]:::cluster
+            StagingVCluster["vcluster: staging-env"]:::cluster
+        end
+
+        subgraph ProdCluster["Production Promotion Path"]
+            direction LR
+            VendorProd["namespace: vendor-prod"]:::cluster
+            CustomerProd["namespace: customer-prod"]:::cluster
+            CentralHubProd["namespace: central-hub-prod"]:::cluster
+        end
+    end
+
+    CIWorkflow --> QualityWorkflow
+    QualityWorkflow --> QualityTargets
+    PnpmCache -.-> QualityWorkflow
+    NxCloudCache -.-> QualityTargets
+
+    QualityTargets --> ContainerWorkflow
+    ContainerWorkflow --> DockerTarget
+    DockerTarget --> GHCR
+    GHCR --> PublishTarget
+    PublishTarget --> DigestResolve
+    DigestResolve --> PublishManifest
+
+    PublishManifest --> NonProdPromote
+    GHCR -->|immutable sha256 digest| NonProdPromote
+    NonProdPromote --> NonProdDispatch
+    NonProdDispatch --> ManifestDispatch
+    ManifestDispatch --> TestingOverlay
+    ManifestDispatch --> StagingOverlay
+    TestingOverlay --> ArgoCD
+    StagingOverlay --> ArgoCD
+    ArgoCD --> TestingVCluster
+    ArgoCD --> StagingVCluster
+
+    ReleaseWorkflow --> ReleaseBuildPublish
+    ReleaseBuildPublish --> ReleaseAttestation
+    ReleaseAttestation --> PromotionAttestation
+    PromotionAttestation --> VerifyBeforeProd
+    GHCR -->|resolve and verify release digest| VerifyBeforeProd
+    VerifyBeforeProd --> ProdPromote
+    ProdPromote --> ProdSignedDispatch
+    ProdSignedDispatch --> ManifestDispatch
+    ManifestDispatch --> ProductionOverlay
+    ProductionOverlay --> ArgoCD
+    ArgoCD --> VendorProd
+    ArgoCD --> CustomerProd
+    ArgoCD --> CentralHubProd
