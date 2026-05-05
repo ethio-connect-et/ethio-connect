@@ -104,9 +104,24 @@ jobs:
             app="${project#@ethio-connect/}"
             image_ref="ghcr.io/ethio-connect-et/${app}:${PROMOTED_TAG}"
 
-            digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+            echo "Resolving digest for ${image_ref}..."
+            
+            # Add retry loop to handle race condition with build workflow
+            digest=""
+            max_inspect_attempts=15
+            inspect_attempt=1
+            while (( inspect_attempt <= max_inspect_attempts )); do
+              digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest.Digest}}' 2>/dev/null | tr -d '"' || echo "")"
+              if [[ -n "$digest" && "$digest" =~ $DIGEST_REGEX ]]; then
+                break
+              fi
+              echo "Waiting for image ${image_ref} to be available (attempt ${inspect_attempt}/${max_inspect_attempts})..."
+              sleep 20
+              inspect_attempt=$(( inspect_attempt + 1 ))
+            done
+
             [[ "$digest" =~ $DIGEST_REGEX ]] || {
-              echo "::error::Invalid digest for ${image_ref}: ${digest}"
+              echo "::error::Invalid digest for ${image_ref} after ${max_inspect_attempts} attempts: ${digest}"
               exit 1
             }
 

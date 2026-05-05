@@ -77,13 +77,16 @@ build_dispatch_payload() {
     --arg release_created_at "$release_created_at" \
     '{digest:$digest, source_commit:$source_commit, source_ref:$source_ref, release_id:$release_id, release_created_at:$release_created_at}' | build_canonical_json)"
     
+  local signed_metadata="${9:-null}"
   local attestation_bundle="${10:-$default_attestation}"
 
-  [[ -n "$signed_metadata" ]] || { echo "signed_metadata is required and must be a structured JSON object" >&2; return 1; }
-  jq -e 'type == "object" and (.signature_algorithm|type=="string" and length>0) and (.key_id|type=="string" and length>0) and (.cert_chain|type=="array" and length>0) and (.signature|type=="string" and length>0) and (.canonical_payload|type=="string" and length>0)' >/dev/null <<<"$signed_metadata" || {
-    echo "signed_metadata must include signature_algorithm, key_id, cert_chain[], signature, canonical_payload" >&2
-    return 1
-  }
+  if [[ "$target_env" == "production" ]]; then
+    [[ -n "${9:-}" ]] || { echo "signed_metadata is required for production promotions" >&2; return 1; }
+    jq -e 'type == "object" and (.signature_algorithm|type=="string" and length>0) and (.key_id|type=="string" and length>0) and (.cert_chain|type=="array" and length>0) and (.signature|type=="string" and length>0) and (.canonical_payload|type=="string" and length>0)' >/dev/null <<<"$signed_metadata" || {
+      echo "signed_metadata for production must include signature_algorithm, key_id, cert_chain[], signature, canonical_payload" >&2
+      return 1
+    }
+  fi
 
   [[ "$app" =~ $APP_REGEX ]] || { echo "Invalid app name: ${app}" >&2; return 1; }
   [[ "$digest" =~ $DIGEST_REGEX ]] || { echo "Invalid digest: ${digest}" >&2; return 1; }
@@ -104,7 +107,7 @@ build_dispatch_payload() {
     --arg release_created_at "$release_created_at" \
     --arg promotion_key "$promotion_key" \
     --argjson signed_metadata "$signed_metadata" \
-    --arg attestation_bundle "$attestation_bundle" \
+    --argjson attestation_bundle "$attestation_bundle" \
     '{
       event_type:"promote-image",
       client_payload:{
@@ -119,7 +122,7 @@ build_dispatch_payload() {
         promotion_key:$promotion_key,
         signed_metadata:$signed_metadata,
         attestation_bundle:$attestation_bundle
-      }
+      } | with_entries(select(.value != null))
     }')"
 
   # Validate against schema if ajv is installed
