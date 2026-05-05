@@ -60,6 +60,8 @@ check_schema_contract() {
   fi
 }
 
+CONTRACT_JSON="$ROOT_DIR/.github/contracts/promote-image.contract.json"
+
 check_readme_mapping_matches_script() {
   local expected_map actual_map
   expected_map="$(awk '
@@ -68,18 +70,12 @@ check_readme_mapping_matches_script() {
     /^\| `main`/    { print "main=production" }
   ' "$WORKFLOW_README" | sort)"
 
-  actual_map="$(awk '
-    /case "\$source_env" in/ { in_case=1; next }
-    in_case && /esac/ { in_case=0 }
-    in_case && /^[[:space:]]*testing\)/ { print "testing=testing" }
-    in_case && /^[[:space:]]*staging\)/ { print "staging=staging" }
-    in_case && /^[[:space:]]*main\)/ { print "main=production" }
-  ' "$DISPATCH_SCRIPT" | sort)"
+  actual_map="$(jq -r '.env_mapping | to_entries[] | "\(.key)=\(.value)"' "$CONTRACT_JSON" | sort)"
 
   [[ "$expected_map" == "$actual_map" ]] || {
-    error "README mapping table does not match map_source_to_target_env mapping in scripts/manifest-dispatch.sh."
+    error "README mapping table does not match env_mapping in .github/contracts/promote-image.contract.json."
     error "README map: $(tr '\n' ' ' <<<"$expected_map")"
-    error "Script map: $(tr '\n' ' ' <<<"$actual_map")"
+    error "Contract JSON map: $(tr '\n' ' ' <<<"$actual_map")"
     exit 1
   }
 }
