@@ -27,7 +27,7 @@ fi
 CURRENT=$(cat "$VERSION_FILE")
 
 # Step 4: Increment
-NEXT=$((CURRENT + 10))
+NEXT=$((CURRENT + 1))
 echo "$NEXT" > "$VERSION_FILE"
 
 # Step 5: Stage changes
