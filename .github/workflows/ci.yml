@@ -48,7 +48,7 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with:
           fetch-depth: 1
 
@@ -114,7 +114,7 @@ jobs:
 
       - name: Enforce merge-time branch policy
         if: github.event_name == 'push'
-        uses: actions/github-script@v8
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
             const { owner, repo } = context.repo;
@@ -160,6 +160,21 @@ jobs:
             const associated = prs.map((pr) => `#${pr.number}: ${pr.head.ref} -> ${pr.base.ref} (merged=${pr.merged_at ?? 'no'})`).join('\n');
             core.setFailed(`${targetBase} must not receive direct pushes. Only merged PRs from ${rule.expected} to ${targetBase} are allowed for commit ${commitSha}.` + `\nCommit: ${commitSubject || '(empty)'}` + (associated ? `\nAssociated PRs:\n${associated}` : '\nNo PRs associated.'));
 
+
+  workflow_contract_guard:
+    name: Governance · Workflow Contract Guard
+    needs: [governance_branch_policy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - name: Validate workflow contract markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          rg -n 'testing\|staging\|main -> testing\|staging\|production' .github/workflows/README.md
+          rg -n 'ethio-connect-et/ethio-connect-manifest' .github/workflows/ci.yml
+          rg -n 'ghcr.io/ethio-connect-et/.+@sha256:' .github/workflows/README.md
+
   security_sast:
     name: Security · SAST
     needs: [governance_branch_policy]
@@ -174,16 +189,16 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with:
           fetch-depth: 1
 
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
         with:
           version: ${{ env.PNPM_VERSION }}
           run_install: false
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -196,7 +211,7 @@ jobs:
 
       - name: Run Snyk vulnerability scanner
         continue-on-error: true
-        uses: snyk/actions/node@master
+        uses: snyk/actions/node@3e5f8c4e2338b58f7211be9a40f15f4f4f6f7193
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -204,7 +219,7 @@ jobs:
 
       - name: Upload Snyk results to GitHub
         if: hashFiles('snyk.sarif')
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@f4b0f0f35ef6b914a91a0f264dbdfdc6d773557a
         with:
           sarif_file: snyk.sarif
 
@@ -226,7 +241,7 @@ jobs:
     steps:
       - name: Check if Advanced Security is enabled
         id: advanced-security
-        uses: actions/github-script@v8
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
             try {
@@ -236,15 +251,15 @@ jobs:
               core.setOutput('enabled', enabled ? 'true' : 'false');
             } catch (error) { core.warning(`Unable to determine Advanced Security status: ${error.message}`); core.setOutput('enabled', 'false'); }
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         if: steps.advanced-security.outputs.enabled == 'true'
         with: { fetch-depth: 1 }
 
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
         if: steps.advanced-security.outputs.enabled == 'true'
         with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
         if: steps.advanced-security.outputs.enabled == 'true'
         with:
           {
@@ -259,13 +274,13 @@ jobs:
 
       - name: Initialize CodeQL
         if: steps.advanced-security.outputs.enabled == 'true'
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@f4b0f0f35ef6b914a91a0f264dbdfdc6d773557a
         with:
           { languages: 'javascript,typescript', queries: 'security-extended' }
 
       - name: Perform CodeQL Analysis
         if: steps.advanced-security.outputs.enabled == 'true'
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@f4b0f0f35ef6b914a91a0f264dbdfdc6d773557a
         with: { category: '/language:javascript-typescript' }
 
       - name: Skip CodeQL when disabled
@@ -286,13 +301,13 @@ jobs:
       actions: read
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with: { fetch-depth: 0, filter: 'tree:0' }
 
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
         with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
         with:
           {
             node-version: '${{ env.NODE_VERSION }}',
@@ -313,7 +328,7 @@ jobs:
           echo "NX_BASE=origin/${base_ref}" >> "$GITHUB_ENV"
           echo "NX_HEAD=HEAD" >> "$GITHUB_ENV"
 
-      - uses: nrwl/nx-set-shas@v5
+      - uses: nrwl/nx-set-shas@e8c8a53c29f7229ecfbe3411f22f5d9a19897867
         if: github.event_name != 'pull_request' && github.ref_name != 'testing'
 
       - name: Check formatting
@@ -322,9 +337,41 @@ jobs:
       - name: Run affected quality tasks
         run: pnpm nx affected -t lint test build --base="$NX_BASE" --head="$NX_HEAD" --parallel=3 --outputStyle=static
 
+  manifest_dispatch_contract:
+    name: Contract · Manifest Dispatch
+    needs: [quality_gate, workflow_contract_guard]
+    if: github.event_name == 'push' && contains(fromJSON('["testing","staging","main"]'), github.ref_name)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
+        with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
+      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
+        with: { node-version: '${{ env.NODE_VERSION }}' }
+      - name: Install dependencies
+        run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
+      - name: Validate dispatch contract
+        env:
+          MANIFEST_REPOSITORY_DISPATCH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          source scripts/manifest-dispatch.sh
+          apps="$(resolve_apps_with_docker_target)"
+          validate_dispatch_preconditions "${{ github.ref_name }}" "$apps"
+          target_env="$(map_source_to_target_env "${{ github.ref_name }}")"
+          while IFS= read -r app; do
+            [[ -z "$app" ]] && continue
+            [[ "$app" == @ethio-connect/* ]] || { echo "Invalid app from nx: $app"; exit 1; }
+            app_name="${app#@ethio-connect/}"
+            [[ "$app_name" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "Invalid app name: $app_name"; exit 1; }
+            sample_digest="sha256:$(printf '0%.0s' {1..64})"
+            build_dispatch_payload "$app_name" "$sample_digest" "$target_env" >/dev/null
+          done <<< "$apps"
+
   container_publish:
     name: Container · Publish
-    needs: [quality_gate]
+    needs: [quality_gate, manifest_dispatch_contract]
     if: github.event_name == 'push' && contains(fromJSON('["testing","staging","main"]'), github.ref_name)
     outputs:
       target_branch: ${{ github.ref_name }}
@@ -335,13 +382,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with: { fetch-depth: 0, filter: 'tree:0' }
 
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
         with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
         with:
           {
             node-version: '${{ env.NODE_VERSION }}',
@@ -363,7 +410,7 @@ jobs:
           echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
         with:
           {
             registry: ghcr.io,
@@ -390,30 +437,15 @@ jobs:
       - name: Dispatch promoted images to manifest repository
         env:
           GH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
+          MANIFEST_REPOSITORY_DISPATCH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
           IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${GH_TOKEN:-}" ]]; then
-            echo "::error::MANIFEST_REPOSITORY_DISPATCH_TOKEN is required for repository_dispatch."
-            exit 1
-          fi
-
-          case "${{ github.ref_name }}" in
-            testing|staging|main) ;;
-            *)
-              echo "::error::Unsupported target environment: ${{ github.ref_name }}"
-              exit 1
-              ;;
-          esac
-
-          if [[ "${{ github.ref_name }}" == "main" ]]; then
-            target_env="production"
-          else
-            target_env="${{ github.ref_name }}"
-          fi
-
-          projects="$(pnpm nx show projects --withTarget docker:build --json | jq -r '.[]')"
+          source scripts/manifest-dispatch.sh
+          projects="$(resolve_apps_with_docker_target)"
+          validate_dispatch_preconditions "${{ github.ref_name }}" "$projects"
+          target_env="$(map_source_to_target_env "${{ github.ref_name }}")"
 
           {
             echo ""
@@ -428,19 +460,9 @@ jobs:
             app="${project#@ethio-connect/}"
             image="ghcr.io/ethio-connect-et/${app}:${IMAGE_TAG}"
             digest="$(docker buildx imagetools inspect "$image" --format '{{json .Manifest.Digest}}' | tr -d '"')"
-
-            if [[ -z "$digest" || "$digest" != sha256:* ]]; then
-              echo "::error::Unable to resolve digest for ${image}"
-              exit 1
-            fi
-
-            gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
-              -X POST \
-              -H "Accept: application/vnd.github+json" \
-              -f event_type='promote-image' \
-              -f client_payload[app]="$app" \
-              -f client_payload[digest]="$digest" \
-              -f client_payload[env]="$target_env"
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::Unable to resolve valid digest for ${image}: ${digest}"; exit 1; }
+            payload="$(build_dispatch_payload "$app" "$digest" "$target_env")"
+            gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches -X POST -H "Accept: application/vnd.github+json" --input - <<<"$payload"
 
             echo "| \`${app}\` | \`${digest}\` | \`${target_env}\` |" >> "$GITHUB_STEP_SUMMARY"
           done <<< "$projects"
@@ -455,9 +477,9 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with: { fetch-depth: 0 }
 
       - name: Generate draft release notes
-        uses: release-drafter/release-drafter@v6
+        uses: release-drafter/release-drafter@df0fe8fe3982bbd7271604b2b8a4b8aee0f6a7ad
         env: { GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }

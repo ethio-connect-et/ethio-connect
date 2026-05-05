@@ -16,11 +16,11 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with:
           fetch-depth: 0
 
       - name: Generate draft release notes
-        uses: release-drafter/release-drafter@v6
+        uses: release-drafter/release-drafter@df0fe8fe3982bbd7271604b2b8a4b8aee0f6a7ad
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
