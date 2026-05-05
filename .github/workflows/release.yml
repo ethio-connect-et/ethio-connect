@@ -188,7 +188,7 @@ jobs:
               env:$env,
               generated_at:$generated_at,
               apps:$apps
-            }' > promotion-attestation.json
+            }' | jq -cS . > promotion-attestation.json
           echo "path=promotion-attestation.json" >> "$GITHUB_OUTPUT"
 
       - name: Upload promotion attestation artifact
@@ -261,6 +261,7 @@ jobs:
     permissions:
       contents: read
       packages: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
@@ -279,6 +280,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.8.1
 
       - name: Download promotion attestation artifact
         uses: actions/download-artifact@95815c38cf65f14a6c5cae202f3b0f9b651f1f59
@@ -331,7 +336,28 @@ jobs:
               echo "force_promote=true: dispatching app=${app} digest=${digest} env=production promotion_key=${promotion_key}."
             fi
 
-            payload="$(build_dispatch_payload "$app" "$digest" "production")"
+            signed_payload="$(jq -nc \
+              --arg app "$app" \
+              --arg digest "$digest" \
+              --arg source_repo "$GITHUB_REPOSITORY" \
+              --arg source_ref "$GITHUB_REF" \
+              --arg source_commit "$GITHUB_SHA" \
+              --arg release_id "$GITHUB_RUN_ID" \
+              --arg release_created_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              '{app:$app,digest:$digest,source_repo:$source_repo,source_ref:$source_ref,source_commit:$source_commit,release_id:$release_id,release_created_at:$release_created_at}' | jq -cS .)"
+            printf '%s' "$signed_payload" > signed-payload.json
+            cosign sign-blob --yes --output-signature signed-payload.sig --output-certificate signed-payload.crt signed-payload.json >/dev/null
+            cosign verify-blob --certificate signed-payload.crt --signature signed-payload.sig --certificate-identity-regexp '.*' --certificate-oidc-issuer-regexp '.*' signed-payload.json >/dev/null
+
+            signed_metadata="$(jq -nc \
+              --arg signature_algorithm "ecdsa-p256-sha256" \
+              --arg key_id "sigstore:github-actions-keyless" \
+              --arg signature "$(base64 -w0 signed-payload.sig)" \
+              --arg canonical_payload "$signed_payload" \
+              --arg cert_leaf "$(base64 -w0 signed-payload.crt)" \
+              '{signature_algorithm:$signature_algorithm,key_id:$key_id,cert_chain:[$cert_leaf],signature:$signature,canonical_payload:$canonical_payload}')"
+
+            payload="$(build_dispatch_payload "$app" "$digest" "production" "$GITHUB_REPOSITORY" "$GITHUB_REF" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$signed_metadata" "$signed_payload")"
             gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
               -H "Accept: application/vnd.github+json" \
               --method POST \

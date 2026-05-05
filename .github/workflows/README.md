@@ -30,8 +30,14 @@ Event type: `promote-image`
     "source_commit": "<40-hex-sha>",
     "release_id": "<github-run-id>",
     "release_created_at": "2006-01-02T15:04:05Z",
-    "signed_metadata": "<opaque-string>",
-    "attestation_bundle": "{\"digest\":\"sha256:...\",\"source_commit\":\"...\",\"source_ref\":\"...\",\"release_id\":\"...\",\"release_created_at\":\"...\"}"
+    "signed_metadata": {
+      "signature_algorithm": "ecdsa-p256-sha256",
+      "key_id": "sigstore:github-actions-keyless",
+      "cert_chain": ["<base64-leaf-cert-pem>"],
+      "signature": "<base64-signature>",
+      "canonical_payload": "{\"app\":\"...\",\"digest\":\"sha256:...\",...}"
+    },
+    "attestation_bundle": "{\"app\":\"...\",\"digest\":\"sha256:...\",\"release_id\":\"...\",...}"
   }
 }
 ```

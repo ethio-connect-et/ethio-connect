@@ -9,6 +9,10 @@ readonly MANIFEST_REPO='ethio-connect-et/ethio-connect-manifest'
 readonly REGISTRY_PREFIX='ghcr.io/ethio-connect-et'
 readonly IDP_LOOKBACK_DAYS='14'
 
+build_canonical_json() {
+  jq -cS .
+}
+
 map_source_to_target_env() {
   local source_env="$1"
   case "$source_env" in
@@ -62,7 +66,7 @@ build_dispatch_payload() {
   local source_commit="${6:-${GITHUB_SHA:-$(git rev-parse HEAD)}}"
   local release_id="${7:-${GITHUB_RUN_ID:-123456789}}"
   local release_created_at="${8:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
-  local signed_metadata="${9:-dummy_signature}"
+  local signed_metadata="${9:-}"
   
   local default_attestation
   default_attestation="$(jq -nc \
@@ -71,9 +75,15 @@ build_dispatch_payload() {
     --arg source_ref "$source_ref" \
     --arg release_id "$release_id" \
     --arg release_created_at "$release_created_at" \
-    '{digest:$digest, source_commit:$source_commit, source_ref:$source_ref, release_id:$release_id, release_created_at:$release_created_at}')"
+    '{digest:$digest, source_commit:$source_commit, source_ref:$source_ref, release_id:$release_id, release_created_at:$release_created_at}' | build_canonical_json)"
     
   local attestation_bundle="${10:-$default_attestation}"
+
+  [[ -n "$signed_metadata" ]] || { echo "signed_metadata is required and must be a structured JSON object" >&2; return 1; }
+  jq -e 'type == "object" and (.signature_algorithm|type=="string" and length>0) and (.key_id|type=="string" and length>0) and (.cert_chain|type=="array" and length>0) and (.signature|type=="string" and length>0) and (.canonical_payload|type=="string" and length>0)' >/dev/null <<<"$signed_metadata" || {
+    echo "signed_metadata must include signature_algorithm, key_id, cert_chain[], signature, canonical_payload" >&2
+    return 1
+  }
 
   [[ "$app" =~ $APP_REGEX ]] || { echo "Invalid app name: ${app}" >&2; return 1; }
   [[ "$digest" =~ $DIGEST_REGEX ]] || { echo "Invalid digest: ${digest}" >&2; return 1; }
@@ -93,7 +103,7 @@ build_dispatch_payload() {
     --arg release_id "$release_id" \
     --arg release_created_at "$release_created_at" \
     --arg promotion_key "$promotion_key" \
-    --arg signed_metadata "$signed_metadata" \
+    --argjson signed_metadata "$signed_metadata" \
     --arg attestation_bundle "$attestation_bundle" \
     '{
       event_type:"promote-image",
