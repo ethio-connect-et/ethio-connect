@@ -160,18 +160,30 @@ jobs:
             const associated = prs.map((pr) => `#${pr.number}: ${pr.head.ref} -> ${pr.base.ref} (merged=${pr.merged_at ?? 'no'})`).join('\n');
             core.setFailed(`${targetBase} must not receive direct pushes. Only merged PRs from ${rule.expected} to ${targetBase} are allowed for commit ${commitSha}.` + `\nCommit: ${commitSubject || '(empty)'}` + (associated ? `\nAssociated PRs:\n${associated}` : '\nNo PRs associated.'));
 
-
   workflow_contract_guard:
     name: Governance · Workflow Contract Guard
     needs: [governance_branch_policy]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+        with:
+          fetch-depth: 1
+      - name: Install ripgrep
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v rg &>/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ripgrep
+          fi
       - name: Validate workflow contract markers
         shell: bash
         run: |
           set -euo pipefail
-          rg -n 'testing\|staging\|main -> testing\|staging\|production' .github/workflows/README.md
+          rg -n 'testing\|staging\|main -\> testing\|staging\|production' .github/workflows/README.md
           rg -n 'ethio-connect-et/ethio-connect-manifest' .github/workflows/ci.yml
           rg -n 'ghcr.io/ethio-connect-et/.+@sha256:' .github/workflows/README.md
 
@@ -434,11 +446,38 @@ jobs:
             pnpm nx show projects --withTarget docker:build | awk '/^@ethio-connect\// { printf("| `%s` | `%s` |\n", $0, "'"$image_tag"'") }'
           } >> "$GITHUB_STEP_SUMMARY"
 
+  dispatch_to_manifest:
+    name: Manifest · Dispatch
+    needs: [container_publish]
+    if: github.event_name == 'push' && contains(fromJSON('["testing","staging","main"]'), github.ref_name)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+        with: { fetch-depth: 1 }
+
+      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
+        with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
+
+      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
+        with:
+          {
+            node-version: '${{ env.NODE_VERSION }}',
+            cache: pnpm,
+            cache-dependency-path: pnpm-lock.yaml,
+          }
+
+      - name: Install dependencies
+        run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
+
       - name: Dispatch promoted images to manifest repository
         env:
           GH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
           MANIFEST_REPOSITORY_DISPATCH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
-          IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
+          IMAGE_TAG: ${{ needs.container_publish.outputs.image_tag }}
         shell: bash
         run: |
           set -euo pipefail

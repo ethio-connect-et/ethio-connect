@@ -128,6 +128,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.0
         version: 19.2.3(@types/react@19.2.14)
+      actionlint:
+        specifier: ^2.0.6
+        version: 2.0.6
       autoprefixer:
         specifier: 10.4.13
         version: 10.4.13(postcss@8.4.38)
@@ -5315,6 +5318,12 @@ packages:
       }
     engines: { node: '>=0.4.0' }
     hasBin: true
+
+  actionlint@2.0.6:
+    resolution:
+      {
+        integrity: sha512-tNx8f48yJNSLXTIygGntu5dSZlIZblDt8sR7pIs7EEmmb2PkEF87d+3UKZV2GUgCuN9Awj7k4ZPrwdAxFWEqgw==,
+      }
 
   address@1.2.2:
     resolution:
@@ -18412,6 +18421,8 @@ snapshots:
       acorn: 8.16.0
 
   acorn@8.16.0: {}
+
+  actionlint@2.0.6: {}
 
   address@1.2.2: {}
 

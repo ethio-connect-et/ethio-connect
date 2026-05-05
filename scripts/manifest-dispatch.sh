@@ -56,16 +56,62 @@ build_dispatch_payload() {
   local app="$1"
   local digest="$2"
   local target_env="$3"
+  local source_repo="${4:-${GITHUB_REPOSITORY:-ethio-connect-et/ethio-connect}}"
+  local source_ref="${5:-${GITHUB_REF:-refs/heads/main}}"
+  local source_commit="${6:-${GITHUB_SHA:-$(git rev-parse HEAD)}}"
+  local release_id="${7:-${GITHUB_RUN_ID:-123456789}}"
+  local release_created_at="${8:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+  local signed_metadata="${9:-dummy_signature}"
+  
+  local default_attestation
+  default_attestation="$(jq -nc \
+    --arg digest "$digest" \
+    --arg source_commit "$source_commit" \
+    --arg source_ref "$source_ref" \
+    --arg release_id "$release_id" \
+    --arg release_created_at "$release_created_at" \
+    '{digest:$digest, source_commit:$source_commit, source_ref:$source_ref, release_id:$release_id, release_created_at:$release_created_at}')"
+    
+  local attestation_bundle="${10:-$default_attestation}"
 
   [[ "$app" =~ $APP_REGEX ]] || { echo "Invalid app name: ${app}" >&2; return 1; }
   [[ "$digest" =~ $DIGEST_REGEX ]] || { echo "Invalid digest: ${digest}" >&2; return 1; }
   [[ "$target_env" =~ $TARGET_ENVS_REGEX ]] || { echo "Invalid target env: ${target_env}" >&2; return 1; }
 
-  jq -nc \
+  local payload
+  payload="$(jq -nc \
     --arg app "$app" \
     --arg digest "$digest" \
     --arg env "$target_env" \
-    '{event_type:"promote-image", client_payload:{app:$app, digest:$digest, env:$env}}'
+    --arg source_repo "$source_repo" \
+    --arg source_ref "$source_ref" \
+    --arg source_commit "$source_commit" \
+    --arg release_id "$release_id" \
+    --arg release_created_at "$release_created_at" \
+    --arg signed_metadata "$signed_metadata" \
+    --arg attestation_bundle "$attestation_bundle" \
+    '{
+      event_type:"promote-image",
+      client_payload:{
+        app:$app,
+        digest:$digest,
+        env:$env,
+        source_repo:$source_repo,
+        source_ref:$source_ref,
+        source_commit:$source_commit,
+        release_id:$release_id,
+        release_created_at:$release_created_at,
+        signed_metadata:$signed_metadata,
+        attestation_bundle:$attestation_bundle
+      }
+    }')"
+
+  # Validate against schema if ajv is installed
+  if command -v npx >/dev/null 2>&1 && [ -f .github/contracts/promote-image.schema.json ]; then
+    echo "$payload" | jq '.client_payload' | npx -y ajv-cli validate -s .github/contracts/promote-image.schema.json -d - >&2 || { echo "Payload schema validation failed" >&2; return 1; }
+  fi
+
+  echo "$payload"
 }
 
 
