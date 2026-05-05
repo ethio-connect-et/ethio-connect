@@ -92,12 +92,12 @@ jobs:
             exit 1
           fi
 
-      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
+      - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
           run_install: false
 
-      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm

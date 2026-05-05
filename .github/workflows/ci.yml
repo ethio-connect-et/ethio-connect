@@ -197,12 +197,12 @@ jobs:
         with:
           fetch-depth: 1
 
-      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
+      - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
           run_install: false
 
-      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -215,7 +215,7 @@ jobs:
 
       - name: Run Snyk vulnerability scanner
         continue-on-error: true
-        uses: snyk/actions/node@3e5f8c4e2338b58f7211be9a40f15f4f4f6f7193
+        uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -223,7 +223,7 @@ jobs:
 
       - name: Upload Snyk results to GitHub
         if: hashFiles('snyk.sarif')
-        uses: github/codeql-action/upload-sarif@f4b0f0f35ef6b914a91a0f264dbdfdc6d773557a
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk.sarif
 
@@ -259,11 +259,11 @@ jobs:
         if: steps.advanced-security.outputs.enabled == 'true'
         with: { fetch-depth: 1 }
 
-      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
+      - uses: pnpm/action-setup@v4
         if: steps.advanced-security.outputs.enabled == 'true'
         with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
 
-      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
+      - uses: actions/setup-node@v4
         if: steps.advanced-security.outputs.enabled == 'true'
         with:
           {
@@ -278,13 +278,13 @@ jobs:
 
       - name: Initialize CodeQL
         if: steps.advanced-security.outputs.enabled == 'true'
-        uses: github/codeql-action/init@f4b0f0f35ef6b914a91a0f264dbdfdc6d773557a
+        uses: github/codeql-action/init@v3
         with:
           { languages: 'javascript,typescript', queries: 'security-extended' }
 
       - name: Perform CodeQL Analysis
         if: steps.advanced-security.outputs.enabled == 'true'
-        uses: github/codeql-action/analyze@f4b0f0f35ef6b914a91a0f264dbdfdc6d773557a
+        uses: github/codeql-action/analyze@v3
         with: { category: '/language:javascript-typescript' }
 
       - name: Skip CodeQL when disabled
@@ -308,10 +308,10 @@ jobs:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with: { fetch-depth: 0, filter: 'tree:0' }
 
-      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
+      - uses: pnpm/action-setup@v4
         with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
 
-      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
+      - uses: actions/setup-node@v4
         with:
           {
             node-version: '${{ env.NODE_VERSION }}',
@@ -348,9 +348,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
-      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
+      - uses: pnpm/action-setup@v4
         with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
-      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
+      - uses: actions/setup-node@v4
         with: { node-version: '${{ env.NODE_VERSION }}' }
       - name: Install dependencies
         run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
@@ -389,10 +389,10 @@ jobs:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with: { fetch-depth: 0, filter: 'tree:0' }
 
-      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
+      - uses: pnpm/action-setup@v4
         with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
 
-      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
+      - uses: actions/setup-node@v4
         with:
           {
             node-version: '${{ env.NODE_VERSION }}',
@@ -451,10 +451,10 @@ jobs:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with: { fetch-depth: 1 }
 
-      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
+      - uses: pnpm/action-setup@v4
         with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
 
-      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
+      - uses: actions/setup-node@v4
         with:
           {
             node-version: '${{ env.NODE_VERSION }}',
