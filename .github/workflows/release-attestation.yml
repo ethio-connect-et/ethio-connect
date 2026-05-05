@@ -26,25 +26,17 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-        with:
-          fetch-depth: 1
-
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with:
-          version: ${{ env.PNPM_VERSION }}
-          run_install: false
-
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+      - uses: ./.github/actions/setup-nx-node
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          checkout-fetch-depth: '1'
 
-      - name: Install dependencies
-        run: |
-          pnpm fetch --frozen-lockfile
-          pnpm install --frozen-lockfile --prefer-offline
+      - name: Download release evidence artifact
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+        with:
+          name: release-evidence-${{ inputs.version }}-${{ github.run_id }}
+          path: artifacts
 
       - name: Authenticate with GitHub Container Registry
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
@@ -96,5 +88,6 @@ jobs:
       - name: Upload promotion attestation artifact
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
         with:
-          name: promotion-attestation
+          name: promotion-attestation-${{ inputs.version }}-${{ github.run_id }}
           path: ${{ steps.build_attestation.outputs.path }}
+          retention-days: 90
