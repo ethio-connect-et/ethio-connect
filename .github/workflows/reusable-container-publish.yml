@@ -59,8 +59,12 @@ jobs:
           set -euo pipefail
           branch_label="$(echo '${{ inputs.ref_name }}' | tr '[:upper:]' '[:lower:]' | sed 's#[^a-z0-9_.-]#-#g')"
           short_sha="$(git rev-parse --short=12 "${GITHUB_SHA}")"
-          echo "image_tag=${branch_label}-${short_sha}" >> "$GITHUB_OUTPUT"
+          image_tag="${branch_label}-${short_sha}"
+          build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "image_tag=${image_tag}" >> "$GITHUB_OUTPUT"
           echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
+          echo "branch_label=${branch_label}" >> "$GITHUB_OUTPUT"
+          echo "build_date=${build_date}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
@@ -71,17 +75,45 @@ jobs:
             password: '${{ secrets.GITHUB_TOKEN }}',
           }
 
-      - name: Build and push images
+      - name: Build images (Stage A)
+        shell: bash
+        env:
+          NX_DOCKER_VERSION_SCHEME: production
+          NX_IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
+          NX_DOCKER_TAG: ${{ steps.publish-context.outputs.image_tag }}
+          NX_DOCKER_VERSION: ${{ steps.publish-context.outputs.image_tag }}
+          NX_DOCKER_BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
+          NX_DOCKER_LABEL_BUILD_NUMBER: ${{ github.run_number }}
+          NX_DOCKER_LABEL_COMMIT_SHA: ${{ github.sha }}
+          NX_DOCKER_LABEL_BUILD_DATE: ${{ steps.publish-context.outputs.build_date }}
+        run: |
+          set -euo pipefail
+          pnpm nx run-many -t docker:build --all --outputStyle=static
+
+      - name: Publish images (Stage B)
+        shell: bash
+        env:
+          NX_DOCKER_VERSION_SCHEME: production
+          NX_IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
+          NX_DOCKER_TAG: ${{ steps.publish-context.outputs.image_tag }}
+          NX_DOCKER_VERSION: ${{ steps.publish-context.outputs.image_tag }}
+          NX_DOCKER_BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
+          NX_DOCKER_LABEL_BUILD_NUMBER: ${{ github.run_number }}
+          NX_DOCKER_LABEL_COMMIT_SHA: ${{ github.sha }}
+          NX_DOCKER_LABEL_BUILD_DATE: ${{ steps.publish-context.outputs.build_date }}
+        run: |
+          set -euo pipefail
+          pnpm nx run-many -t nx-release-publish --all --outputStyle=static
+
+      - name: Summarize published images
         shell: bash
         run: |
           set -euo pipefail
           image_tag="${{ steps.publish-context.outputs.image_tag }}"
-          build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          IMAGE_TAG="$image_tag" BRANCH_TAG="${branch_label}" BUILD_NUMBER="${GITHUB_RUN_NUMBER}" COMMIT_SHA="${GITHUB_SHA}" BUILD_DATE="$build_date" pnpm nx run-many -t docker:build --all --outputStyle=static
           {
             echo "## Published Images"
             echo ""
             echo "| Project | Image Tag |"
             echo "|---|---|"
-            pnpm nx show projects --withTarget docker:build | awk '/^@ethio-connect\// { printf("| `%s` | `%s` |\n", $0, "'"$image_tag"'") }'
+            pnpm nx show projects --withTarget nx-release-publish | awk '/^@ethio-connect\// { printf("| `%s` | `%s` |\n", $0, "'"$image_tag"'") }'
           } >> "$GITHUB_STEP_SUMMARY"
