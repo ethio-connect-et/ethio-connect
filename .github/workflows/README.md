@@ -10,6 +10,8 @@ Contract marker: `testing|staging|main -> testing|staging|production`
 | `staging`     | `staging`       | `ghcr.io/ethio-connect-et/<app>@sha256:<64hex>` |
 | `main`        | `production`    | `ghcr.io/ethio-connect-et/<app>@sha256:<64hex>` |
 
+Non-production promotions are dispatched by `.github/workflows/promote-manifest-nonprod.yml` on pushes to `testing` and `staging`. The workflow resolves deployable apps via `pnpm nx show projects --withTarget docker:build --json`, resolves each app's digest from `ghcr.io/ethio-connect-et/<app>:<branch>`, validates against `DIGEST_REGEX`, and dispatches `promote-image` to `ethio-connect-et/ethio-connect-manifest` with branch-specific concurrency and exponential-backoff retries.
+
 ## Dispatch Event Schema
 
 Repository target: `ethio-connect-et/ethio-connect-manifest`.
