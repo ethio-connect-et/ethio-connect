@@ -36,6 +36,8 @@ jobs:
     outputs:
       version: ${{ steps.context.outputs.version }}
       prerelease: ${{ steps.context.outputs.prerelease }}
+      short_sha: ${{ steps.release-metadata.outputs.short_sha }}
+      docker_version: ${{ steps.release-metadata.outputs.docker_version }}
     permissions:
       contents: write
       packages: write
@@ -117,27 +119,6 @@ jobs:
           echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
           echo "docker_version=$docker_version" >> "$GITHUB_OUTPUT"
 
-
-      - name: Validate immutable digest artifacts and manifest PR contract
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          short_sha="${{ steps.release-metadata.outputs.short_sha }}"
-          manifest_branch="production"
-          apps="$(pnpm nx show projects --withTarget docker:build --json | jq -r '.[]')"
-          while IFS= read -r project; do
-            [[ -z "$project" ]] && continue
-            app="${project#@ethio-connect/}"
-            digest_ref="ghcr.io/ethio-connect-et/${app}@sha256:"
-            if ! gh api -H "Accept: application/vnd.github+json" "/repos/${{ github.repository }}/pulls?state=all&base=main&per_page=100" | jq -e --arg app "$app" --arg branch "$manifest_branch" '.[] | select(((.title // "") | test($app)) and (((.body // "") | test($branch))))' >/dev/null; then
-              echo "::error::Missing manifest promotion PR evidence for app ${app} and branch ${manifest_branch}."
-              exit 1
-            fi
-            echo "Validated release artifact contract for ${digest_ref}<64hex>"
-          done <<< "$apps"
-
       - name: Authenticate with GitHub Container Registry
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
         with:
@@ -164,6 +145,52 @@ jobs:
             echo "Publishing release group: $group"
             pnpm nx release publish --groups "$group" --yes
           done
+
+      - name: Build release evidence attestation
+        id: attestation
+        shell: bash
+        run: |
+          set -euo pipefail
+          source scripts/manifest-dispatch.sh
+          version="${{ steps.context.outputs.version }}"
+          docker_version="${{ steps.release-metadata.outputs.docker_version }}"
+          short_sha="${{ steps.release-metadata.outputs.short_sha }}"
+          apps_json='[]'
+          while IFS= read -r project; do
+            [[ -z "$project" ]] && continue
+            app="${project#@ethio-connect/}"
+            image_ref="${REGISTRY_PREFIX}/${app}:${docker_version}"
+            digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest}}' | jq -r '.digest')"
+            [[ "$digest" =~ $DIGEST_REGEX ]] || { echo "::error::Invalid digest for ${app}: ${digest}"; exit 1; }
+            apps_json="$(jq -c --arg app "$app" --arg digest "$digest" '. + [{app:$app,digest:$digest}]' <<<"$apps_json")"
+          done < <(resolve_apps_with_docker_target)
+
+          jq -n \
+            --arg version "$version" \
+            --arg docker_version "$docker_version" \
+            --arg release_sha "$GITHUB_SHA" \
+            --arg short_sha "$short_sha" \
+            --arg tag_ref "${GITHUB_REF}" \
+            --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg env "production" \
+            --argjson apps "$apps_json" \
+            '{
+              version:$version,
+              docker_version:$docker_version,
+              release_sha:$release_sha,
+              short_sha:$short_sha,
+              tag_ref:$tag_ref,
+              env:$env,
+              generated_at:$generated_at,
+              apps:$apps
+            }' > promotion-attestation.json
+          echo "path=promotion-attestation.json" >> "$GITHUB_OUTPUT"
+
+      - name: Upload promotion attestation artifact
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: promotion-attestation
+          path: ${{ steps.attestation.outputs.path }}
 
       - name: Generate release changelog from git history
         id: changelog
@@ -227,64 +254,59 @@ jobs:
     if: ${{ always() && needs.release_publish.result == 'success' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with:
           fetch-depth: 1
 
-      - name: Gather image digests
-        id: digests
+      - name: Validate workflow contract markers
         shell: bash
         run: |
           set -euo pipefail
-          {
-            echo "apps=customer-portal,central-hub,vendor-portal"
-            echo "customer-portal_digest=sha256:EXAMPLE1"
-            echo "central-hub_digest=sha256:EXAMPLE2"
-            echo "vendor-portal_digest=sha256:EXAMPLE3"
-          } >> "$GITHUB_OUTPUT"
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+          rg -n 'sha256:[0-9a-f]{64}' scripts/manifest-dispatch.sh
 
-      - name: Dispatch promotion event(s) to manifest repo
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPS: ${{ steps.digests.outputs.apps }}
-          CUSTOMER_PORTAL_DIGEST: ${{ steps.digests.outputs.customer-portal_digest }}
-          CENTRAL_HUB_DIGEST: ${{ steps.digests.outputs.central-hub_digest }}
-          VENDOR_PORTAL_DIGEST: ${{ steps.digests.outputs.vendor-portal_digest }}
-        run: |
-          set -euo pipefail
-          IFS=',' read -ra ADDR <<< "$APPS"
-          for app in "${ADDR[@]}"; do
-            case "$app" in
-              customer-portal) digest="$CUSTOMER_PORTAL_DIGEST" ;;
-              central-hub)     digest="$CENTRAL_HUB_DIGEST" ;;
-              vendor-portal)   digest="$VENDOR_PORTAL_DIGEST" ;;
-              *) echo "::error::Unknown app: $app"; exit 1 ;;
-            esac
-            env_name="production"
-            gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
-              -H "Accept: application/vnd.github+json" \
-              -f event_type=promote-image \
-              -f "client_payload={\"app\":\"$app\",\"digest\":\"$digest\",\"env\":\"$env_name\"}"
-          done
+      - name: Authenticate with GitHub Container Registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Emit promotion attestation artifact
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat <<EOF > promotion-attestation.json
-          {
-            "version": "${{ needs.release_publish.outputs.version }}",
-            "apps": [
-              {"name": "customer-portal", "digest": "${{ steps.digests.outputs.customer-portal_digest }}"},
-              {"name": "central-hub", "digest": "${{ steps.digests.outputs.central-hub_digest }}"},
-              {"name": "vendor-portal", "digest": "${{ steps.digests.outputs.vendor-portal_digest }}"}
-            ],
-            "env": "production"
-          }
-          EOF
 
-      - name: Upload attestation artifact
-        uses: actions/upload-artifact@v4
+      - name: Download promotion attestation artifact
+        uses: actions/download-artifact@95815c38cf65f14a6c5cae202f3b0f9b651f1f59
         with:
           name: promotion-attestation
-          path: promotion-attestation.json
+
+      - name: Resolve, verify and dispatch manifest promotions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.release_publish.outputs.version }}
+          DOCKER_VERSION: ${{ needs.release_publish.outputs.docker_version }}
+          RELEASE_SHA: ${{ github.sha }}
+          SHORT_SHA: ${{ needs.release_publish.outputs.short_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          source scripts/manifest-dispatch.sh
+
+          jq -e --arg version "$VERSION" --arg docker_version "$DOCKER_VERSION" --arg sha "$RELEASE_SHA" --arg short_sha "$SHORT_SHA" '
+            .version == $version and
+            .docker_version == $docker_version and
+            .release_sha == $sha and
+            .short_sha == $short_sha and
+            .env == "production" and
+            (.apps | type == "array" and length > 0 and all(.[]; has("app") and has("digest") and (.digest | test("^sha256:[0-9a-f]{64}$"))))
+          ' promotion-attestation.json >/dev/null
+
+          while IFS= read -r item; do
+            app="$(jq -r '.app' <<< "$item")"
+            digest="$(jq -r '.digest' <<< "$item")"
+            verify_release_digest "$app" "$digest" "$DOCKER_VERSION" "$RELEASE_SHA" "$VERSION"
+            payload="$(build_dispatch_payload "$app" "$digest" "production")"
+            gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
+              -H "Accept: application/vnd.github+json" \
+              --method POST \
+              --input - <<<"$payload"
+          done < <(jq -c '.apps[]' promotion-attestation.json)
