@@ -1,0 +1,104 @@
+name: Promote Manifest (Non-Prod)
+
+on:
+  push:
+    branches:
+      - testing
+      - staging
+
+concurrency:
+  group: promote-manifest-nonprod-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  dispatch_to_manifest_nonprod:
+    name: Manifest · Dispatch (Non-Prod)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          fetch-depth: 1
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.17.0'
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.20.0'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Resolve, validate, and dispatch non-prod manifest promotions
+        env:
+          GH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
+          MANIFEST_REPOSITORY_DISPATCH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
+          PROMOTED_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          source scripts/manifest-dispatch.sh
+
+          projects_json="$(pnpm nx show projects --withTarget docker:build --json)"
+          projects="$(jq -r '.[]' <<< "$projects_json")"
+          validate_dispatch_preconditions "${{ github.ref_name }}" "$projects"
+
+          target_env="$(map_source_to_target_env "${{ github.ref_name }}")"
+
+          {
+            echo "## Manifest Dispatch (Non-Prod)"
+            echo ""
+            echo "| App | Source Branch | Source Image | Digest | Target Env |"
+            echo "|---|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          dispatch_with_retry() {
+            local payload="$1"
+            local max_attempts=5
+            local attempt=1
+            local delay_seconds=2
+
+            while (( attempt <= max_attempts )); do
+              if gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
+                --method POST \
+                -H "Accept: application/vnd.github+json" \
+                --input - <<<"$payload"; then
+                return 0
+              fi
+
+              if (( attempt == max_attempts )); then
+                echo "::error::repository_dispatch failed after ${max_attempts} attempts"
+                return 1
+              fi
+
+              echo "::warning::repository_dispatch attempt ${attempt}/${max_attempts} failed; retrying in ${delay_seconds}s"
+              sleep "$delay_seconds"
+              delay_seconds=$(( delay_seconds * 2 ))
+              attempt=$(( attempt + 1 ))
+            done
+          }
+
+          while IFS= read -r project; do
+            [[ -z "$project" ]] && continue
+            app="${project#@ethio-connect/}"
+            image_ref="ghcr.io/ethio-connect-et/${app}:${PROMOTED_TAG}"
+
+            digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+            [[ "$digest" =~ $DIGEST_REGEX ]] || {
+              echo "::error::Invalid digest for ${image_ref}: ${digest}"
+              exit 1
+            }
+
+            payload="$(build_dispatch_payload "$app" "$digest" "$target_env")"
+            dispatch_with_retry "$payload"
+
+            echo "| \`${app}\` | \`${{ github.ref_name }}\` | \`${image_ref}\` | \`${digest}\` | \`${target_env}\` |" >> "$GITHUB_STEP_SUMMARY"
+          done <<< "$projects"

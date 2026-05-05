@@ -10,6 +10,8 @@ Contract marker: `testing|staging|main -> testing|staging|production`
 | `staging`     | `staging`       | `ghcr.io/ethio-connect-et/<app>@sha256:<64hex>` |
 | `main`        | `production`    | `ghcr.io/ethio-connect-et/<app>@sha256:<64hex>` |
 
+Non-production promotions are dispatched by `.github/workflows/promote-manifest-nonprod.yml` on pushes to `testing` and `staging`. The workflow resolves deployable apps via `pnpm nx show projects --withTarget docker:build --json`, resolves each app's digest from `ghcr.io/ethio-connect-et/<app>:<branch>`, validates against `DIGEST_REGEX`, and dispatches `promote-image` to `ethio-connect-et/ethio-connect-manifest` with branch-specific concurrency and exponential-backoff retries.
+
 ## Dispatch Event Schema
 
 Repository target: `ethio-connect-et/ethio-connect-manifest`.
@@ -28,8 +30,14 @@ Event type: `promote-image`
     "source_commit": "<40-hex-sha>",
     "release_id": "<github-run-id>",
     "release_created_at": "2006-01-02T15:04:05Z",
-    "signed_metadata": "<opaque-string>",
-    "attestation_bundle": "{\"digest\":\"sha256:...\",\"source_commit\":\"...\",\"source_ref\":\"...\",\"release_id\":\"...\",\"release_created_at\":\"...\"}"
+    "signed_metadata": {
+      "signature_algorithm": "ecdsa-p256-sha256",
+      "key_id": "sigstore:github-actions-keyless",
+      "cert_chain": ["<base64-leaf-cert-pem>"],
+      "signature": "<base64-signature>",
+      "canonical_payload": "{\"app\":\"...\",\"digest\":\"sha256:...\",...}"
+    },
+    "attestation_bundle": "{\"app\":\"...\",\"digest\":\"sha256:...\",\"release_id\":\"...\",...}"
   }
 }
 ```

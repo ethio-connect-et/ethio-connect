@@ -6,6 +6,8 @@ TARGET_BRANCH="development"
 REPO_HTTPS="https://github.com/ethio-connect-et/ethio-connect.git"
 
 # Step 1: Ensure remote is accessible
+bash ./scripts/sync-contract-docs.sh
+
 if ! git ls-remote "$REPO_HTTPS" &>/dev/null; then
   echo "ERROR: Cannot access remote repository $REPO_HTTPS. Check network or credentials."
   exit 1
@@ -25,7 +27,7 @@ fi
 CURRENT=$(cat "$VERSION_FILE")
 
 # Step 4: Increment
-NEXT=$((CURRENT + 1))
+NEXT=$((CURRENT + 10))
 echo "$NEXT" > "$VERSION_FILE"
 
 # Step 5: Stage changes

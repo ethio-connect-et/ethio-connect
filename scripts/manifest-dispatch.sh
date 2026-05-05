@@ -1,24 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly REQUIRED_ENVS_REGEX='^(testing|staging|main)$'
-readonly TARGET_ENVS_REGEX='^(testing|staging|production)$'
-readonly DIGEST_REGEX='^sha256:[0-9a-f]{64}$'
-readonly APP_REGEX='^[a-z0-9][a-z0-9-]*$'
-readonly MANIFEST_REPO='ethio-connect-et/ethio-connect-manifest'
-readonly REGISTRY_PREFIX='ghcr.io/ethio-connect-et'
+readonly CONTRACT_FILE="$(dirname "${BASH_SOURCE[0]}")/../.github/contracts/promote-image.contract.json"
+readonly REQUIRED_ENVS_REGEX="$(jq -r '.regexes.required_envs' "$CONTRACT_FILE")"
+readonly TARGET_ENVS_REGEX="$(jq -r '.regexes.target_envs' "$CONTRACT_FILE")"
+readonly DIGEST_REGEX="$(jq -r '.regexes.digest' "$CONTRACT_FILE")"
+readonly APP_REGEX="$(jq -r '.regexes.app' "$CONTRACT_FILE")"
+readonly MANIFEST_REPO="$(jq -r '.manifest_repo' "$CONTRACT_FILE")"
+readonly REGISTRY_PREFIX="$(jq -r '.registry_prefix' "$CONTRACT_FILE")"
+readonly IDP_LOOKBACK_DAYS="$(jq -r '.idp_lookback_days' "$CONTRACT_FILE")"
+
+build_canonical_json() {
+  jq -cS .
+}
 
 map_source_to_target_env() {
   local source_env="$1"
-  case "$source_env" in
-    testing) echo testing ;;
-    staging) echo staging ;;
-    main) echo production ;;
-    *)
-      echo "Unsupported source environment: ${source_env}" >&2
-      return 1
-      ;;
-  esac
+  local target_env
+  target_env="$(jq -r --arg env "$source_env" '.env_mapping[$env] // empty' "$CONTRACT_FILE")"
+  if [[ -n "$target_env" ]]; then
+    echo "$target_env"
+  else
+    echo "Unsupported source environment: ${source_env}" >&2
+    return 1
+  fi
 }
 
 resolve_apps_with_docker_target() {
@@ -61,7 +66,7 @@ build_dispatch_payload() {
   local source_commit="${6:-${GITHUB_SHA:-$(git rev-parse HEAD)}}"
   local release_id="${7:-${GITHUB_RUN_ID:-123456789}}"
   local release_created_at="${8:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
-  local signed_metadata="${9:-dummy_signature}"
+  local signed_metadata="${9:-}"
   
   local default_attestation
   default_attestation="$(jq -nc \
@@ -70,13 +75,22 @@ build_dispatch_payload() {
     --arg source_ref "$source_ref" \
     --arg release_id "$release_id" \
     --arg release_created_at "$release_created_at" \
-    '{digest:$digest, source_commit:$source_commit, source_ref:$source_ref, release_id:$release_id, release_created_at:$release_created_at}')"
+    '{digest:$digest, source_commit:$source_commit, source_ref:$source_ref, release_id:$release_id, release_created_at:$release_created_at}' | build_canonical_json)"
     
   local attestation_bundle="${10:-$default_attestation}"
+
+  [[ -n "$signed_metadata" ]] || { echo "signed_metadata is required and must be a structured JSON object" >&2; return 1; }
+  jq -e 'type == "object" and (.signature_algorithm|type=="string" and length>0) and (.key_id|type=="string" and length>0) and (.cert_chain|type=="array" and length>0) and (.signature|type=="string" and length>0) and (.canonical_payload|type=="string" and length>0)' >/dev/null <<<"$signed_metadata" || {
+    echo "signed_metadata must include signature_algorithm, key_id, cert_chain[], signature, canonical_payload" >&2
+    return 1
+  }
 
   [[ "$app" =~ $APP_REGEX ]] || { echo "Invalid app name: ${app}" >&2; return 1; }
   [[ "$digest" =~ $DIGEST_REGEX ]] || { echo "Invalid digest: ${digest}" >&2; return 1; }
   [[ "$target_env" =~ $TARGET_ENVS_REGEX ]] || { echo "Invalid target env: ${target_env}" >&2; return 1; }
+
+  local promotion_key
+  promotion_key="$(build_promotion_key "$app" "$digest" "$target_env")"
 
   local payload
   payload="$(jq -nc \
@@ -88,7 +102,8 @@ build_dispatch_payload() {
     --arg source_commit "$source_commit" \
     --arg release_id "$release_id" \
     --arg release_created_at "$release_created_at" \
-    --arg signed_metadata "$signed_metadata" \
+    --arg promotion_key "$promotion_key" \
+    --argjson signed_metadata "$signed_metadata" \
     --arg attestation_bundle "$attestation_bundle" \
     '{
       event_type:"promote-image",
@@ -101,6 +116,7 @@ build_dispatch_payload() {
         source_commit:$source_commit,
         release_id:$release_id,
         release_created_at:$release_created_at,
+        promotion_key:$promotion_key,
         signed_metadata:$signed_metadata,
         attestation_bundle:$attestation_bundle
       }
@@ -112,6 +128,57 @@ build_dispatch_payload() {
   fi
 
   echo "$payload"
+}
+
+build_promotion_key() {
+  local app="$1"
+  local digest="$2"
+  local target_env="$3"
+
+  [[ "$app" =~ $APP_REGEX ]] || { echo "Invalid app name: ${app}" >&2; return 1; }
+  [[ "$digest" =~ $DIGEST_REGEX ]] || { echo "Invalid digest: ${digest}" >&2; return 1; }
+  [[ "$target_env" =~ $TARGET_ENVS_REGEX ]] || { echo "Invalid target env: ${target_env}" >&2; return 1; }
+
+  jq -nc --arg app "$app" --arg digest "$digest" --arg env "$target_env" \
+    '{app:$app,digest:$digest,env:$env}' \
+    | sha256sum | awk '{print $1}'
+}
+
+is_promotion_already_processed() {
+  local promotion_key="$1"
+  local since
+  since="$(date -u -d "${IDP_LOOKBACK_DAYS} days ago" +%Y-%m-%dT%H:%M:%SZ)"
+
+  local query
+  query="${since} ${promotion_key}"
+
+  local matches
+  matches="$(gh api -X GET "/search/commits" \
+    -H "Accept: application/vnd.github.cloak-preview+json" \
+    -f q="repo:${MANIFEST_REPO} ${query}" \
+    --jq '.total_count')"
+
+  [[ "${matches:-0}" =~ ^[0-9]+$ ]] || matches=0
+  if (( matches > 0 )); then
+    return 0
+  fi
+
+  local runs_count
+  runs_count="$(gh api -X GET "/repos/${MANIFEST_REPO}/actions/runs" \
+    -f event="repository_dispatch" \
+    -f per_page=100 \
+    --jq --arg key "$promotion_key" --arg since "$since" '[.workflow_runs[] | select(.created_at >= $since and ((.display_title // "") | contains($key) or (.name // "") | contains($key)))] | length')"
+  [[ "${runs_count:-0}" =~ ^[0-9]+$ ]] || runs_count=0
+  (( runs_count > 0 )) && return 0
+
+  local artifacts_count
+  artifacts_count="$(gh api -X GET "/repos/${MANIFEST_REPO}/actions/artifacts" \
+    -f per_page=100 \
+    --jq --arg key "$promotion_key" --arg since "$since" '[.artifacts[] | select(.created_at >= $since and ((.name // "") | contains($key)))] | length')"
+  [[ "${artifacts_count:-0}" =~ ^[0-9]+$ ]] || artifacts_count=0
+  (( artifacts_count > 0 )) && return 0
+
+  return 1
 }
 
 
