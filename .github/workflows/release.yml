@@ -262,15 +262,11 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Install ripgrep and validate workflow contract markers
+      - name: Validate workflow contract markers
         shell: bash
         run: |
           set -euo pipefail
-          if ! command -v rg &>/dev/null; then
-            sudo apt-get update -qq
-            sudo apt-get install -y --no-install-recommends ripgrep
-          fi
-          rg -n 'sha256:[0-9a-f]{64}' scripts/manifest-dispatch.sh
+          grep -En 'sha256:[0-9a-f]{64}' scripts/manifest-dispatch.sh
 
       - name: Authenticate with GitHub Container Registry
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
