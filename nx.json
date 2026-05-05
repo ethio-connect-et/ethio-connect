@@ -112,6 +112,9 @@
         },
         "runTarget": {
           "name": "docker:run"
+        },
+        "nx-release-publish": {
+          "imageTag": "${VERSION}"
         }
       }
     }
@@ -214,6 +217,16 @@
         "{projectRoot}/Dockerfile"
       ],
       "outputs": ["{workspaceRoot}/dist/containers/{projectName}"]
+    },
+    "docker:build": {
+      "dependsOn": ["build", "prune"]
+    },
+    "@nx/docker:release-publish": {
+      "dependsOn": ["docker:build"],
+      "cache": false,
+      "options": {
+        "quiet": false
+      }
     }
   },
   "release": {
