@@ -86,7 +86,7 @@ jobs:
             local delay_seconds=2
 
             while (( attempt <= max_attempts )); do
-              if GH_TOKEN="$MANIFEST_REPOSITORY_DISPATCH_TOKEN" gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
+              if GH_TOKEN="$MANIFEST_REPOSITORY_DISPATCH_TOKEN" gh api "repos/${MANIFEST_REPO}/dispatches" \
                 --method POST \
                 -H "Accept: application/vnd.github+json" \
                 --input - <<<"$payload"; then
