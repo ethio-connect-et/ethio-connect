@@ -1,0 +1,44 @@
+name: Setup Nx + Node + pnpm
+
+description: Checkout source, setup pnpm/node, and perform deterministic dependency install.
+
+inputs:
+  node-version:
+    description: Node.js version to install.
+    required: false
+    default: '24.11.0'
+  pnpm-version:
+    description: pnpm version to install.
+    required: false
+    default: '10.20.0'
+  checkout-fetch-depth:
+    description: actions/checkout fetch-depth.
+    required: false
+    default: '0'
+  checkout-filter:
+    description: actions/checkout filter.
+    required: false
+    default: 'tree:0'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      with:
+        fetch-depth: ${{ inputs.checkout-fetch-depth }}
+        filter: ${{ inputs.checkout-filter }}
+
+    - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+      with:
+        version: ${{ inputs.pnpm-version }}
+        run_install: false
+
+    - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+        cache-dependency-path: pnpm-lock.yaml
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline

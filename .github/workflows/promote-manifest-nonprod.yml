@@ -12,8 +12,9 @@ concurrency:
 
 env:
   CI: true
-  NODE_VERSION: '22.20.0'
+  NODE_VERSION: '24.11.0'
   PNPM_VERSION: '10.20.0'
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   DOCKER_BUILDKIT: 1
 
 jobs:
@@ -25,23 +26,11 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-        with:
-          fetch-depth: 1
-
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with:
-          version: ${{ env.PNPM_VERSION }}
-          run_install: false
-
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+      - uses: ./.github/actions/setup-nx-node
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          checkout-fetch-depth: '1'
 
       - name: Log in to GHCR
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
@@ -130,3 +119,23 @@ jobs:
 
             echo "| \`${app}\` | \`${{ github.ref_name }}\` | \`${image_ref}\` | \`${digest}\` | \`${target_env}\` |" >> "$GITHUB_STEP_SUMMARY"
           done <<< "$projects"
+
+      - name: Create non-prod promotion evidence artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          jq -n \
+            --arg ref_name "${{ github.ref_name }}" \
+            --arg sha "${GITHUB_SHA}" \
+            --arg run_id "${{ github.run_id }}" \
+            --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{ref_name:$ref_name,sha:$sha,run_id:$run_id,generated_at:$generated_at}' \
+            > artifacts/nonprod-promotion-evidence-${{ github.ref_name }}-${{ github.run_id }}.json
+
+      - name: Upload non-prod promotion evidence artifact
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: nonprod-promotion-evidence-${{ github.ref_name }}-${{ github.run_id }}
+          path: artifacts/nonprod-promotion-evidence-${{ github.ref_name }}-${{ github.run_id }}.json
+          retention-days: 30
