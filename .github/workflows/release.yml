@@ -251,19 +251,25 @@ jobs:
     name: Promote to Manifest Repo
     needs: release_publish
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ always() && needs.release_publish.result == 'success' }}
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Checkout
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with:
           fetch-depth: 1
 
-      - name: Validate workflow contract markers
+      - name: Install ripgrep and validate workflow contract markers
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y ripgrep
+          if ! command -v rg &>/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ripgrep
+          fi
           rg -n 'sha256:[0-9a-f]{64}' scripts/manifest-dispatch.sh
 
       - name: Authenticate with GitHub Container Registry
@@ -273,7 +279,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-
       - name: Download promotion attestation artifact
         uses: actions/download-artifact@95815c38cf65f14a6c5cae202f3b0f9b651f1f59
         with:
@@ -281,17 +286,20 @@ jobs:
 
       - name: Resolve, verify and dispatch manifest promotions
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.release_publish.outputs.version }}
-          DOCKER_VERSION: ${{ needs.release_publish.outputs.docker_version }}
-          RELEASE_SHA: ${{ github.sha }}
-          SHORT_SHA: ${{ needs.release_publish.outputs.short_sha }}
+          # MANIFEST_REPOSITORY_DISPATCH_TOKEN is required: GITHUB_TOKEN cannot
+          # trigger repository_dispatch events in a different repository.
+          GH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
+          MANIFEST_REPOSITORY_DISPATCH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
+          release_version: ${{ needs.release_publish.outputs.version }}
+          docker_version: ${{ needs.release_publish.outputs.docker_version }}
+          release_sha: ${{ github.sha }}
+          short_sha: ${{ needs.release_publish.outputs.short_sha }}
         shell: bash
         run: |
           set -euo pipefail
           source scripts/manifest-dispatch.sh
 
-          jq -e --arg version "$VERSION" --arg docker_version "$DOCKER_VERSION" --arg sha "$RELEASE_SHA" --arg short_sha "$SHORT_SHA" '
+          jq -e --arg version "$release_version" --arg docker_version "$docker_version" --arg sha "$release_sha" --arg short_sha "$short_sha" '
             .version == $version and
             .docker_version == $docker_version and
             .release_sha == $sha and
@@ -303,7 +311,7 @@ jobs:
           while IFS= read -r item; do
             app="$(jq -r '.app' <<< "$item")"
             digest="$(jq -r '.digest' <<< "$item")"
-            verify_release_digest "$app" "$digest" "$DOCKER_VERSION" "$RELEASE_SHA" "$VERSION"
+            verify_release_digest "$app" "$digest" "$docker_version" "$release_sha" "$release_version"
             payload="$(build_dispatch_payload "$app" "$digest" "production")"
             gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
               -H "Accept: application/vnd.github+json" \
