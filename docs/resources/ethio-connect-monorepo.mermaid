@@ -1,51 +1,47 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '20px', 'fontFamily': 'arial' }, 'flowchart': {'nodeSpacing': 50, 'rankSpacing': 50}}}%%
 graph TD
     subgraph "Workspace Root"
         direction LR
         subgraph "Nx Monorepo (ethio-connect)"
             direction TB
             subgraph "Apps"
-                A[vendor-portal]
-                B[central-hub]
-                C[customer-portal]
+                A[vendor-portal-dashboard]
+                B[central-hub-dashboard]
+                C[customer-portal-dashboard]
+                D[central-hub-api]
+                E[customer-portal-api]
+                F[vendor-api-server]
             end
 
             subgraph "Libs"
-                D[api-common]
-                E[api-features]
-                F[ethioconnect]
-                G[frontend-features]
-                H[ui-components]
+                G[api-common]
+                H[api-features]
+                I[ethioconnect]
+                J[frontend-features]
+                K[ui-components]
             end
 
             subgraph "CI/CD Pipeline (GitHub Actions)"
                 CI_Main("ci.yml - Orchestrator") --> CI_Build("reusable-build-test-lint.yml")
                 CI_Main --> CI_Publish("reusable-container-publish.yml")
-                CI_Main --> CI_Security("Security Scans")
-                CI_Main --> CI_Dispatch("Manifest Dispatch")
             end
 
             CI_Build -->|Lint, Test, Build| GHCR["GHCR (Container Registry)"]
             CI_Publish -->|Build & Push Images| GHCR["GHCR (Container Registry)"]
 
-            A & B & C -->|s17| D & E & F & G & H
+            A & B & C & D & E & F -->|depends on| G & H & I & J & K
         end
 
         subgraph "DevOps & Workflows"
-            SC("Source Control - GitHub") -->|s18| CI_Main
-            CI_Dispatch -->|s19| GR["GitOps Repo (ethio-connect-manifest)"]
-            GHCR["GHCR (Container Registry)"] -->|s20| GR["GitOps Repo (ethio-connect-manifest)"]
-            GR["GitOps Repo (ethio-connect-manifest)"] -->|s21| ArgoCD("ArgoCD Orchestrator")
+            SC("Source Control - GitHub") --> CI_Main
+            CI_Publish -->|Updates| GR["GitOps Repo (ethio-connect-manifest)"]
+            GHCR -->|Deployment Image| GR
+            GR --> ArgoCD("ArgoCD Orchestrator")
         end
     end
 
     subgraph "Deployment Environments"
-        direction LR
-        ArgoCD -->|s22| P_Cluster["Production Cluster (Isolated)"]
-        ArgoCD -->|s23| D_Cluster["Development Cluster (Shared Infra)"]
-
-        D_Cluster -->|s24| T_vCluster("testing-env-vcluster")
-        D_Cluster -->|s25| S_vCluster("staging-env-vcluster")
+        direction TB
+        ArgoCD --> P_Cluster["Production Cluster"]
+        ArgoCD --> D_Cluster["Development Cluster"]
     end
-
-    P_Cluster -->|s26| Rancher_Prod[Rancher]
-    D_Cluster -->|s27| Rancher_Dev[Rancher]
