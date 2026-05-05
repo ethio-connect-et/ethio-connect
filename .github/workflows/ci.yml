@@ -171,21 +171,13 @@ jobs:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with:
           fetch-depth: 1
-      - name: Install ripgrep
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! command -v rg &>/dev/null; then
-            sudo apt-get update -qq
-            sudo apt-get install -y --no-install-recommends ripgrep
-          fi
       - name: Validate workflow contract markers
         shell: bash
         run: |
           set -euo pipefail
-          rg -n 'testing\|staging\|main -\> testing\|staging\|production' .github/workflows/README.md
-          rg -n 'ethio-connect-et/ethio-connect-manifest' .github/workflows/ci.yml
-          rg -n 'ghcr.io/ethio-connect-et/.+@sha256:' .github/workflows/README.md
+          grep -En 'testing\|staging\|main -> testing\|staging\|production' .github/workflows/README.md
+          grep -En 'ethio-connect-et/ethio-connect-manifest' .github/workflows/ci.yml
+          grep -En 'ghcr.io/ethio-connect-et/.+@sha256:' .github/workflows/README.md
 
   security_sast:
     name: Security · SAST
