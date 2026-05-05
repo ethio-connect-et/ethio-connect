@@ -44,7 +44,13 @@
     },
     "signed_metadata": {
       "type": "object",
-      "required": ["signature_algorithm", "key_id", "cert_chain", "signature", "canonical_payload"],
+      "required": [
+        "signature_algorithm",
+        "key_id",
+        "cert_chain",
+        "signature",
+        "canonical_payload"
+      ],
       "properties": {
         "signature_algorithm": { "type": "string", "minLength": 1 },
         "key_id": { "type": "string", "minLength": 1 },

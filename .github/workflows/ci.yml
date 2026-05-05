@@ -177,6 +177,17 @@ jobs:
           set -euo pipefail
           scripts/validate-workflow-contract.sh
 
+      - name: Enforce contract docs drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/sync-contract-docs.sh
+          if [[ -n "$(git status --porcelain README.md)" ]]; then
+            echo "::error::Contract documentation in README.md is out of sync. Please run scripts/sync-contract-docs.sh locally and commit the result."
+            git diff README.md
+            exit 1
+          fi
+
   security_sast:
     name: Security · SAST
     needs: [governance_branch_policy]

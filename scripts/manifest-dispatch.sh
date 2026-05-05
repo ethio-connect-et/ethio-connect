@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly REQUIRED_ENVS_REGEX='^(testing|staging|main)$'
-readonly TARGET_ENVS_REGEX='^(testing|staging|production)$'
-readonly DIGEST_REGEX='^sha256:[0-9a-f]{64}$'
-readonly APP_REGEX='^[a-z0-9][a-z0-9-]*$'
-readonly MANIFEST_REPO='ethio-connect-et/ethio-connect-manifest'
-readonly REGISTRY_PREFIX='ghcr.io/ethio-connect-et'
-readonly IDP_LOOKBACK_DAYS='14'
+readonly CONTRACT_FILE="$(dirname "${BASH_SOURCE[0]}")/../.github/contracts/promote-image.contract.json"
+readonly REQUIRED_ENVS_REGEX="$(jq -r '.regexes.required_envs' "$CONTRACT_FILE")"
+readonly TARGET_ENVS_REGEX="$(jq -r '.regexes.target_envs' "$CONTRACT_FILE")"
+readonly DIGEST_REGEX="$(jq -r '.regexes.digest' "$CONTRACT_FILE")"
+readonly APP_REGEX="$(jq -r '.regexes.app' "$CONTRACT_FILE")"
+readonly MANIFEST_REPO="$(jq -r '.manifest_repo' "$CONTRACT_FILE")"
+readonly REGISTRY_PREFIX="$(jq -r '.registry_prefix' "$CONTRACT_FILE")"
+readonly IDP_LOOKBACK_DAYS="$(jq -r '.idp_lookback_days' "$CONTRACT_FILE")"
 
 build_canonical_json() {
   jq -cS .
@@ -15,15 +16,14 @@ build_canonical_json() {
 
 map_source_to_target_env() {
   local source_env="$1"
-  case "$source_env" in
-    testing) echo testing ;;
-    staging) echo staging ;;
-    main) echo production ;;
-    *)
-      echo "Unsupported source environment: ${source_env}" >&2
-      return 1
-      ;;
-  esac
+  local target_env
+  target_env="$(jq -r --arg env "$source_env" '.env_mapping[$env] // empty' "$CONTRACT_FILE")"
+  if [[ -n "$target_env" ]]; then
+    echo "$target_env"
+  else
+    echo "Unsupported source environment: ${source_env}" >&2
+    return 1
+  fi
 }
 
 resolve_apps_with_docker_target() {
