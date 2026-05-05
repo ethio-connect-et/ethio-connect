@@ -32,7 +32,7 @@ env:
 
 jobs:
   build_publish:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
       version: ${{ steps.context.outputs.version }}
@@ -83,7 +83,6 @@ jobs:
             echo "::error::Releases are only allowed from commits reachable from origin/main. Tagged commit: $GITHUB_SHA"
             exit 1
           fi
-
 
       - name: Resolve release metadata
         id: release-metadata
