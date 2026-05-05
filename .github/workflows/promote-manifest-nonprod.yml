@@ -10,6 +10,12 @@ concurrency:
   group: promote-manifest-nonprod-${{ github.ref_name }}
   cancel-in-progress: false
 
+env:
+  CI: true
+  NODE_VERSION: '22.20.0'
+  PNPM_VERSION: '10.20.0'
+  DOCKER_BUILDKIT: 1
+
 jobs:
   dispatch_to_manifest_nonprod:
     name: Manifest · Dispatch (Non-Prod)
@@ -30,12 +36,19 @@ jobs:
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
-          node-version: '22.20.0'
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Log in to GHCR
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Resolve, validate, and dispatch non-prod manifest promotions
         env:

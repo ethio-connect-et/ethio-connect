@@ -409,6 +409,13 @@ jobs:
       - name: Install dependencies
         run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
 
+      - name: Log in to GHCR
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Dispatch promoted images to manifest repository
         env:
           GH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
