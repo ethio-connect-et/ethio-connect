@@ -1,51 +1,49 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '24px', 'fontFamily': 'arial', 'primaryColor': '#e1f5fe', 'edgeLabelBackground':'#ffffff' }, 'flowchart': {'nodeSpacing': 70, 'rankSpacing': 70}}}%%
 graph TD
+    classDef app fill:#e3f2fd,stroke:#1565c0,stroke-width:3px,font-weight:bold;
+    classDef lib fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,stroke-dasharray: 5 5;
+    classDef ci fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
+    classDef infra fill:#eceff1,stroke:#546e7a,stroke-width:4px;
+
     subgraph "Workspace Root"
         direction LR
         subgraph "Nx Monorepo (ethio-connect)"
             direction TB
             subgraph "Apps"
-                A[vendor-portal]
-                B[central-hub]
-                C[customer-portal]
+                A[vendor-portal-dashboard]:::app
+                B[central-hub-dashboard]:::app
+                C[customer-portal-dashboard]:::app
+                D[central-hub-api]:::app
+                E[customer-portal-api]:::app
+                F[vendor-api-server]:::app
             end
 
             subgraph "Libs"
-                D[api-common]
-                E[api-features]
-                F[ethioconnect]
-                G[frontend-features]
-                H[ui-components]
+                G[api-common]:::lib
+                H[api-features]:::lib
+                I[ethioconnect]:::lib
+                J[frontend-features]:::lib
+                K[ui-components]:::lib
             end
 
-            subgraph "CI/CD Pipeline (GitHub Actions)"
-                CI_Main("ci.yml - Orchestrator") --> CI_Build("reusable-build-test-lint.yml")
-                CI_Main --> CI_Publish("reusable-container-publish.yml")
-                CI_Main --> CI_Security("Security Scans")
-                CI_Main --> CI_Dispatch("Manifest Dispatch")
+            subgraph "CI/CD"
+                CI_Main("ci.yml"):::ci
+                CI_Build("reusable-build-test-lint.yml"):::ci
+                CI_Publish("reusable-container-publish.yml"):::ci
             end
 
-            CI_Build -->|Lint, Test, Build| GHCR["GHCR (Container Registry)"]
-            CI_Publish -->|Build & Push Images| GHCR["GHCR (Container Registry)"]
+            CI_Main --> CI_Build
+            CI_Main --> CI_Publish
+            CI_Build -->|Builds| GHCR["GHCR (Container Registry)"]:::infra
+            CI_Publish -->|Publishes| GHCR
 
-            A & B & C -->|s17| D & E & F & G & H
+            A & B & C & D & E & F -->|depends on| G & H & I & J & K
         end
 
-        subgraph "DevOps & Workflows"
-            SC("Source Control - GitHub") -->|s18| CI_Main
-            CI_Dispatch -->|s19| GR["GitOps Repo (ethio-connect-manifest)"]
-            GHCR["GHCR (Container Registry)"] -->|s20| GR["GitOps Repo (ethio-connect-manifest)"]
-            GR["GitOps Repo (ethio-connect-manifest)"] -->|s21| ArgoCD("ArgoCD Orchestrator")
+        subgraph "DevOps"
+            SC("GitHub") --> CI_Main
+            CI_Publish -->|Deployment Manifests| GR["GitOps Repo"]:::infra
+            GHCR -->|Images| GR
+            GR --> ArgoCD("ArgoCD"):::infra
         end
     end
-
-    subgraph "Deployment Environments"
-        direction LR
-        ArgoCD -->|s22| P_Cluster["Production Cluster (Isolated)"]
-        ArgoCD -->|s23| D_Cluster["Development Cluster (Shared Infra)"]
-
-        D_Cluster -->|s24| T_vCluster("testing-env-vcluster")
-        D_Cluster -->|s25| S_vCluster("staging-env-vcluster")
-    end
-
-    P_Cluster -->|s26| Rancher_Prod[Rancher]
-    D_Cluster -->|s27| Rancher_Dev[Rancher]

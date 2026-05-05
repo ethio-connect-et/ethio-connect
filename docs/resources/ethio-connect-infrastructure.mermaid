@@ -1,59 +1,34 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '24px', 'fontFamily': 'arial', 'primaryColor': '#e8f5e9', 'edgeLabelBackground':'#ffffff' }, 'flowchart': {'nodeSpacing': 70, 'rankSpacing': 70}}}%%
 graph TD
-    subgraph "Source Control (GitHub)"
-        A["Nx Monorepo (ethio-connect)"] --> B{"GitHub Actions Pipeline (CI/CD)"}
-        C["GitOps Repo (ethio-connect-manifest)"] --> ArgoCD(ArgoCD Orchestrator)
+    classDef cluster fill:#f1f8e9,stroke:#33691e,stroke-width:4px,font-weight:bold;
+    classDef ns fill:#ffffff,stroke:#33691e,stroke-width:2px;
+    classDef gitops fill:#e1f5fe,stroke:#01579b,stroke-width:3px;
+    classDef vcluster fill:#fff3e0,stroke:#e65100,stroke-width:2px,stroke-dasharray:5 5;
+
+    subgraph "GitOps Flow"
+        A["Nx Monorepo (Source)"] --> B{"GitHub Actions"}
+        C["GitOps Repo (ethio-connect-manifest)"]:::gitops --> ArgoCD("ArgoCD"):::gitops
     end
 
-    subgraph "GitHub Actions Pipeline (CI/CD)"
-        direction LR
-        subgraph "ethio-connect CI (ci.yml)"
-            BuildTestLint((Build, Test, Lint)) --> PushGHCR(Push Images to GHCR)
+    subgraph "Production Cluster"
+        direction TB
+        P_NS_Vendor[Namespace: vendor-prod]:::ns
+        P_NS_Customer[Namespace: customer-prod]:::ns
+        P_NS_Central[Namespace: central-hub-prod]:::ns
+    end
+
+    subgraph "Development Cluster"
+        direction TB
+        subgraph "Virtual Clusters"
+            T_vCluster[vcluster: testing-env]:::vcluster
+            S_vCluster[vcluster: staging-env]:::vcluster
         end
-        PushGHCR --> GHCR["ghcr.io (Container Registry)"]
     end
 
-    subgraph "Orchestration"
-        GHCR -- provides images --> C
-        C -- manifest updates --> ArgoCD
-    end
-
-    subgraph "Deployment Environments"
-        direction LR
-        subgraph "Cluster 1: PRODUCTION CLUSTER (Isolated)"
-            P_NS_Vendor[Namespace: vendor-prod]
-            P_NS_Customer[Namespace: customer-prod]
-            P_NS_Central[Namespace: central-hub-prod]
-            P_NS_Shared[Namespace: shared-infrastructure]
-
-            P_NS_Vendor & P_NS_Customer & P_NS_Central & P_NS_Shared -- Managed by --> Rancher_Prod[Rancher]
-            P_NS_Shared -- includes --> Keycloak(Keycloak)
-            P_NS_Shared -- includes --> PostgreSQL(PostgreSQL)
-            P_NS_Shared -- includes --> Redis(Redis)
-        end
-
-        subgraph "Cluster 2: DEVELOPMENT CLUSTER (Shared Infra)"
-            direction TB
-            D_Cluster_Root[Development Cluster Root]
-            subgraph "Virtual Cluster Management (vcluster)"
-                T_vCluster[vcluster: testing-env-vcluster]
-                S_vCluster[vcluster: staging-env-vcluster]
-
-                T_vCluster --> T_NS_Vendor[Namespace: vendor-test]
-                T_vCluster --> T_NS_Customer[Namespace: customer-test]
-                T_vCluster --> T_NS_Central[Namespace: central-test]
-
-                S_vCluster --> S_NS_Vendor[Namespace: vendor-stage]
-                S_vCluster --> S_NS_Customer[Namespace: customer-stage]
-                S_vCluster --> S_NS_Central[Namespace: central-stage]
-            end
-            D_Cluster_Root -- contains --> T_vCluster
-            D_Cluster_Root -- contains --> S_vCluster
-            D_Cluster_Root -- Managed by --> Rancher_Dev[Rancher]
-        end
-
-        ArgoCD -- reconciles --> P_NS_Vendor
-        ArgoCD -- reconciles --> P_NS_Customer
-        ArgoCD -- reconciles --> P_NS_Central
-        ArgoCD -- reconciles --> T_vCluster
-        ArgoCD -- reconciles --> S_vCluster
-    end
+    ArgoCD -->|Syncs| P_NS_Vendor
+    ArgoCD -->|Syncs| P_NS_Customer
+    ArgoCD -->|Syncs| P_NS_Central
+    ArgoCD -->|Syncs| T_vCluster
+    ArgoCD -->|Syncs| S_vCluster
+    class B cluster;
+    class P_NS_Vendor,P_NS_Customer,P_NS_Central,ArgoCD,T_vCluster,S_vCluster cluster;

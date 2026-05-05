@@ -107,7 +107,7 @@ build_dispatch_payload() {
     --arg release_created_at "$release_created_at" \
     --arg promotion_key "$promotion_key" \
     --argjson signed_metadata "$signed_metadata" \
-    --argjson attestation_bundle "$attestation_bundle" \
+    --arg attestation_bundle "$attestation_bundle" \
     '{
       event_type:"promote-image",
       client_payload:{
@@ -127,7 +127,19 @@ build_dispatch_payload() {
 
   # Validate against schema if ajv is installed
   if command -v npx >/dev/null 2>&1 && [ -f .github/contracts/promote-image.schema.json ]; then
-    echo "$payload" | jq '.client_payload' | npx -y ajv-cli validate -s .github/contracts/promote-image.schema.json -d - >&2 || { echo "Payload schema validation failed" >&2; return 1; }
+    local tmp_data
+    tmp_data="promote-payload-$(date +%s%N).json"
+    if echo "$payload" | jq '.client_payload' > "$tmp_data" 2>/dev/null; then
+      if ! npx -y ajv-cli validate -s .github/contracts/promote-image.schema.json -d "$tmp_data" >&2; then
+        echo "Payload schema validation failed" >&2
+        rm -f "$tmp_data"
+        return 1
+      fi
+      rm -f "$tmp_data"
+    else
+      echo "Failed to prepare payload for validation" >&2
+      return 1
+    fi
   fi
 
   echo "$payload"
