@@ -1,0 +1,188 @@
+name: Release Build and Publish
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      prerelease:
+        required: false
+        type: boolean
+        default: false
+      changelog:
+        required: false
+        type: string
+    outputs:
+      version:
+        value: ${{ jobs.build_publish.outputs.version }}
+      docker_version:
+        value: ${{ jobs.build_publish.outputs.docker_version }}
+      short_sha:
+        value: ${{ jobs.build_publish.outputs.short_sha }}
+
+env:
+  CI: true
+  NODE_VERSION: '24.11.0'
+  PNPM_VERSION: '10.20.0'
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+
+jobs:
+  build_publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.context.outputs.version }}
+      docker_version: ${{ steps.release-metadata.outputs.docker_version }}
+      short_sha: ${{ steps.release-metadata.outputs.short_sha }}
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Resolve release context and validate version
+        id: context
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ inputs.version }}"
+          prerelease="${{ inputs.prerelease }}"
+          if [[ "${{ github.event_name }}" == "workflow_call" && -z "$version" ]]; then
+            version="${GITHUB_REF#refs/tags/}"
+          fi
+
+          if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Version must be semver-like, for example v1.2.3 or v1.2.3-rc.1"
+            exit 1
+          fi
+
+          if [[ "$version" == *-* ]]; then
+            prerelease=true
+          fi
+
+          {
+            echo "version=$version"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          fetch-depth: 0
+          filter: tree:0
+
+      - name: Ensure release commit belongs to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/main"; then
+            echo "::error::Releases are only allowed from commits reachable from origin/main. Tagged commit: $GITHUB_SHA"
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          pnpm fetch --frozen-lockfile
+          pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Resolve release metadata
+        id: release-metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          short_sha="$(git rev-parse --short=12 HEAD)"
+          version="${{ steps.context.outputs.version }}"
+          docker_version="${version#v}"
+          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
+          echo "docker_version=$docker_version" >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate with GitHub Container Registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Nx release versions for all groups
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker_version="${{ steps.release-metadata.outputs.docker_version }}"
+
+          for group in shared-libs central-hub customer-portal vendor-portal; do
+            echo "Processing release group: $group with version $docker_version"
+            pnpm nx release version "$docker_version" --groups "$group" --dockerVersion "$docker_version" --stage-changes=false --git-commit=false --git-tag=false
+          done
+
+      - name: Publish all release groups
+        shell: bash
+        run: |
+          set -euo pipefail
+          for group in shared-libs central-hub customer-portal vendor-portal; do
+            echo "Publishing release group: $group"
+            pnpm nx release publish --groups "$group" --yes
+          done
+
+      - name: Generate release changelog from git history
+        id: changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          override="${{ inputs.changelog }}"
+          version="${{ steps.context.outputs.version }}"
+          previous_tag="$(git tag --sort=-creatordate --list 'v*' | grep -vx "$version" | head -1 || true)"
+
+          if [[ -n "$override" ]]; then
+            {
+              echo "body<<EOF"
+              printf '%s\n' "$override"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ -n "$previous_tag" ]]; then
+            changes="$(git log --pretty=format:'- %s (%h)' "${previous_tag}..HEAD" -- apps libs .github/workflows)"
+          else
+            changes="$(git log --pretty=format:'- %s (%h)' -n 50 -- apps libs .github/workflows)"
+          fi
+
+          {
+            echo "body<<EOF"
+            echo "## Release ${version}"
+            echo ""
+            if [[ -n "$previous_tag" ]]; then
+              echo "Previous tag: \`${previous_tag}\`"
+              echo ""
+            fi
+            echo "### Changes"
+            if [[ -n "$changes" ]]; then
+              printf '%s\n' "$changes"
+            else
+              echo "- No workspace changes detected in the release range."
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631
+        with:
+          tag_name: ${{ steps.context.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Release ${{ steps.context.outputs.version }}
+          body: ${{ steps.changelog.outputs.body }}
+          draft: false
+          prerelease: ${{ steps.context.outputs.prerelease == 'true' }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

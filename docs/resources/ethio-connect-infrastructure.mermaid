@@ -1,0 +1,34 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '24px', 'fontFamily': 'arial', 'primaryColor': '#e8f5e9', 'edgeLabelBackground':'#ffffff' }, 'flowchart': {'nodeSpacing': 70, 'rankSpacing': 70}}}%%
+graph TD
+    classDef cluster fill:#f1f8e9,stroke:#33691e,stroke-width:4px,font-weight:bold;
+    classDef ns fill:#ffffff,stroke:#33691e,stroke-width:2px;
+    classDef gitops fill:#e1f5fe,stroke:#01579b,stroke-width:3px;
+    classDef vcluster fill:#fff3e0,stroke:#e65100,stroke-width:2px,stroke-dasharray:5 5;
+
+    subgraph "GitOps Flow"
+        A["Nx Monorepo (Source)"] --> B{"GitHub Actions"}
+        C["GitOps Repo (ethio-connect-manifest)"]:::gitops --> ArgoCD("ArgoCD"):::gitops
+    end
+
+    subgraph "Production Cluster"
+        direction TB
+        P_NS_Vendor[Namespace: vendor-prod]:::ns
+        P_NS_Customer[Namespace: customer-prod]:::ns
+        P_NS_Central[Namespace: central-hub-prod]:::ns
+    end
+
+    subgraph "Development Cluster"
+        direction TB
+        subgraph "Virtual Clusters"
+            T_vCluster[vcluster: testing-env]:::vcluster
+            S_vCluster[vcluster: staging-env]:::vcluster
+        end
+    end
+
+    ArgoCD -->|Syncs| P_NS_Vendor
+    ArgoCD -->|Syncs| P_NS_Customer
+    ArgoCD -->|Syncs| P_NS_Central
+    ArgoCD -->|Syncs| T_vCluster
+    ArgoCD -->|Syncs| S_vCluster
+    class B cluster;
+    class P_NS_Vendor,P_NS_Customer,P_NS_Central,ArgoCD,T_vCluster,S_vCluster cluster;

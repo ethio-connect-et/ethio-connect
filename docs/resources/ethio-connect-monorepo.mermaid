@@ -1,0 +1,49 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '24px', 'fontFamily': 'arial', 'primaryColor': '#e1f5fe', 'edgeLabelBackground':'#ffffff' }, 'flowchart': {'nodeSpacing': 70, 'rankSpacing': 70}}}%%
+graph TD
+    classDef app fill:#e3f2fd,stroke:#1565c0,stroke-width:3px,font-weight:bold;
+    classDef lib fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,stroke-dasharray: 5 5;
+    classDef ci fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
+    classDef infra fill:#eceff1,stroke:#546e7a,stroke-width:4px;
+
+    subgraph "Workspace Root"
+        direction LR
+        subgraph "Nx Monorepo (ethio-connect)"
+            direction TB
+            subgraph "Apps"
+                A[vendor-portal-dashboard]:::app
+                B[central-hub-dashboard]:::app
+                C[customer-portal-dashboard]:::app
+                D[central-hub-api]:::app
+                E[customer-portal-api]:::app
+                F[vendor-api-server]:::app
+            end
+
+            subgraph "Libs"
+                G[api-common]:::lib
+                H[api-features]:::lib
+                I[ethioconnect]:::lib
+                J[frontend-features]:::lib
+                K[ui-components]:::lib
+            end
+
+            subgraph "CI/CD"
+                CI_Main("ci.yml"):::ci
+                CI_Build("reusable-build-test-lint.yml"):::ci
+                CI_Publish("reusable-container-publish.yml"):::ci
+            end
+
+            CI_Main --> CI_Build
+            CI_Main --> CI_Publish
+            CI_Build -->|Builds| GHCR["GHCR (Container Registry)"]:::infra
+            CI_Publish -->|Publishes| GHCR
+
+            A & B & C & D & E & F -->|depends on| G & H & I & J & K
+        end
+
+        subgraph "DevOps"
+            SC("GitHub") --> CI_Main
+            CI_Publish -->|Deployment Manifests| GR["GitOps Repo"]:::infra
+            GHCR -->|Images| GR
+            GR --> ArgoCD("ArgoCD"):::infra
+        end
+    end

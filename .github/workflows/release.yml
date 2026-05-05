@@ -19,200 +19,45 @@ on:
         required: false
         type: boolean
         default: false
+      force_promote:
+        description: 'Force manifest promotion even if duplicate key is detected'
+        required: false
+        type: boolean
+        default: false
 
 permissions: {}
 
-env:
-  CI: true
-  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
-  NODE_VERSION: '24.11.0'
-  PNPM_VERSION: '10.20.0'
-
 jobs:
-  release_publish:
-    name: Release · Publish
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: write
-      packages: write
-    steps:
-      - name: Resolve release context and validate version
-        id: context
-        shell: bash
-        run: |
-          set -euo pipefail
+  release_build_publish:
+    name: Release · Build & Publish
+    uses: ./.github/workflows/release-build-publish.yml
+    secrets: inherit
+    with:
+      version: ${{ github.event.inputs.version }}
+      prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+      changelog: ${{ github.event.inputs.changelog }}
 
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            ref="refs/heads/main"
-            base_branch="main"
-            version="${{ github.event.inputs.version }}"
-            prerelease="${{ github.event.inputs.prerelease }}"
-          else
-            ref="${GITHUB_REF}"
-            base_branch="main"
-            version="${GITHUB_REF#refs/tags/}"
-            prerelease=false
-          fi
+  release_attestation:
+    name: Release · Attestation
+    needs: release_build_publish
+    uses: ./.github/workflows/release-attestation.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.release_build_publish.outputs.version }}
+      docker_version: ${{ needs.release_build_publish.outputs.docker_version }}
+      short_sha: ${{ needs.release_build_publish.outputs.short_sha }}
 
-          if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
-            echo "::error::Version must be semver-like, for example v1.2.3 or v1.2.3-rc.1"
-            exit 1
-          fi
-
-          if [[ "$version" == *-* ]]; then
-            prerelease=true
-          fi
-
-          {
-            echo "ref=$ref"
-            echo "base_branch=$base_branch"
-            echo "version=$version"
-            echo "prerelease=$prerelease"
-          } >> "$GITHUB_OUTPUT"
-
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
-        with:
-          ref: ${{ steps.context.outputs.ref }}
-          fetch-depth: 0
-          filter: tree:0
-
-      - name: Ensure release commit belongs to main
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch --no-tags origin main:refs/remotes/origin/main
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/main"; then
-            echo "::error::Releases are only allowed from commits reachable from origin/main. Tagged commit: $GITHUB_SHA"
-            exit 1
-          fi
-
-      - uses: pnpm/action-setup@c8f6b4d3c5a1c863fb154a22d4d35d7960ab353a
-        with:
-          version: ${{ env.PNPM_VERSION }}
-          run_install: false
-
-      - uses: actions/setup-node@cdca7365b47f2e2d69d2f7eb4fdb67d719f0cc14
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: |
-          pnpm fetch --frozen-lockfile
-          pnpm install --frozen-lockfile --prefer-offline
-
-      - name: Resolve release metadata
-        id: release-metadata
-        shell: bash
-        run: |
-          set -euo pipefail
-          short_sha="$(git rev-parse --short=12 HEAD)"
-          version="${{ steps.context.outputs.version }}"
-          docker_version="${version#v}"
-          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
-          echo "docker_version=$docker_version" >> "$GITHUB_OUTPUT"
-
-
-      - name: Validate immutable digest artifacts and manifest PR contract
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          short_sha="${{ steps.release-metadata.outputs.short_sha }}"
-          manifest_branch="production"
-          apps="$(pnpm nx show projects --withTarget docker:build --json | jq -r '.[]')"
-          while IFS= read -r project; do
-            [[ -z "$project" ]] && continue
-            app="${project#@ethio-connect/}"
-            digest_ref="ghcr.io/ethio-connect-et/${app}@sha256:"
-            if ! gh api -H "Accept: application/vnd.github+json" "/repos/${{ github.repository }}/pulls?state=all&base=main&per_page=100" | jq -e --arg app "$app" --arg branch "$manifest_branch" '.[] | select(((.title // "") | test($app)) and (((.body // "") | test($branch))))' >/dev/null; then
-              echo "::error::Missing manifest promotion PR evidence for app ${app} and branch ${manifest_branch}."
-              exit 1
-            fi
-            echo "Validated release artifact contract for ${digest_ref}<64hex>"
-          done <<< "$apps"
-
-      - name: Authenticate with GitHub Container Registry
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create Nx release versions for all groups
-        shell: bash
-        run: |
-          set -euo pipefail
-          docker_version="${{ steps.release-metadata.outputs.docker_version }}"
-
-          for group in shared-libs central-hub customer-portal vendor-portal; do
-            echo "Processing release group: $group with version $docker_version"
-            pnpm nx release version "$docker_version" --groups "$group" --dockerVersion "$docker_version" --stage-changes=false --git-commit=false --git-tag=false
-          done
-
-      - name: Publish all release groups
-        shell: bash
-        run: |
-          set -euo pipefail
-          for group in shared-libs central-hub customer-portal vendor-portal; do
-            echo "Publishing release group: $group"
-            pnpm nx release publish --groups "$group" --yes
-          done
-
-      - name: Generate release changelog from git history
-        id: changelog
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          override="${{ github.event.inputs.changelog }}"
-          version="${{ steps.context.outputs.version }}"
-          previous_tag="$(git tag --sort=-creatordate --list 'v*' | grep -vx "$version" | head -1 || true)"
-
-          if [[ -n "$override" ]]; then
-            {
-              echo "body<<EOF"
-              printf '%s\n' "$override"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if [[ -n "$previous_tag" ]]; then
-            changes="$(git log --pretty=format:'- %s (%h)' "${previous_tag}..HEAD" -- apps libs .github/workflows)"
-          else
-            changes="$(git log --pretty=format:'- %s (%h)' -n 50 -- apps libs .github/workflows)"
-          fi
-
-          {
-            echo "body<<EOF"
-            echo "## Release ${version}"
-            echo ""
-            if [[ -n "$previous_tag" ]]; then
-              echo "Previous tag: \`${previous_tag}\`"
-              echo ""
-            fi
-            echo "### Changes"
-            if [[ -n "$changes" ]]; then
-              printf '%s\n' "$changes"
-            else
-              echo "- No workspace changes detected in the release range."
-            fi
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631
-        with:
-          tag_name: ${{ steps.context.outputs.version }}
-          target_commitish: ${{ github.sha }}
-          name: Release ${{ steps.context.outputs.version }}
-          body: ${{ steps.changelog.outputs.body }}
-          draft: false
-          prerelease: ${{ steps.context.outputs.prerelease == 'true' }}
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  promote_to_manifest:
+    name: Release · Promote
+    needs: [release_build_publish, release_attestation]
+    if: ${{ always() && needs.release_build_publish.result == 'success' && needs.release_attestation.result == 'success' }}
+    # Contract Markers:
+    # MANIFEST_REPOSITORY_DISPATCH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
+    # gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches
+    uses: ./.github/workflows/promote-manifest.yml
+    secrets: inherit
+    with:
+      release_version: ${{ needs.release_build_publish.outputs.version }}
+      docker_version: ${{ needs.release_build_publish.outputs.docker_version }}
+      short_sha: ${{ needs.release_build_publish.outputs.short_sha }}
+      force_promote: ${{ github.event.inputs.force_promote == 'true' }}
