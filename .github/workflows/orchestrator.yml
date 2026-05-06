@@ -18,7 +18,10 @@ on:
       - 'jest.config.ts'
       - 'jest.preset.js'
 
-permissions: {}
+permissions:
+  actions: read
+  contents: read
+  packages: write
 
 env:
   CI: true
