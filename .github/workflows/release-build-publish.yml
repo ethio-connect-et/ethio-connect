@@ -147,11 +147,76 @@ jobs:
             echo "Created tmp/$root/.docker-version with tag ${docker_version}"
           done < <(pnpm nx show projects --projects 'tag:release:publish' --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
 
-      # Pinned maintained installer for Trivy binary (supply-chain hardening).
-      - name: Set up Trivy
-        uses: aquasecurity/setup-trivy@3e7ba765ad86a8a2d93fa95ac0f956935f8059a7 # v0.2.4
-        with:
-          trivy-version: v0.65.0
+      - name: Set up Trivy (pinned + validated asset resolution)
+        shell: bash
+        env:
+          TRIVY_VERSION: "0.65.0"
+        run: |
+          set -euo pipefail
+
+          release_tag="v${TRIVY_VERSION}"
+          base_url="https://github.com/aquasecurity/trivy/releases/download/${release_tag}"
+          deb_asset="trivy_${TRIVY_VERSION}_Linux-64bit.deb"
+          tar_asset="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          checksums_asset="trivy_${TRIVY_VERSION}_checksums.txt"
+          release_api="https://api.github.com/repos/aquasecurity/trivy/releases/tags/${release_tag}"
+
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "$tmp_dir"' EXIT
+
+          release_json="${tmp_dir}/release.json"
+          curl -fsSL "${release_api}" -o "${release_json}"
+          mapfile -t available_assets < <(jq -r '.assets[].name' "${release_json}")
+
+          if [[ ${#available_assets[@]} -eq 0 ]]; then
+            echo "::error::No release assets found for ${release_tag}."
+            exit 1
+          fi
+
+          if ! printf '%s\n' "${available_assets[@]}" | grep -Fxq "${checksums_asset}"; then
+            echo "::error::Required checksum file is missing for ${release_tag}: ${checksums_asset}"
+            echo "::error::Available assets: ${available_assets[*]}"
+            exit 1
+          fi
+
+          curl -fsSL "${base_url}/${checksums_asset}" -o "${tmp_dir}/${checksums_asset}"
+
+          installer_method="deb"
+          installer_asset="${deb_asset}"
+          installer_path="${tmp_dir}/${deb_asset}"
+
+          if ! printf '%s\n' "${available_assets[@]}" | grep -Fxq "${deb_asset}"; then
+            if printf '%s\n' "${available_assets[@]}" | grep -Fxq "${tar_asset}"; then
+              installer_method="fallback-tarball"
+              installer_asset="${tar_asset}"
+              installer_path="${tmp_dir}/${tar_asset}"
+            else
+              echo "::error::Trivy .deb asset missing for selected version."
+              echo "::error::TRIVY_VERSION=${TRIVY_VERSION}"
+              echo "::error::Expected filename=${deb_asset}"
+              echo "::error::Available assets: ${available_assets[*]}"
+              exit 1
+            fi
+          fi
+
+          installer_url="${base_url}/${installer_asset}"
+          echo "Resolved Trivy installer:"
+          echo "  method=${installer_method}"
+          echo "  version=${release_tag}"
+          echo "  url=${installer_url}"
+
+          curl -fsSL "${installer_url}" -o "${installer_path}"
+          (
+            cd "${tmp_dir}"
+            grep " ${installer_asset}\$" "${checksums_asset}" | sha256sum -c -
+          )
+
+          if [[ "${installer_method}" == "deb" ]]; then
+            sudo dpkg -i "${installer_path}"
+          else
+            tar -xzf "${installer_path}" -C "${tmp_dir}" trivy
+            sudo install -m 0755 "${tmp_dir}/trivy" /usr/local/bin/trivy
+          fi
 
       - name: Build and publish docker images via Nx targets
         id: publish-targets
