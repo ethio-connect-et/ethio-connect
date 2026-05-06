@@ -7,6 +7,9 @@ const nx = JSON.parse(
 const defaults = nx.targetDefaults ?? {};
 
 const required = {
+  'format:check': { needsCache: true, inputs: ['default', '^default'] },
+  'format:write': { needsCache: false, inputs: ['default', '^default'] },
+  typecheck: { needsCache: true, inputs: ['ci', '^production'] },
   build: { needsCache: true, inputs: ['production', '^production'] },
   test: { needsCache: true, inputs: ['ci', '^production'] },
   lint: { needsCache: true, inputs: ['default', '^default'] },
@@ -23,6 +26,9 @@ for (const [target, policy] of Object.entries(required)) {
   }
   if (policy.needsCache && cfg.cache !== true) {
     errors.push(`targetDefaults.${target}.cache must be true`);
+  }
+  if (!policy.needsCache && cfg.cache !== false) {
+    errors.push(`targetDefaults.${target}.cache must be false`);
   }
   const inputs = Array.isArray(cfg.inputs) ? cfg.inputs : [];
   for (const requiredInput of policy.inputs) {
