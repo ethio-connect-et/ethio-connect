@@ -8,9 +8,24 @@
       "manifestRootsToUpdate": ["dist/{projectRoot}"],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk"
+    },
+    "publish": false
+  },
+  "tags": [
+    "scope:shared",
+    "type:util",
+    "domain:shared",
+    "platform:api",
+    "release:publish"
+  ],
+  "metadata": {
+    "targetContractProfile": "library",
+    "targetContract": {
+      "allowedForbiddenTargets": {
+        "nx-release-publish": "Required by scripts/validate-target-contract.mjs for library profile; kept as noop to satisfy release contract parity."
+      }
     }
   },
-  "tags": ["scope:shared", "type:util", "domain:shared", "platform:api"],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
@@ -28,8 +43,13 @@
       "dependsOn": ["build"]
     },
     "nx-release-publish": {
+      "executor": "nx:noop",
+      "dependsOn": ["package"]
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
       "options": {
-        "packageRoot": "dist/{projectRoot}"
+        "command": "pnpm tsc --noEmit -p libs/api-common/tsconfig.json"
       }
     }
   }

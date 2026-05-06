@@ -10,6 +10,9 @@
     "type:app"
   ],
   "implicitDependencies": ["@ethio-connect/customer-portal-dashboard"],
+  "metadata": {
+    "targetContractProfile": "e2e"
+  },
   "targets": {
     "lint": {
       "executor": "nx:noop"
@@ -30,6 +33,12 @@
       "options": {
         "cwd": "{workspaceRoot}",
         "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"{projectName}\",\\n  \"root\": \"{projectRoot}\",\\n  \"type\": \"e2e\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/{projectName}.json"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm tsc --noEmit -p apps/customer-portal/customer-portal-dashboard-e2e/tsconfig.json"
       }
     }
   }

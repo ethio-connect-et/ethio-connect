@@ -6,13 +6,15 @@ TARGET_BRANCH="development"
 REPO_HTTPS="https://github.com/ethio-connect-et/ethio-connect.git"
 
 # Step 1: Ensure remote is accessible
+bash ./scripts/sync-contract-docs.sh
+
 if ! git ls-remote "$REPO_HTTPS" &>/dev/null; then
   echo "ERROR: Cannot access remote repository $REPO_HTTPS. Check network or credentials."
   exit 1
 fi
 
 # Step 2: Run format and lint with explicit error handling
-pnpm exec actionlint -color && pnpm exec nx repair
+pnpm exec actionlint -color
 
 pnpm exec nx format:write --all && pnpm exec prettier --write nx.json
 
@@ -25,7 +27,7 @@ fi
 CURRENT=$(cat "$VERSION_FILE")
 
 # Step 4: Increment
-NEXT=$((CURRENT + 1))
+NEXT=$((CURRENT + 10))
 echo "$NEXT" > "$VERSION_FILE"
 
 # Step 5: Stage changes
@@ -58,7 +60,7 @@ DATE=$(date +"%b %d, %Y %H:%M:%S")
 gh pr create \
   --base "$TARGET_BRANCH" \
   --head "$BRANCH" \
-  --title "CI-UPDATE-$NEXT ($DATE)" \
+  --title "CI-UPDATE-$NEXT ($DATE) - Feat/Commit" \
   --body "Automated CI version increment to $NEXT on $DATE."
 
 # Step 12: Return to target branch

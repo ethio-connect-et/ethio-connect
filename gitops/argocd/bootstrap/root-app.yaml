@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ec-root
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ethio-connect
+    ec.gitops.layer: root
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ethio-connect/manifest-repo.git
+    targetRevision: main
+    path: gitops/argocd/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 6
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 40s

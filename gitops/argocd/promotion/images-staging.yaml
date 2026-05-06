@@ -1,0 +1,19 @@
+images:
+  central-hub-api:
+    tag: staging-candidate
+    digest: sha256:replace-by-promotion
+  central-hub-dashboard:
+    tag: staging-candidate
+    digest: sha256:replace-by-promotion
+  customer-portal-api:
+    tag: staging-candidate
+    digest: sha256:replace-by-promotion
+  customer-portal-dashboard:
+    tag: staging-candidate
+    digest: sha256:replace-by-promotion
+  vendor-portal-api:
+    tag: staging-candidate
+    digest: sha256:replace-by-promotion
+  vendor-portal-dashboard:
+    tag: staging-candidate
+    digest: sha256:replace-by-promotion

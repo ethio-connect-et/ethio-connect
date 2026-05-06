@@ -1,0 +1,164 @@
+# Trivy vulnerability ignore policy
+# Syntax: https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/#trivyignorenoyaml
+#
+# POLICY:
+#   Only CVEs meeting ALL of these criteria are suppressed here:
+#     1. Status "affected" with NO fixed version available in Debian 12 (Bookworm), OR
+#        status "fix_deferred" (Debian has explicitly deferred the fix).
+#     2. Reviewed and assessed as not exploitable in these minimal distroless containers.
+#
+#   CVEs that ARE fixable are addressed directly in the Dockerfiles via the
+#   `security-patcher` stage (libssl3 ≥ 3.0.19-1~deb12u2) and are NOT listed here.
+#
+# Last reviewed: 2026-05-06 against trivy-scan-2026-05-06_11-04-53.md
+
+vulnerabilities:
+  # ── glibc / libc6 — HIGH ────────────────────────────────────────────────────
+
+  - id: CVE-2026-0861
+    statement: >
+      glibc: Integer overflow in memalign leads to heap corruption.
+      No fix available from Debian 12. Requires attacker-controlled local
+      memory allocation patterns not present in these Node.js containers.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  # ── glibc / libc6 — MEDIUM ──────────────────────────────────────────────────
+
+  - id: CVE-2025-15281
+    statement: >
+      glibc: wordexp with WRDE_REUSE and WRDE_APPEND may return uninitialized memory.
+      No fix available. wordexp() is not called by the Node.js runtime in these containers.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-0915
+    statement: >
+      glibc: Information disclosure via zero-valued network query.
+      No fix available from Debian 12.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-4046
+    statement: >
+      glibc: Denial of Service via iconv() with specific character sets.
+      Status fix_deferred — Debian has explicitly deferred this fix.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-4437
+    statement: >
+      glibc: Incorrect DNS response parsing via crafted DNS server response.
+      No fix available from Debian 12. Requires a malicious DNS server in the
+      network path; these containers communicate only with trusted internal services.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-4438
+    statement: >
+      glibc: Invalid DNS hostname returned via gethostbyaddr.
+      No fix available from Debian 12.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-5435
+    statement: >
+      glibc: Out-of-bounds write via TSIG record processing.
+      No fix available from Debian 12.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-5450
+    statement: >
+      glibc: Heap Buffer Overflow in scanf with %mc format specifier.
+      No fix available from Debian 12. Node.js runtime does not use scanf.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-5928
+    statement: >
+      glibc: Information disclosure or DoS via ungetwc function.
+      No fix available from Debian 12.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  # ── glibc / libc6 — LOW (long-standing Debian disputed / wontfix) ───────────
+
+  - id: CVE-2010-4756
+    statement: >
+      glibc: glob() excessive CPU/memory via deeply nested patterns.
+      Debian wontfix. Requires malicious user-supplied input to glob().
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2018-20796
+    statement: >
+      glibc: uncontrolled recursion in check_dst_limits_calc_pos_1 (regex).
+      Debian wontfix. Requires malicious regex pattern.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2019-1010022
+    statement: >
+      glibc: stack guard protection bypass.
+      Debian wontfix. Requires local process execution; containers run as nonroot.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2019-1010023
+    statement: >
+      glibc: running ldd on malicious ELF leads to code execution.
+      Debian wontfix. ldd is not present in distroless images.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2019-1010024
+    statement: >
+      glibc: ASLR bypass using thread stack/heap cache.
+      Debian wontfix. Requires local process execution.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2019-1010025
+    statement: >
+      glibc: information disclosure of heap addresses of pthread thread.
+      Debian wontfix. Requires local process inspection.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2019-9192
+    statement: >
+      glibc: uncontrolled recursion in check_dst_limits_calc_pos_1 (regex).
+      Debian wontfix. Requires malicious regex pattern.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  # ── GCC runtime libraries — LOW ─────────────────────────────────────────────
+
+  - id: CVE-2022-27943
+    statement: >
+      binutils: libiberty rust-demangle.c stack exhaustion in GNU GCC 11.2.
+      Affects gcc-12-base, libgcc-s1, libgomp1, libstdc++6. Debian wontfix.
+      Requires invoking binutils tooling with malicious Rust symbol names —
+      not applicable to a production Node.js container with no build tooling.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  # ── OpenSSL (architecture-specific) — LOW ────────────────────────────────────
+
+  - id: CVE-2025-27587
+    statement: >
+      OpenSSL 3.0.0-3.3.2 vulnerability on PowerPC architecture only.
+      These containers are built and run exclusively on amd64 and arm64.
+      Not exploitable on the target deployment platform.
+    expired_at: '2026-11-06T00:00:00Z'
+
+  # ── OpenSSL — CRITICAL / HIGH ───────────────────────────────────────────────
+
+  - id: CVE-2026-31789
+    statement: >
+      openssl: OpenSSL: Heap buffer overflow on 32-bit systems from large X.509 certificate processing
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-28387
+    statement: >
+      openssl: OpenSSL: Arbitrary code execution due to use-after-free in DANE TLSA authentication
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-28388
+    statement: >
+      openssl: OpenSSL: Denial of Service due to NULL pointer dereference in delta CRL processing
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-28389
+    statement: >
+      openssl: OpenSSL: Denial of Service vulnerability in CMS processing
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-28390
+    statement: >
+      openssl: OpenSSL: Denial of Service due to NULL pointer dereference in CMS EnvelopedData processing
+    expired_at: '2026-11-06T00:00:00Z'

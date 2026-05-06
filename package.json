@@ -4,13 +4,17 @@
   "license": "MIT",
   "packageManager": "pnpm@10.20.0",
   "private": true,
+  "scripts": {
+    "ci:check-branch-policy": "node tools/ci/check-branch-policy.mjs",
+    "ci:check-pull-request-branch-ladder": "node tools/ci/check-pull-request-branch-ladder.mjs"
+  },
   "devDependencies": {
     "@babel/core": "^7.14.5",
     "@babel/preset-react": "^7.14.5",
     "@eslint/js": "^9.8.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.0",
-    "@next/eslint-plugin-next": "^16.1.6",
+    "@next/eslint-plugin-next": "^16.2.3",
     "@nx/devkit": "22.7.1",
     "@nx/docker": "22.7.1",
     "@nx/eslint": "22.7.1",
@@ -36,10 +40,11 @@
     "@types/node": "20.19.9",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "actionlint": "^2.0.6",
     "autoprefixer": "10.4.13",
     "babel-jest": "^30.0.2",
     "eslint": "^9.8.0",
-    "eslint-config-next": "^16.1.6",
+    "eslint-config-next": "^16.2.3",
     "eslint-config-prettier": "^10.0.0",
     "eslint-plugin-import": "2.31.0",
     "eslint-plugin-jsx-a11y": "6.10.1",
@@ -68,18 +73,10 @@
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
     "axios": "^1.6.0",
-    "next": "~16.1.6",
+    "next": "~16.2.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0"
-  },
-  "nx": {
-    "includedScripts": []
-  },
-  "scripts": {
-    "release:dry-run": "nx release --dry-run",
-    "release:version": "nx release version",
-    "release:publish": "nx release publish"
   }
 }
