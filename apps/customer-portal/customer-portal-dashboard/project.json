@@ -38,7 +38,6 @@
     },
     "build": {
       "executor": "@nx/next:build",
-      "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
         "outputPath": "dist/apps/customer-portal/customer-portal-dashboard"

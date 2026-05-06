@@ -50,7 +50,7 @@ jobs:
           projects="$(jq -r '.[]' <<< "$projects_json")"
           validate_dispatch_preconditions "${{ github.ref_name }}" "$projects"
           target_env="$(map_source_to_target_env "${{ github.ref_name }}")"
-          artifact_name="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs" \
+          artifact_name="$(gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/runs" \
             -f event=push \
             -f head_sha="${GITHUB_SHA}" \
             -f branch="${{ github.ref_name }}" \
@@ -58,10 +58,10 @@ jobs:
             --jq '.workflow_runs[] | select(.name == "CI") | .id' | head -n 1)"
           [[ -n "$artifact_name" ]] || { echo "::error::Unable to locate CI run for sha ${GITHUB_SHA}"; exit 1; }
           artifact_run_id="$artifact_name"
-          artifact_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${artifact_run_id}/artifacts" \
-            --jq '.artifacts[] | select((.name | startswith("publish-manifest-'${{ github.ref_name }}'-")) and .expired == false) | .id' | head -n 1)"
+          artifact_id="$(gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/runs/${artifact_run_id}/artifacts" \
+            --jq '.artifacts[] | select((.name | startswith("publish-manifest-${{ github.ref_name }}-")) and .expired == false) | .id' | head -n 1)"
           [[ -n "$artifact_id" ]] || { echo "::error::Unable to locate publish-manifest artifact for run ${artifact_run_id}"; exit 1; }
-          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > publish-manifest.zip
+          gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > publish-manifest.zip
           unzip -o publish-manifest.zip -d artifacts >/dev/null
           manifest_path="$(find artifacts -type f -name 'publish-manifest-*.json' | head -n 1)"
           [[ -n "$manifest_path" ]] || { echo "::error::publish-manifest JSON not found after download"; exit 1; }

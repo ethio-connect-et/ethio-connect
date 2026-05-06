@@ -19,12 +19,9 @@ ENV HOSTNAME=0.0.0.0
 
 COPY --from=runtime-fs /rootfs/ /
 
-COPY --chown=65532:65532 dist/apps/central-hub/public-website/.next/standalone/apps ./apps
-COPY --chown=65532:65532 dist/apps/central-hub/public-website/.next/standalone/dist ./dist
-COPY --chown=65532:65532 dist/apps/central-hub/public-website/.next/standalone/node_modules ./node_modules
-COPY --chown=65532:65532 dist/apps/central-hub/public-website/.next/standalone/package.json ./package.json
-COPY --chown=65532:65532 dist/apps/central-hub/public-website/workspace_modules ./workspace_modules
+COPY --chown=65532:65532 dist/apps/central-hub/public-website/.next/standalone/ ./
 COPY --chown=65532:65532 dist/apps/central-hub/public-website/.next/static ./dist/apps/central-hub/public-website/.next/static
+COPY --chown=65532:65532 apps/central-hub/public-website/public ./apps/central-hub/public-website/public
 
 EXPOSE 3000
 USER 65532:65532
