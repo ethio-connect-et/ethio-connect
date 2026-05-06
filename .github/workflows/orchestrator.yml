@@ -85,6 +85,12 @@ jobs:
           set -euo pipefail
           node tools/ci/validate-project-targets.mjs
 
+      - name: Enforce secret handling policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/check-no-plaintext-secrets.sh
+
       - name: Partition affected projects
         id: partition
         shell: bash
