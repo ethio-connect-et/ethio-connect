@@ -1,19 +1,23 @@
-## Orchestrator ↔ Reusable workflow contract (affected-aware lanes)
+## Canonical release entrypoint (top-level)
 
-The caller workflow (`orchestrator.yml`) is the single source of truth for base/head resolution. It computes and exports `NX_BASE` and `NX_HEAD` once in the `plan` job, then passes them as explicit `workflow_call` inputs into each lane workflow.
+The canonical top-level release workflow is `.github/workflows/release.yml`.
 
-Contract details:
+- Supported triggers:
+  - `workflow_dispatch` (manual): only from protected `main` (`refs/heads/main`).
+  - `push` (automated): only SemVer-like protected tags matching `v*`.
+- `release.yml` orchestrates release lanes exclusively through reusable workflows with explicit contracts:
+  - `release-build-publish.yml`
+  - `release-attestation.yml`
+  - `promote-manifest.yml`
 
-- `projects_json` is only an optimization hint used for matrix/lane shaping and observability (counts, summaries).
-- Execution truth stays inside each lane reusable workflow via `pnpm nx affected ... --base=$NX_BASE --head=$NX_HEAD`.
-- This avoids drift between precomputed project lists and runtime task graph decisions, especially when target availability differs by project.
-- If a lane resolves to no affected work at execution time, the lane emits a deterministic artifact marker with `status=skipped-no-affected`.
+### Release trigger/flow matrix
 
-Why this separation exists:
-
-1. The orchestrator decides _which lanes to invoke_ and passes shared context.
-2. Lane workflows decide _which tasks actually run_ against the same SHA range, preserving Nx as runtime authority.
-3. Artifacts and summaries remain stable even when no affected tasks exist.
+| Trigger | Workflow | Nx targets / release responsibility |
+| --- | --- | --- |
+| `workflow_dispatch` on protected `main` | `release.yml` | orchestration only (policy gate + reusable calls) |
+| called by `release.yml` | `release-build-publish.yml` | `docker:build`, `nx-release-publish`, release metadata/evidence |
+| called by `release.yml` | `release-attestation.yml` | metadata/attestation generation from publish artifacts |
+| called by `release.yml` | `promote-manifest.yml` | promotion dispatch from attested immutable digests |
 
 # Workflow Integration Contract
 
