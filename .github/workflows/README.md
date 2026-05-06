@@ -1,212 +1,53 @@
-## Canonical release entrypoint (top-level)
+Use a small number of explicit workflows in this repository.
 
-The canonical top-level release workflow is `.github/workflows/release.yml`.
+## Deployment Model
 
-- Supported triggers:
-  - `workflow_dispatch` (manual): only from protected `main` (`refs/heads/main`).
-  - `push` (automated): only SemVer-like protected tags matching `v*`.
-- `release.yml` orchestrates release lanes exclusively through reusable workflows with explicit contracts:
-  - `release-build-publish.yml`
-  - `release-attestation.yml`
-  - `promote-manifest.yml`
+- Deployment Model: External environment-repository promotion
+- Push-to-environment deployment from this repo: Disabled
+- Protected branch ladder: `feat|fix|codex|... -> development -> testing -> staging -> main`
 
-### Release trigger/flow matrix
+This repository builds, signs, and attests application images, then emits a repository dispatch event to `ethio-connect-environments`.
+Environment overlays, promotion between environments, and rollback remain outside this repository boundary.
 
-| Trigger | Workflow | Nx targets / release responsibility |
-| --- | --- | --- |
-| `workflow_dispatch` on protected `main` | `release.yml` | orchestration only (policy gate + reusable calls) |
-| called by `release.yml` | `release-build-publish.yml` | `docker:build`, `nx-release-publish`, release metadata/evidence |
-| called by `release.yml` | `release-attestation.yml` | metadata/attestation generation from publish artifacts |
-| called by `release.yml` | `promote-manifest.yml` | promotion dispatch from attested immutable digests |
+## Workflow Architecture
 
-# Workflow Integration Contract
+```mermaid
+flowchart TD
+  A[ci.yml\nApplication Continuous Integration] --> B[ci-policy-governance.yml\nPolicy/Governance checks]
+  A --> C[ci-quality-security.yml\nQuality/Security checks]
+  A --> E[ci-image-publish-attest.yml\nImage publish + attest]
+  A --> F[ci-release-dispatch.yml\nRelease dispatch]
 
-Contract marker: `testing|staging|main -> testing|staging|production`
-
-## Branch and Registry Mapping
-
-| Source branch | Manifest branch | Expected immutable image reference              |
-| ------------- | --------------- | ----------------------------------------------- |
-| `testing`     | `testing`       | `ghcr.io/ethio-connect-et/<app>@sha256:<64hex>` |
-| `staging`     | `staging`       | `ghcr.io/ethio-connect-et/<app>@sha256:<64hex>` |
-| `main`        | `production`    | `ghcr.io/ethio-connect-et/<app>@sha256:<64hex>` |
-
-Non-production promotions are dispatched by `.github/workflows/promote-manifest-nonprod.yml` on pushes to `testing` and `staging`. The workflow resolves deployable apps via `pnpm nx show projects --withTarget docker:build --json`, resolves each app's digest from `ghcr.io/ethio-connect-et/<app>:<branch>`, validates against `DIGEST_REGEX`, and dispatches `promote-image` to `ethio-connect-et/ethio-connect-manifest` with branch-specific concurrency and exponential-backoff retries.
-
-## Tagging Contract (Single Source of Truth)
-
-Every published image MUST include immutable tags with the following contract:
-
-- Required: `<semver>` (canonical release version tag).
-- Required: `<shortsha>` (12-char source commit shorthand tag).
-- Optional (non-production only): `<branch>` (mutable convenience tag such as `testing` or `staging`).
-
-For non-`main` branches, the canonical release version uses a SemVer-compatible prerelease format (`0.0.0-<branch>.<shortsha>`). For `main`, the canonical release version is release-driven. Promotions MUST use digest references (`<image>@sha256:<64hex>`) and never rely on mutable branch tags.
-
-## Dispatch Event Schema
-
-Repository target: `ethio-connect-et/ethio-connect-manifest`.
-
-Event type: `promote-image`
-
-```json
-{
-  "event_type": "promote-image",
-  "client_payload": {
-    "app": "<app-name>",
-    "digest": "sha256:<64hex>",
-    "env": "testing|staging|production",
-    "source_repo": "ethio-connect-et/ethio-connect",
-    "source_ref": "refs/heads/main",
-    "source_commit": "<40-hex-sha>",
-    "source_sha": "<40-hex-sha>",
-    "release_id": "<github-run-id>",
-    "release_created_at": "2006-01-02T15:04:05Z",
-    "canonical_release_version": "<semver-or-semver-prerelease>",
-    "signed_metadata": {
-      "signature_algorithm": "ecdsa-p256-sha256",
-      "key_id": "sigstore:github-actions-keyless",
-      "cert_chain": ["<base64-leaf-cert-pem>"],
-      "signature": "<base64-signature>",
-      "canonical_payload": "{\"app\":\"...\",\"digest\":\"sha256:...\",...}"
-    },
-    "attestation_bundle": "{\"app\":\"...\",\"digest\":\"sha256:...\",\"release_id\":\"...\",...}"
-  }
-}
+  E --> F
 ```
 
-Validation requirements:
+| Workflow                                        | Owner                                      | Trigger                                                    | Inputs                                                                                                                                                                                    | Outputs                                                                                                                  | Notes                                                                                                                                   |
+| ----------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `.github/workflows/ci.yml`                      | Platform Engineering                       | `pull_request`, `merge_group`, `push`, `workflow_dispatch` | n/a                                                                                                                                                                                       | n/a                                                                                                                      | Orchestrator that calls reusable CI workflows and enforces stage ordering.                                                              |
+| `.github/workflows/ci-policy-governance.yml`    | Platform Engineering                       | `workflow_call`                                            | `node_version`, `pnpm_version`, `event_name`, `base_ref`, `head_ref`                                                                                                                      | n/a                                                                                                                      | Branch ladder enforcement, workflow linting, immutable action pin checks.                                                               |
+| `.github/workflows/ci-quality-security.yml`     | Security + Platform Engineering            | `workflow_call`                                            | `node_version`, `pnpm_version`, `event_name`, `ref_name`, `base_ref`                                                                                                                      | n/a                                                                                                                      | Dependency review, Snyk, CodeQL, deploy asset checks, Nx lint/typecheck/test/build.                                                     |
+| `.github/workflows/ci-image-publish-attest.yml` | Security Provenance + Platform Engineering | `workflow_call`                                            | `node_version`, `pnpm_version`                                                                                                                                                            | `infra_environment`, `target_branch`, `image_tag`, `release_version`, `applications_json`, `attestation_references_json` | Protected-branch image publish, SBOM generation, signing, provenance attestation.                                                       |
+| `.github/workflows/ci-release-dispatch.yml`     | Platform Engineering                       | `workflow_call`                                            | `source_sha`, `source_ref`, `target_environment`, `image_tag`, `release_version`, `release_schema_version`, `applications_json`, `attestation_references_json`, `environments_repository` | n/a                                                                                                                      | Validates payload against the versioned schema, then dispatches `app-release-published` to `ethio-connect-environments` (staging only). |
+| `.github/workflows/release.yml`                 | Release Management                         | `workflow_dispatch`                                        | `version`, `source_sha`, `changelog`, `prerelease`                                                                                                                                        | n/a                                                                                                                      | Manual release metadata and post-publish release artifacts/signing flow.                                                                |
+| `.github/workflows/release-drafter.yml`         | Release Management                         | `push` to `main`, `workflow_dispatch`                      | n/a                                                                                                                                                                                       | n/a                                                                                                                      | Maintains draft release notes for `main`.                                                                                               |
 
-- source env allowlist: `testing|staging|main`
-- manifest env allowlist: `testing|staging|production`
-- app allowlist from `pnpm nx show projects --withTarget docker:build --json`
-- digest pattern: `sha256:<64hex>`
-- registry prefix: `ghcr.io/ethio-connect-et/` (never `ghcr.io/ethioconnect/`)
-- immutable-only promotion source: `ghcr.io/ethio-connect-et/<app>@sha256:<64hex>`
+## Shared Workflow Conventions
 
-## JSON Schema
+- **Reusable workflow boundary:** responsibilities are split into policy/governance, quality/security, image publish/attest, and release dispatch; `ci.yml` is the only orchestration entrypoint.
+- **Consistent runtime inputs:** reusable workflows accept `node_version` and `pnpm_version` where Node toolchain setup is required.
+- **Timeout convention:** default CI jobs use `20` minutes unless intentionally extended (`60` minutes for Nx validation, `90` minutes for image publish).
+- **Concurrency convention:** each reusable workflow defines a deterministic workflow-level concurrency group and cancels non-push superseded runs.
+- **Artifact retention convention:** CI artifacts in reusable workflows default to `30` days retention.
 
-A formal JSON schema for the `client_payload` is maintained at
-`.github/contracts/promote-image.schema.json` in the source repo
-(`ethio-connect-et/ethio-connect`).
+## Deliberate Omissions From The Source Repo Structure
 
-## Machine-readable promotion + ArgoCD reconciliation contract
+This repository does not own:
 
-```yaml
-contract_version: 1
-promotion_contract:
-  required_payload_fields:
-    - project
-    - immutable_ref
-    - digest
-    - source_sha
-    - release_version
-    - environment_target
-  validation_rules:
-    project: 'must match ^[a-z0-9._-]+$ and map to a deployable Nx app'
-    immutable_ref: 'must match ghcr.io/ethio-connect-et/<project>@sha256:<64hex>; tags are rejected'
-    digest: 'must match sha256:<64hex>'
-    source_sha: 'must be a 40-character git commit SHA'
-    release_version: 'non-empty canonical release version'
-    environment_target:
-      allowed_values: [testing, staging, production]
-  rejection_conditions:
-    - missing digest
-    - missing source_sha
-    - immutable_ref that is tag-based (image:tag)
-    - immutable_ref not aligned with project + digest
+- environment inventory mutation
+- environment promotion
+- environment rollback
+- cluster bootstrap or admission policy state
 
-argocd_reconciliation_contract:
-  source_paths:
-    - gitops/argocd/apps
-    - gitops/argocd/tenants
-    - gitops/argocd/workloads
-  sync_window_seconds_max: 60
-  required_health_checks:
-    - application_status_synced
-    - application_status_healthy
-    - workloads_progressing_condition_false
-  rollback_trigger_conditions:
-    - sync_timeout_exceeds_60s
-    - health_state_degraded
-    - repeated_sync_failures_ge_3
-    - rollout_failure_or_crashloop
-```
+Those responsibilities belong to `ethio-connect-environments`, `ethio-connect-platform`, and `ethio-connect-security-provenance`.
 
-The reusable manifest promotion trigger enforces the payload fields above and fails fast when digest or SHA provenance is missing or malformed. Promotions are accepted only for immutable references (`image@sha256:...`) and rejected for mutable tag references.
-
-ArgoCD automation must reconcile from the GitOps sources represented in diagrams (`gitops/argocd/apps`, `gitops/argocd/tenants`, `gitops/argocd/workloads`), meet the `<=60s` sync window expectation, pass health checks, and trigger rollback when contract conditions are met.
-
-## Multi-platform container behavior
-
-All Docker tag inputs are mandatory in CI: `IMAGE_TAG` and `BRANCH_TAG` must be set and must never be `latest`. Workflows now fail fast before invoking `pnpm nx run ...:docker:build` if either variable is missing or set to `latest`.
-
-All Docker builds run through Nx targets (`pnpm nx run <project>:docker:build`) which now invoke Buildx with explicit target platforms via `--platform ${DOCKER_PLATFORMS:-linux/amd64}`. CI workflows initialize `docker/setup-qemu-action` and `docker/setup-buildx-action` before `docker:build` and `nx-release-publish` targets so cross-architecture manifests are produced consistently.
-
-Publish verification enforces immutable digest behavior per tag:
-
-- Branch publish flow validates `<image_tag>` and `<branch_tag>` point to the same manifest digest.
-- Release flow validates `<docker_version>` and `<short_sha>` point to the same manifest digest.
-- All digests must match `sha256:<64hex>` and are resolved from GHCR using `docker buildx imagetools inspect`.
-
-## Container security scan gate
-
-Reusable publish and release publish workflows run a dedicated Trivy container scan step after `docker:build` and before `nx-release-publish`.
-
-- Scan source: GHCR image refs produced by the workflow.
-- Scanner provenance: Trivy is installed through pinned `aquasecurity/setup-trivy` action commit (`v0.2.4` SHA) with explicit Trivy version pinning (`v0.65.0`).
-- Blocking severities: `HIGH`, `CRITICAL`.
-- Evidence: JSON and SARIF reports uploaded as workflow artifacts.
-- Summary: per-image and aggregate findings written to the GitHub job summary.
-- Promotion behavior: manifest promotion is blocked when the scan gate fails unless an explicit audited override is set (`scan_gate_override=true` with `scan_gate_override_reason`).
-
-Policy details and exception workflow are documented in `docs/security/container-scan-policy.md`.
-
-## Rollback plan
-
-If a multi-platform publish regression occurs:
-
-1. Re-run publish with `DOCKER_PLATFORMS=linux/amd64` to force a single-platform emergency image while keeping the Nx execution contract unchanged.
-2. Re-promote the last known-good digest from the manifest repo workflows (`promote-manifest*.yml`) rather than republishing mutable tags.
-3. Revert the failing workflow or `nx.json` change and republish the same release tag; digest verification steps will fail fast if tag determinism is broken.
-
-## CI Performance SLOs (Nx Cloud metadata source of truth)
-
-Performance trend tracking must use Nx Cloud run metadata links emitted by CI lane summaries. The quality lane summary records affected count, cache hit/miss indicators, and runtime deltas.
-
-| Lane                               | Target cache hit rate (rolling)                                            | Expected runtime threshold |
-| ---------------------------------- | -------------------------------------------------------------------------- | -------------------------- |
-| Quality (lint/test/build affected) | >= 70%                                                                     | <= 15 minutes (900s)       |
-| Docker Build/Publish               | >= 60% for cacheable prerequisites (`build`, `docker:build` prerequisites) | <= 25 minutes (1500s)      |
-
-Policy:
-
-- A sustained miss against either threshold for 3 consecutive runs should trigger investigation.
-- The Nx Cloud run URL captured in job summary is the audit reference for each run.
-
-## Workflow dependency map (2026-05 orchestrator unification)
-
-Top-level CI entry is now `orchestrator.yml` with canonical lanes:
-
-1. `quality` → `reusable-build-test-lint.yml`
-2. `container publish` → `reusable-container-publish.yml`
-3. `manifest promotion trigger` → `reusable-manifest-promotion-trigger.yml` (dispatches `promote-manifest-nonprod.yml` only for `testing`/`staging`)
-
-Release governance remains intentionally separate and minimal:
-
-- `release-attestation.yml`
-- `promote-manifest.yml`
-
-### Deprecation notes
-
-- `release-build-publish.yml` is deprecated as a top-level orchestration path; new CI lane ownership lives in `orchestrator.yml` reusable callees.
-- `promote-manifest-nonprod.yml` no longer owns branch push triggers directly; it is now trigger-consumed by the orchestrator manifest lane.
-
-### Standardized reusable schema
-
-Reusable workflow interfaces should use these canonical names:
-
-- `projects_json`
-- `nx_base` / `nx_head`
-- `tag_context_json` and `canonical_release_version`/`short_sha` image metadata outputs
-- deterministic artifact names (e.g. `publish-manifest-<ref>-<run_id>`, lane metrics artifacts)
+Ownership validation note: changes under `.github/workflows/**` should request review from `@ethio-connect/platform-team` via CODEOWNERS.
