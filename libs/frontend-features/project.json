@@ -5,31 +5,48 @@
   "projectType": "library",
   "release": {
     "version": {
-      "manifestRootsToUpdate": ["dist/{projectRoot}"],
+      "manifestRootsToUpdate": [
+        "dist/{projectRoot}"
+      ],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk"
     },
     "publish": false
   },
-  "tags": ["scope:shared", "type:feature", "domain:shared", "platform:web"],
+  "tags": [
+    "scope:shared",
+    "type:feature",
+    "domain:shared",
+    "platform:web",
+    "release:publish"
+  ],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/libs/frontend-features",
         "main": "libs/frontend-features/src/index.ts",
         "tsConfig": "libs/frontend-features/tsconfig.lib.json",
-        "assets": ["libs/frontend-features/*.md"],
+        "assets": [
+          "libs/frontend-features/*.md"
+        ],
         "generatePackageJson": true
       }
     },
     "package": {
       "executor": "nx:noop",
-      "dependsOn": ["build"]
+      "dependsOn": [
+        "build"
+      ]
     },
     "nx-release-publish": {
       "executor": "nx:noop"
     }
+  },
+  "metadata": {
+    "targetContractProfile": "library"
   }
 }

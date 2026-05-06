@@ -145,7 +145,7 @@ jobs:
             mkdir -p "tmp/$root"
             echo "${docker_version}" > "tmp/$root/.docker-version"
             echo "Created tmp/$root/.docker-version with tag ${docker_version}"
-          done < <(pnpm nx show projects --withTarget nx-release-publish --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
+          done < <(pnpm nx show projects --projects 'tag:release:publish' --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
 
       - name: Build and publish docker images via Nx targets
         id: publish-targets
@@ -290,7 +290,7 @@ jobs:
             [[ "$version_digest" == "$sha_digest" ]] || { echo "::error::Digest mismatch for $app between ${docker_version} and ${short_sha}"; exit 1; }
 
             echo "Verified $app => $version_digest"
-          done < <(pnpm nx show projects --withTarget docker:build --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
+          done < <(pnpm nx show projects --projects 'tag:release:docker' --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
 
       - name: Upload container scan reports
         if: always()
@@ -397,7 +397,7 @@ jobs:
               --arg tag "$docker_version" \
               --arg artifact_run_id "${GITHUB_RUN_ID}" \
               '{project:$project,app:$app,image_ref:$image_ref,digest:$digest,source_sha:$source_sha,tag:$tag,artifact_run_id:$artifact_run_id,attestation_status:"pending"}'
-          done < <(pnpm nx show projects --withTarget nx-release-publish --json | jq -r '.[] | select(startswith("@ethio-connect/"))') \
+          done < <(pnpm nx show projects --projects 'tag:release:publish' --json | jq -r '.[] | select(startswith("@ethio-connect/"))') \
             | jq -sc . > "$manifest_path"
 
       - name: Upload release publish manifest artifact
