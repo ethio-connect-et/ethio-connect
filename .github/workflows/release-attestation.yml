@@ -12,6 +12,10 @@ on:
       short_sha:
         required: true
         type: string
+    outputs:
+      attestation_artifact_name:
+        description: 'Artifact name containing the promotion attestation payload.'
+        value: ${{ jobs.attestation.outputs.attestation_artifact_name }}
 
 env:
   CI: true
@@ -21,6 +25,8 @@ env:
 jobs:
   attestation:
     runs-on: ubuntu-latest
+    outputs:
+      attestation_artifact_name: ${{ steps.attestation_artifact.outputs.name }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -82,9 +88,14 @@ jobs:
             }' | jq -cS . > promotion-attestation.json
           echo "path=promotion-attestation.json" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve promotion attestation artifact name
+        id: attestation_artifact
+        shell: bash
+        run: echo "name=promotion-attestation-${{ inputs.version }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+
       - name: Upload promotion attestation artifact
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
         with:
-          name: promotion-attestation-${{ inputs.version }}-${{ github.run_id }}
+          name: ${{ steps.attestation_artifact.outputs.name }}
           path: ${{ steps.build_attestation.outputs.path }}
           retention-days: 90

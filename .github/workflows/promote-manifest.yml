@@ -16,6 +16,9 @@ on:
         required: false
         type: boolean
         default: false
+      attestation_artifact_name:
+        required: true
+        type: string
 
 env:
   CI: true
@@ -53,7 +56,7 @@ jobs:
       - name: Download promotion attestation artifact
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          name: promotion-attestation
+          name: ${{ inputs.attestation_artifact_name }}
 
       - name: Resolve, verify and dispatch manifest promotions
         env:
