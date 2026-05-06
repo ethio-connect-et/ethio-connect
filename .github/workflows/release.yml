@@ -24,8 +24,20 @@ on:
         required: false
         type: boolean
         default: false
+      scan_gate_override:
+        description: 'Override vulnerability scan gate (requires audit reason)'
+        required: false
+        type: boolean
+        default: false
+      scan_gate_override_reason:
+        description: 'Auditable justification for scan gate override'
+        required: false
+        type: string
 
-permissions: {}
+permissions:
+  contents: write
+  packages: write
+  actions: read
 
 jobs:
   release_build_publish:
@@ -36,6 +48,8 @@ jobs:
       version: ${{ github.event.inputs.version }}
       prerelease: ${{ github.event.inputs.prerelease == 'true' }}
       changelog: ${{ github.event.inputs.changelog }}
+      scan_gate_override: ${{ github.event.inputs.scan_gate_override == 'true' }}
+      scan_gate_override_reason: ${{ github.event.inputs.scan_gate_override_reason }}
 
   release_attestation:
     name: Release · Attestation

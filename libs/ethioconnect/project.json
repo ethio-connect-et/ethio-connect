@@ -11,7 +11,13 @@
     },
     "publish": false
   },
-  "tags": ["scope:shared", "type:util", "domain:shared", "platform:cross"],
+  "tags": [
+    "scope:shared",
+    "type:util",
+    "domain:shared",
+    "platform:cross",
+    "release:publish"
+  ],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
@@ -31,5 +37,8 @@
       "executor": "nx:noop",
       "dependsOn": ["build"]
     }
+  },
+  "metadata": {
+    "targetContractProfile": "library"
   }
 }

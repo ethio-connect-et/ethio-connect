@@ -88,6 +88,8 @@
           "args": [
             "--file",
             "{projectRoot}/Dockerfile",
+            "--platform",
+            "${DOCKER_PLATFORMS:-linux/amd64}",
             "--tag",
             "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${IMAGE_TAG:-latest}",
             "--tag",
@@ -107,7 +109,8 @@
             "--label",
             "org.opencontainers.image.licenses=${LICENCE:-MIT}",
             "--cache-from",
-            "type=registry,ref=${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:cache"
+            "type=registry,ref=${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:cache",
+            "--push"
           ]
         },
         "runTarget": {

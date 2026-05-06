@@ -3,6 +3,12 @@ name: Reusable Container Publish
 on:
   workflow_call:
     inputs:
+      projects_json:
+        required: true
+        type: string
+      tag_context_json:
+        required: true
+        type: string
       ref_name:
         required: true
         type: string
@@ -16,6 +22,12 @@ on:
       image_tag:
         description: 'The Docker image tag generated during publishing.'
         value: ${{ jobs.container_publish.outputs.image_tag }}
+      short_sha:
+        description: 'Immutable short commit SHA tag emitted for all images.'
+        value: ${{ jobs.container_publish.outputs.short_sha }}
+      canonical_release_version:
+        description: 'Canonical release version tag (SemVer for main, SemVer prerelease for non-main).'
+        value: ${{ jobs.container_publish.outputs.canonical_release_version }}
 
 env:
   CI: true
@@ -34,8 +46,10 @@ jobs:
       packages: write
     outputs:
       image_tag: ${{ steps.publish-context.outputs.image_tag }}
+      short_sha: ${{ steps.publish-context.outputs.short_sha }}
+      canonical_release_version: ${{ steps.publish-context.outputs.canonical_release_version }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
         with:
           fetch-depth: 0
 
@@ -51,15 +65,27 @@ jobs:
           set -euo pipefail
           branch_label="$(echo '${{ inputs.ref_name }}' | tr '[:upper:]' '[:lower:]' | sed 's#[^a-z0-9_.-]#-#g')"
           short_sha="$(git rev-parse --short=12 "${GITHUB_SHA}")"
-          image_tag="${branch_label}-${short_sha}"
+          if [[ "${{ inputs.ref_name }}" == "main" ]]; then
+            canonical_release_version="0.0.0+${short_sha}"
+            image_tag="${canonical_release_version}"
+          else
+            canonical_release_version="0.0.0-${branch_label}.${short_sha}"
+            image_tag="${canonical_release_version}"
+          fi
           build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           {
             echo "image_tag=${image_tag}"
             echo "short_sha=${short_sha}"
             echo "branch_label=${branch_label}"
+            echo "canonical_release_version=${canonical_release_version}"
             echo "build_date=${build_date}"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.6.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.11.1
       - name: Log in to GHCR
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
         with:
@@ -83,9 +109,82 @@ jobs:
           NX_DOCKER_VERSION: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
           NX_DOCKER_VERSION_SCHEME: production
+          RELEASE_VERSION: ${{ steps.publish-context.outputs.canonical_release_version }}
         run: |
           set -euo pipefail
-          pnpm nx run-many -t docker:build --all --outputStyle=static
+          projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
+          [[ -n "$projects" ]] || { echo 'No docker build projects to process.'; exit 0; }
+          pnpm nx run-many -t docker:build --projects "$projects" --outputStyle=static
+
+      - name: Security scan built container images (Trivy gate)
+        id: scan-gate
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/trivy/reports
+          projects="$(jq -r '.[]' <<< '${{ inputs.projects_json }}')"
+          [[ -n "$projects" ]] || { echo "scan_gate_status=skipped-no-projects" >> "$GITHUB_OUTPUT"; exit 0; }
+
+          sudo apt-get update -y
+          sudo apt-get install -y wget
+          wget -qO- https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+
+          failed=0
+          total_critical=0
+          total_high=0
+          skipped_missing=0
+          {
+            echo "## Container Security Scan (Trivy)"
+            echo ""
+            echo "| App | Image Ref | CRITICAL | HIGH | Gate |"
+            echo "|---|---|---:|---:|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          while IFS= read -r project; do
+            app="${project#@ethio-connect/}"
+            image_ref="ghcr.io/ethio-connect-et/${app}:${IMAGE_TAG}"
+            safe_name="${app//\//-}"
+            json_report="artifacts/trivy/reports/${safe_name}-${IMAGE_TAG}.json"
+            sarif_report="artifacts/trivy/reports/${safe_name}-${IMAGE_TAG}.sarif"
+
+            if ! docker image inspect "$image_ref" >/dev/null 2>&1; then
+              echo "| \`${app}\` | \`${image_ref}\` | 0 | 0 | \`skipped-missing-image\` |" >> "$GITHUB_STEP_SUMMARY"
+              skipped_missing=$((skipped_missing + 1))
+              continue
+            fi
+
+            trivy image --scanners vuln --format json --output "$json_report" "$image_ref"
+            trivy image --scanners vuln --format sarif --output "$sarif_report" "$image_ref"
+
+            critical_count="$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' "$json_report")"
+            high_count="$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' "$json_report")"
+            total_critical=$((total_critical + critical_count))
+            total_high=$((total_high + high_count))
+
+            gate="pass"
+            if (( critical_count > 0 || high_count > 0 )); then
+              gate="fail"
+              failed=1
+            fi
+            echo "| \`${app}\` | \`${image_ref}\` | ${critical_count} | ${high_count} | \`${gate}\` |" >> "$GITHUB_STEP_SUMMARY"
+          done < <(printf '%s\n' "$projects")
+
+          {
+            echo ""
+            echo "- Aggregate CRITICAL: ${total_critical}"
+            echo "- Aggregate HIGH: ${total_high}"
+            echo "- Skipped (missing local image): ${skipped_missing}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if (( failed == 1 )); then
+            echo "scan_gate_status=failed" >> "$GITHUB_OUTPUT"
+            echo "::error::Container scan gate failed due to HIGH/CRITICAL vulnerabilities."
+            exit 1
+          fi
+
+          echo "scan_gate_status=passed" >> "$GITHUB_OUTPUT"
 
       - name: Initialize release version for Docker
         shell: bash
@@ -119,9 +218,41 @@ jobs:
           NX_DOCKER_VERSION: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
           NX_DOCKER_VERSION_SCHEME: production
+          RELEASE_VERSION: ${{ steps.publish-context.outputs.canonical_release_version }}
         run: |
           set -euo pipefail
-          pnpm nx run-many -t nx-release-publish --all --outputStyle=static
+          projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
+          [[ -n "$projects" ]] || { echo 'No release publish projects to process.'; exit 0; }
+          pnpm nx run-many -t nx-release-publish --projects "$projects" --outputStyle=static
+
+      - name: Upload container scan reports
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: trivy-scan-reports-${{ inputs.ref_name }}-${{ github.run_id }}
+          path: artifacts/trivy/reports
+          retention-days: 30
+
+      - name: Verify published tags resolve to immutable manifests
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
+          BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r project; do
+            app="${project#@ethio-connect/}"
+            image_ref="ghcr.io/ethio-connect-et/${app}:${IMAGE_TAG}"
+            branch_ref="ghcr.io/ethio-connect-et/${app}:${BRANCH_TAG}"
+            image_digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+            branch_digest="$(docker buildx imagetools inspect "$branch_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+
+            [[ "$image_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::Invalid digest for $image_ref: $image_digest"; exit 1; }
+            [[ "$branch_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::Invalid digest for $branch_ref: $branch_digest"; exit 1; }
+            [[ "$image_digest" == "$branch_digest" ]] || { echo "::error::Digest mismatch for $app between ${IMAGE_TAG} and ${BRANCH_TAG}"; exit 1; }
+
+            echo "Verified $app => $image_digest"
+          done < <(jq -r '.[]' <<< '${{ inputs.projects_json }}')
 
       - name: Summarize published images
         shell: bash
@@ -154,10 +285,11 @@ jobs:
               --arg digest "$digest" \
               --arg source_sha "${GITHUB_SHA}" \
               --arg tag "$image_tag" \
+              --arg short_sha "${{ steps.publish-context.outputs.short_sha }}" \
+              --arg canonical_release_version "${{ steps.publish-context.outputs.canonical_release_version }}" \
               --arg artifact_run_id "${GITHUB_RUN_ID}" \
-              '{project:$project,app:$app,image_ref:$image_ref,digest:$digest,source_sha:$source_sha,tag:$tag,artifact_run_id:$artifact_run_id,attestation_status:"not-required"}'
-          done < <(pnpm nx show projects --withTarget nx-release-publish --json | jq -r '.[] | select(startswith("@ethio-connect/"))') \
-            | jq -sc . > "$manifest_path"
+              '{project:$project,app:$app,image_ref:$image_ref,digest:$digest,source_sha:$source_sha,tag:$tag,short_sha:$short_sha,canonical_release_version:$canonical_release_version,artifact_run_id:$artifact_run_id,attestation_status:"not-required"}'
+          done < <(jq -r '.[]' <<< '${{ inputs.projects_json }}') | jq -sc . > "$manifest_path"
 
       - name: Upload publish manifest artifact
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808

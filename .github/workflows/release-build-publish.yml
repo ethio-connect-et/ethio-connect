@@ -13,6 +13,14 @@ on:
       changelog:
         required: false
         type: string
+      scan_gate_override:
+        required: false
+        type: boolean
+        default: false
+      scan_gate_override_reason:
+        required: false
+        type: string
+        default: ''
     secrets:
       NX_CLOUD_ACCESS_TOKEN:
         required: true
@@ -23,6 +31,8 @@ on:
         value: ${{ jobs.build_publish.outputs.docker_version }}
       short_sha:
         value: ${{ jobs.build_publish.outputs.short_sha }}
+      scan_gate_status:
+        value: ${{ jobs.build_publish.outputs.scan_gate_status }}
 
 env:
   CI: true
@@ -38,11 +48,12 @@ jobs:
       version: ${{ steps.context.outputs.version }}
       docker_version: ${{ steps.release-metadata.outputs.docker_version }}
       short_sha: ${{ steps.release-metadata.outputs.short_sha }}
+      scan_gate_status: ${{ steps.publish-targets.outputs.scan_gate_status }}
     permissions:
       contents: write
       packages: write
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
         with:
           fetch-depth: 0
 
@@ -64,6 +75,11 @@ jobs:
 
           if [[ "$version" == *-* ]]; then
             prerelease=true
+          fi
+
+          if [[ "${{ inputs.scan_gate_override }}" == "true" ]] && [[ -z "${{ inputs.scan_gate_override_reason }}" ]]; then
+            echo "::error::scan_gate_override_reason is required when scan_gate_override=true"
+            exit 1
           fi
 
           {
@@ -94,9 +110,16 @@ jobs:
           short_sha="$(git rev-parse --short=12 HEAD)"
           version="${{ steps.context.outputs.version }}"
           docker_version="${version#v}"
-          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
-          echo "docker_version=$docker_version" >> "$GITHUB_OUTPUT"
+          {
+            echo "short_sha=$short_sha"
+            echo "docker_version=$docker_version"
+          } >> "$GITHUB_OUTPUT"
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.6.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.11.1
       - name: Authenticate with GitHub Container Registry
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
         with:
@@ -122,7 +145,7 @@ jobs:
             mkdir -p "tmp/$root"
             echo "${docker_version}" > "tmp/$root/.docker-version"
             echo "Created tmp/$root/.docker-version with tag ${docker_version}"
-          done < <(pnpm nx show projects --withTarget nx-release-publish --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
+          done < <(pnpm nx show projects --projects 'tag:release:publish' --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
 
       - name: Build and publish docker images via Nx targets
         id: publish-targets
@@ -146,10 +169,77 @@ jobs:
           echo "Building docker images for docker-enabled release groups"
           pnpm nx run-many -t docker:build --projects "$central_hub_projects,$customer_portal_projects,$vendor_portal_projects"
 
+          mkdir -p artifacts/trivy/reports
+          sudo apt-get update -y
+          sudo apt-get install -y wget
+          wget -qO- https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+
+          failed=0
+          total_critical=0
+          total_high=0
+          {
+            echo "## Container Security Scan (Trivy)"
+            echo ""
+            echo "| App | Image Ref | CRITICAL | HIGH | Gate |"
+            echo "|---|---|---:|---:|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for group_projects in "$central_hub_projects" "$customer_portal_projects" "$vendor_portal_projects"; do
+            IFS=',' read -ra projects <<< "$group_projects"
+            for project in "${projects[@]}"; do
+              image="${project#@ethio-connect/}"
+              image_ref="ghcr.io/ethio-connect-et/${image}:${docker_version}"
+              safe_name="${image//\//-}"
+              json_report="artifacts/trivy/reports/${safe_name}-${docker_version}.json"
+              sarif_report="artifacts/trivy/reports/${safe_name}-${docker_version}.sarif"
+
+              trivy image --scanners vuln --format json --output "$json_report" "$image_ref"
+              trivy image --scanners vuln --format sarif --output "$sarif_report" "$image_ref"
+
+              critical_count="$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' "$json_report")"
+              high_count="$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' "$json_report")"
+              total_critical=$((total_critical + critical_count))
+              total_high=$((total_high + high_count))
+
+              gate="pass"
+              if (( critical_count > 0 || high_count > 0 )); then
+                gate="fail"
+                failed=1
+              fi
+              echo "| \`${image}\` | \`${image_ref}\` | ${critical_count} | ${high_count} | \`${gate}\` |" >> "$GITHUB_STEP_SUMMARY"
+            done
+          done
+
+          {
+            echo ""
+            echo "- Aggregate CRITICAL: ${total_critical}"
+            echo "- Aggregate HIGH: ${total_high}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if (( failed == 1 )); then
+            if [[ "${{ inputs.scan_gate_override }}" == "true" ]]; then
+              echo "::warning::Scan gate override enabled. Continuing despite HIGH/CRITICAL vulnerabilities."
+              {
+                echo "### Scan Gate Override"
+                echo "- Override: \`true\`"
+                echo "- Reason: \`${{ inputs.scan_gate_override_reason || 'no reason provided' }}\`"
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo "scan_gate_status=overridden" >> "$GITHUB_OUTPUT"
+            else
+              echo "scan_gate_status=failed" >> "$GITHUB_OUTPUT"
+              echo "::error::Container scan gate failed due to HIGH/CRITICAL vulnerabilities."
+              exit 1
+            fi
+          else
+            echo "scan_gate_status=passed" >> "$GITHUB_OUTPUT"
+          fi
+
           : > release-publish.log
           : > published-images.md
-          echo "### Published Docker Images" >> published-images.md
-          echo "" >> published-images.md
+          {
+            echo "### Published Docker Images"
+            echo ""
+          } >> published-images.md
           for group in shared-libs central-hub customer-portal vendor-portal; do
             case "$group" in
               shared-libs) group_projects="$shared_libs_projects" ;;
@@ -165,8 +255,10 @@ jobs:
             IFS=',' read -ra projects <<< "$group_projects"
             for project in "${projects[@]}"; do
               image="${project#@ethio-connect/}"
-              echo "- ghcr.io/ethio-connect-et/${image}:${docker_version}" >> published-images.md
-              echo "  - ghcr.io/ethio-connect-et/${image}:${short_sha}" >> published-images.md
+              {
+                echo "- ghcr.io/ethio-connect-et/${image}:${docker_version}"
+                echo "  - ghcr.io/ethio-connect-et/${image}:${short_sha}"
+              } >> published-images.md
             done
           done
 
@@ -177,6 +269,36 @@ jobs:
             cat published-images.md
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Verify published tags resolve to immutable manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker_version="${{ steps.release-metadata.outputs.docker_version }}"
+          short_sha="${{ steps.release-metadata.outputs.short_sha }}"
+
+          while IFS= read -r project; do
+            app="${project#@ethio-connect/}"
+            version_ref="ghcr.io/ethio-connect-et/${app}:${docker_version}"
+            sha_ref="ghcr.io/ethio-connect-et/${app}:${short_sha}"
+
+            version_digest="$(docker buildx imagetools inspect "$version_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+            sha_digest="$(docker buildx imagetools inspect "$sha_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+
+            [[ "$version_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::Invalid version digest for $app: $version_digest"; exit 1; }
+            [[ "$sha_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::Invalid sha digest for $app: $sha_digest"; exit 1; }
+            [[ "$version_digest" == "$sha_digest" ]] || { echo "::error::Digest mismatch for $app between ${docker_version} and ${short_sha}"; exit 1; }
+
+            echo "Verified $app => $version_digest"
+          done < <(pnpm nx show projects --projects 'tag:release:docker' --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
+
+      - name: Upload container scan reports
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: trivy-scan-reports-release-${{ steps.context.outputs.version }}-${{ github.run_id }}
+          path: artifacts/trivy/reports
+          retention-days: 30
 
       - name: Generate release changelog from git history
         id: changelog
@@ -275,7 +397,7 @@ jobs:
               --arg tag "$docker_version" \
               --arg artifact_run_id "${GITHUB_RUN_ID}" \
               '{project:$project,app:$app,image_ref:$image_ref,digest:$digest,source_sha:$source_sha,tag:$tag,artifact_run_id:$artifact_run_id,attestation_status:"pending"}'
-          done < <(pnpm nx show projects --withTarget nx-release-publish --json | jq -r '.[] | select(startswith("@ethio-connect/"))') \
+          done < <(pnpm nx show projects --projects 'tag:release:publish' --json | jq -r '.[] | select(startswith("@ethio-connect/"))') \
             | jq -sc . > "$manifest_path"
 
       - name: Upload release publish manifest artifact

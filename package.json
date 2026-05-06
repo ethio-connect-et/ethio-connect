@@ -81,6 +81,7 @@
   "scripts": {
     "release:dry-run": "nx release --dry-run",
     "release:version": "nx release version",
-    "release:publish": "nx release publish"
+    "release:publish": "nx release publish",
+    "validate:target-contract": "node scripts/validate-target-contract.mjs"
   }
 }

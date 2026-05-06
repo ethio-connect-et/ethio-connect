@@ -7,7 +7,9 @@
     "domain:vendor-portal",
     "platform:api",
     "scope:vendor-portal",
-    "type:api"
+    "type:api",
+    "release:docker",
+    "release:publish"
   ],
   "targets": {
     "build": {
@@ -114,5 +116,8 @@
         "imageName": "ghcr.io/ethio-connect-et/vendor-api-server"
       }
     }
+  },
+  "metadata": {
+    "targetContractProfile": "app"
   }
 }

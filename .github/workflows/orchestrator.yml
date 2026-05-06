@@ -1,0 +1,117 @@
+name: CI Orchestrator
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [development, testing, staging, main]
+    paths:
+      - 'apps/**'
+      - 'libs/**'
+      - '.github/workflows/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'nx.json'
+      - 'tsconfig.base.json'
+      - 'eslint.config.mjs'
+      - 'jest.config.ts'
+      - 'jest.preset.js'
+
+permissions:
+  actions: read
+  contents: read
+  packages: write
+
+env:
+  CI: true
+  NODE_VERSION: '24.11.0'
+  PNPM_VERSION: '10.20.0'
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+
+concurrency:
+  group: ci-orchestrator-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: Plan · Affected Partition
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      quality_projects: ${{ steps.partition.outputs.quality_projects }}
+      docker_build_projects: ${{ steps.partition.outputs.docker_build_projects }}
+      release_publish_projects: ${{ steps.partition.outputs.release_publish_projects }}
+      has_quality: ${{ steps.partition.outputs.has_quality }}
+      has_docker_build: ${{ steps.partition.outputs.has_docker_build }}
+      has_release_publish: ${{ steps.partition.outputs.has_release_publish }}
+      tag_context: ${{ steps.partition.outputs.tag_context }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-nx-node
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+      - name: Resolve Nx SHAs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch --no-tags origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+            echo "NX_BASE=origin/${{ github.base_ref }}" >> "$GITHUB_ENV"
+            echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
+          else
+            git fetch --no-tags origin "${{ github.event.before }}:refs/remotes/origin/${{ github.event.before }}" || true
+            echo "NX_BASE=${{ github.event.before }}" >> "$GITHUB_ENV"
+            echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
+          fi
+      - name: Partition affected projects
+        id: partition
+        shell: bash
+        run: |
+          set -euo pipefail
+          affected_json="$(pnpm nx show projects --affected --base="$NX_BASE" --head="$NX_HEAD" --json)"
+          quality_json="$(jq -c '.' <<<"$affected_json")"
+          docker_json="$(jq -c '[.[] | select(startswith("@ethio-connect/"))]' <<<"$affected_json")"
+          release_json="$docker_json"
+          has_quality="$(jq -r 'if length>0 then "true" else "false" end' <<<"$quality_json")"
+          has_docker="$(jq -r 'if length>0 then "true" else "false" end' <<<"$docker_json")"
+          has_release="$(jq -r 'if length>0 then "true" else "false" end' <<<"$release_json")"
+          tag_context="$(jq -cn --arg ref "${{ github.ref_name }}" --arg sha "${{ github.sha }}" '{ref_name:$ref,sha:$sha}')"
+          {
+            echo "quality_projects=$quality_json"
+            echo "docker_build_projects=$docker_json"
+            echo "release_publish_projects=$release_json"
+            echo "has_quality=$has_quality"
+            echo "has_docker_build=$has_docker"
+            echo "has_release_publish=$has_release"
+            echo "tag_context=$tag_context"
+          } >> "$GITHUB_OUTPUT"
+
+  quality:
+    name: Quality Lane
+    needs: [plan]
+    if: needs.plan.outputs.has_quality == 'true'
+    uses: ./.github/workflows/reusable-build-test-lint.yml
+    secrets: inherit
+    with:
+      ref_name: ${{ github.ref_name }}
+      event_name: ${{ github.event_name }}
+      pull_request_draft: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft || false }}
+      pull_request_number: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || 0 }}
+      projects_json: ${{ needs.plan.outputs.quality_projects }}
+
+  docker_build:
+    name: Docker Build/Publish Lane
+    needs: [plan]
+    if: needs.plan.outputs.has_docker_build == 'true' && github.event_name == 'push' && (github.ref_name == 'testing' || github.ref_name == 'staging' || github.ref_name == 'main')
+    uses: ./.github/workflows/reusable-container-publish.yml
+    secrets: inherit
+    with:
+      ref_name: ${{ github.ref_name }}
+      event_name: ${{ github.event_name }}
+      projects_json: ${{ needs.plan.outputs.docker_build_projects }}
+      tag_context_json: ${{ needs.plan.outputs.tag_context }}

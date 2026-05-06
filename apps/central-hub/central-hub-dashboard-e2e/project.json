@@ -37,5 +37,8 @@
         "imageName": "ghcr.io/ethio-connect-et/central-hub-dashboard-e2e"
       }
     }
+  },
+  "metadata": {
+    "targetContractProfile": "e2e"
   }
 }

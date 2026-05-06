@@ -7,7 +7,9 @@
     "domain:vendor-portal",
     "platform:web",
     "scope:vendor-portal",
-    "type:dashboard"
+    "type:dashboard",
+    "release:docker",
+    "release:publish"
   ],
   "targets": {
     "container": {
@@ -70,5 +72,8 @@
     "prune": {
       "executor": "nx:noop"
     }
+  },
+  "metadata": {
+    "targetContractProfile": "app"
   }
 }
