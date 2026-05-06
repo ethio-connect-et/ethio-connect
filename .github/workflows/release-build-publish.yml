@@ -110,8 +110,10 @@ jobs:
           short_sha="$(git rev-parse --short=12 HEAD)"
           version="${{ steps.context.outputs.version }}"
           docker_version="${version#v}"
-          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
-          echo "docker_version=$docker_version" >> "$GITHUB_OUTPUT"
+          {
+            echo "short_sha=$short_sha"
+            echo "docker_version=$docker_version"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e8 # v3.6.0
@@ -217,9 +219,11 @@ jobs:
           if (( failed == 1 )); then
             if [[ "${{ inputs.scan_gate_override }}" == "true" ]]; then
               echo "::warning::Scan gate override enabled. Continuing despite HIGH/CRITICAL vulnerabilities."
-              echo "### Scan Gate Override" >> "$GITHUB_STEP_SUMMARY"
-              echo "- Override: \`true\`" >> "$GITHUB_STEP_SUMMARY"
-              echo "- Reason: \`${{ inputs.scan_gate_override_reason || 'no reason provided' }}\`" >> "$GITHUB_STEP_SUMMARY"
+              {
+                echo "### Scan Gate Override"
+                echo "- Override: \`true\`"
+                echo "- Reason: \`${{ inputs.scan_gate_override_reason || 'no reason provided' }}\`"
+              } >> "$GITHUB_STEP_SUMMARY"
               echo "scan_gate_status=overridden" >> "$GITHUB_OUTPUT"
             else
               echo "scan_gate_status=failed" >> "$GITHUB_OUTPUT"
@@ -232,8 +236,10 @@ jobs:
 
           : > release-publish.log
           : > published-images.md
-          echo "### Published Docker Images" >> published-images.md
-          echo "" >> published-images.md
+          {
+            echo "### Published Docker Images"
+            echo ""
+          } >> published-images.md
           for group in shared-libs central-hub customer-portal vendor-portal; do
             case "$group" in
               shared-libs) group_projects="$shared_libs_projects" ;;
@@ -249,8 +255,10 @@ jobs:
             IFS=',' read -ra projects <<< "$group_projects"
             for project in "${projects[@]}"; do
               image="${project#@ethio-connect/}"
-              echo "- ghcr.io/ethio-connect-et/${image}:${docker_version}" >> published-images.md
-              echo "  - ghcr.io/ethio-connect-et/${image}:${short_sha}" >> published-images.md
+              {
+                echo "- ghcr.io/ethio-connect-et/${image}:${docker_version}"
+                echo "  - ghcr.io/ethio-connect-et/${image}:${short_sha}"
+              } >> published-images.md
             done
           done
 

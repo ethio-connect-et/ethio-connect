@@ -225,7 +225,6 @@ jobs:
           path: artifacts/trivy/reports
           retention-days: 30
 
-
       - name: Verify published tags resolve to immutable manifests
         shell: bash
         env:
