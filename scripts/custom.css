@@ -1,4 +1,46 @@
 /* scripts/custom.css */
+:root {
+  --primary: #1a365d;
+  --primary-light: #2c5282;
+  --secondary: #2d3748;
+  --accent: #e53e3e;
+  --warning: #dd6b20;
+  --success: #38a169;
+  --info: #3182ce;
+  --bg: #f7fafc;
+  --card-bg: #ffffff;
+  --border: #e2e8f0;
+  --text: #1a202c;
+  --text-light: #718096;
+  --critical: #c53030;
+  --high: #dd6b20;
+  --medium: #d69e2e;
+  --low: #38a169;
+}
+
+@page {
+  size: A4;
+  margin: 15mm 18mm 20mm 18mm;
+
+  @bottom-center {
+    content: 'Confidential — EthioConnect Audit Report | Page ' counter(page)
+      ' of ' counter(pages);
+    font-size: 8pt;
+    color: var(--text-light);
+  }
+}
+
+.container {
+  max-width: 210mm;
+  margin: 0 auto;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 body {
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
