@@ -3,6 +3,9 @@ name: Reusable Build, Test, and Lint
 on:
   workflow_call:
     inputs:
+      projects_json:
+        required: true
+        type: string
       ref_name:
         required: true
         type: string
@@ -60,5 +63,13 @@ jobs:
       - name: Check formatting
         run: pnpm nx format:check --base="$NX_BASE" --head="$NX_HEAD"
 
-      - name: Run affected quality tasks
-        run: pnpm nx affected -t lint test build --base="$NX_BASE" --head="$NX_HEAD" --parallel=3 --outputStyle=static
+      - name: Run scoped quality tasks
+        shell: bash
+        run: |
+          set -euo pipefail
+          projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
+          if [[ -z "$projects" ]]; then
+            echo 'No quality projects to process.'
+            exit 0
+          fi
+          pnpm nx run-many -t lint test build --projects "$projects" --parallel=3 --outputStyle=static
