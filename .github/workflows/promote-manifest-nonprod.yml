@@ -73,7 +73,7 @@ jobs:
 
             if [[ -n "$artifact_run_id" ]]; then
               artifact_id="$(gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/runs/${artifact_run_id}/artifacts" \
-                --jq '.artifacts[] | select((.name | startswith("publish-manifest-${{ github.ref_name }}-")) and .expired == false) | .id' | head -n 1)"
+                --jq '.artifacts[] | select((.name | startswith("publish-image-metadata-${{ github.ref_name }}-")) and .expired == false) | .id' | head -n 1)"
               
               if [[ -n "$artifact_id" ]]; then
                 echo "Found CI run ID: $artifact_run_id and artifact ID: $artifact_id after $i attempts."
@@ -89,14 +89,14 @@ jobs:
 
           [[ -n "$artifact_id" ]] || { echo "::error::Timed out waiting for publish-manifest artifact for CI run ${artifact_run_id:-unknown}"; exit 1; }
 
-          gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > publish-manifest.zip
-          unzip -o publish-manifest.zip -d artifacts >/dev/null
-          manifest_path="$(find artifacts -type f -name 'publish-manifest-*.json' | head -n 1)"
-          [[ -n "$manifest_path" ]] || { echo "::error::publish-manifest JSON not found after download"; exit 1; }
+          gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > publish-image-metadata.zip
+          unzip -o publish-image-metadata.zip -d artifacts >/dev/null
+          manifest_path="$(find artifacts -type f -name 'publish-image-metadata-*.json' | head -n 1)"
+          [[ -n "$manifest_path" ]] || { echo "::error::publish-image-metadata JSON not found after download"; exit 1; }
 
           jq -e --arg sha "$GITHUB_SHA" '
             type=="array" and length>0 and
-            all(.[]; has("project") and has("app") and has("image_ref") and has("source_sha") and has("tag") and has("short_sha")) and
+            all(.[]; has("project") and has("app") and has("image_ref") and has("immutable_ref") and has("digest") and has("source_sha") and has("release_version")) and
             all(.[]; .source_sha == $sha)
           ' "$manifest_path" >/dev/null
 
