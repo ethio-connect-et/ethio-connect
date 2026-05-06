@@ -34,7 +34,6 @@ on:
 permissions:
   actions: read
   contents: read
-  packages: write
 
 env:
   CI: true
