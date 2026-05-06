@@ -19,12 +19,9 @@ ENV HOSTNAME=0.0.0.0
 
 COPY --from=runtime-fs /rootfs/ /
 
-COPY --chown=65532:65532 dist/apps/vendor-portal/vendor-portal-dashboard/.next/standalone/apps ./apps
-COPY --chown=65532:65532 dist/apps/vendor-portal/vendor-portal-dashboard/.next/standalone/dist ./dist
-COPY --chown=65532:65532 dist/apps/vendor-portal/vendor-portal-dashboard/.next/standalone/node_modules ./node_modules
-COPY --chown=65532:65532 dist/apps/vendor-portal/vendor-portal-dashboard/.next/standalone/package.json ./package.json
-COPY --chown=65532:65532 dist/apps/vendor-portal/vendor-portal-dashboard/workspace_modules ./workspace_modules
+COPY --chown=65532:65532 dist/apps/vendor-portal/vendor-portal-dashboard/.next/standalone/ ./
 COPY --chown=65532:65532 dist/apps/vendor-portal/vendor-portal-dashboard/.next/static ./dist/apps/vendor-portal/vendor-portal-dashboard/.next/static
+COPY --chown=65532:65532 apps/vendor-portal/vendor-portal-dashboard/public ./apps/vendor-portal/vendor-portal-dashboard/public
 
 EXPOSE 3000
 USER 65532:65532
