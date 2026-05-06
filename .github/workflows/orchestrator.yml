@@ -69,6 +69,13 @@ jobs:
             echo "NX_BASE=${{ github.event.before }}" >> "$GITHUB_ENV"
             echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
           fi
+
+      - name: Validate Nx target contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/ci/validate-project-targets.mjs
+
       - name: Partition affected projects
         id: partition
         shell: bash
@@ -116,3 +123,59 @@ jobs:
       event_name: ${{ github.event_name }}
       projects_json: ${{ needs.plan.outputs.docker_build_projects }}
       tag_context_json: ${{ needs.plan.outputs.tag_context }}
+
+  ci_summary:
+    name: CI Summary
+    needs: [plan, quality]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Download quality metrics
+        if: needs.quality.result != 'skipped'
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+        with:
+          name: ci-metrics-quality
+          path: ci-metrics
+
+      - name: Build CI summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          affected_count=$(jq 'length' <<< '${{ needs.plan.outputs.quality_projects }}')
+          if [[ -f ci-metrics/ci-metrics-quality.json ]]; then
+            cache_hits=$(jq -r '.cache_hits' ci-metrics/ci-metrics-quality.json)
+            cache_misses=$(jq -r '.cache_misses' ci-metrics/ci-metrics-quality.json)
+            duration_seconds=$(jq -r '.duration_seconds' ci-metrics/ci-metrics-quality.json)
+            nx_cloud_run_url=$(jq -r '.nx_cloud_run_url' ci-metrics/ci-metrics-quality.json)
+          else
+            cache_hits=0
+            cache_misses=0
+            duration_seconds=0
+            nx_cloud_run_url=""
+          fi
+
+          cache_total=$((cache_hits + cache_misses))
+          if [[ $cache_total -gt 0 ]]; then
+            hit_rate=$(awk -v hits="$cache_hits" -v total="$cache_total" 'BEGIN { printf "%.1f", (hits/total)*100 }')
+          else
+            hit_rate="n/a"
+          fi
+
+          baseline_seconds=900
+          duration_delta=$((duration_seconds - baseline_seconds))
+
+          {
+            echo "## CI Lane Summary"
+            echo ""
+            echo "- Affected projects: **${affected_count}**"
+            echo "- Cache hits/misses (quality lane): **${cache_hits}/${cache_misses}** (hit rate: **${hit_rate}%**)"
+            echo "- Duration (quality lane): **${duration_seconds}s** (delta vs baseline ${baseline_seconds}s: **${duration_delta}s**)"
+            if [[ -n "$nx_cloud_run_url" ]]; then
+              echo "- Nx Cloud run metadata: ${nx_cloud_run_url}"
+            else
+              echo "- Nx Cloud run metadata: _not captured_"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
