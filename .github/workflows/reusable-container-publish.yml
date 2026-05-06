@@ -134,6 +134,7 @@ jobs:
           failed=0
           total_critical=0
           total_high=0
+          skipped_missing=0
           {
             echo "## Container Security Scan (Trivy)"
             echo ""
@@ -147,6 +148,12 @@ jobs:
             safe_name="${app//\//-}"
             json_report="artifacts/trivy/reports/${safe_name}-${IMAGE_TAG}.json"
             sarif_report="artifacts/trivy/reports/${safe_name}-${IMAGE_TAG}.sarif"
+
+            if ! docker image inspect "$image_ref" >/dev/null 2>&1; then
+              echo "| \`${app}\` | \`${image_ref}\` | 0 | 0 | \`skipped-missing-image\` |" >> "$GITHUB_STEP_SUMMARY"
+              skipped_missing=$((skipped_missing + 1))
+              continue
+            fi
 
             trivy image --scanners vuln --format json --output "$json_report" "$image_ref"
             trivy image --scanners vuln --format sarif --output "$sarif_report" "$image_ref"
@@ -168,6 +175,7 @@ jobs:
             echo ""
             echo "- Aggregate CRITICAL: ${total_critical}"
             echo "- Aggregate HIGH: ${total_high}"
+            echo "- Skipped (missing local image): ${skipped_missing}"
           } >> "$GITHUB_STEP_SUMMARY"
 
           if (( failed == 1 )); then
