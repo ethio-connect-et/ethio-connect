@@ -56,32 +56,45 @@ async function main() {
 
   for (const projectName of groupedProjects) {
     if (!projects.has(projectName)) {
-      errors.push(`nx.json release group includes unknown project '${projectName}'.`);
+      errors.push(
+        `nx.json release group includes unknown project '${projectName}'.`,
+      );
     }
   }
 
   for (const [name, { file, config }] of projects) {
     const inReleaseGroup = groupedProjects.has(name);
-    const hasReleaseConfig = Object.prototype.hasOwnProperty.call(config ?? {}, 'release');
+    const hasReleaseConfig = Object.prototype.hasOwnProperty.call(
+      config ?? {},
+      'release',
+    );
     const publishFlag = config?.release?.publish;
     const publishEnabled = hasReleaseConfig ? publishFlag !== false : null;
     const target = config?.targets?.['nx-release-publish'];
     const kind = targetKind(target);
 
     if (publishEnabled === true && !inReleaseGroup) {
-      errors.push(`${file}: release.publish is enabled, but project is not listed in nx.json release.groups.`);
+      errors.push(
+        `${file}: release.publish is enabled, but project is not listed in nx.json release.groups.`,
+      );
     }
 
     if (inReleaseGroup && publishEnabled === true && kind !== 'publish') {
-      errors.push(`${file}: project is in nx.json release.groups with publish enabled, but nx-release-publish target is missing or noop.`);
+      errors.push(
+        `${file}: project is in nx.json release.groups with publish enabled, but nx-release-publish target is missing or noop.`,
+      );
     }
 
     if (inReleaseGroup && publishFlag === false && kind === 'publish') {
-      errors.push(`${file}: release.publish is false (version/changelog-only) but nx-release-publish is executable. Use nx:noop or remove target.`);
+      errors.push(
+        `${file}: release.publish is false (version/changelog-only) but nx-release-publish is executable. Use nx:noop or remove target.`,
+      );
     }
 
     if (!inReleaseGroup && kind === 'publish') {
-      errors.push(`${file}: executable nx-release-publish target exists, but project is outside nx.json release.groups.`);
+      errors.push(
+        `${file}: executable nx-release-publish target exists, but project is outside nx.json release.groups.`,
+      );
     }
   }
 
@@ -91,7 +104,9 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Release scope contract validated for ${projects.size} projects.`);
+  console.log(
+    `Release scope contract validated for ${projects.size} projects.`,
+  );
 }
 
 main().catch((err) => {

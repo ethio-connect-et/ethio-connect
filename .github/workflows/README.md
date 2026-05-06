@@ -12,12 +12,12 @@ The canonical top-level release workflow is `.github/workflows/release.yml`.
 
 ### Release trigger/flow matrix
 
-| Trigger | Workflow | Nx targets / release responsibility |
-| --- | --- | --- |
-| `workflow_dispatch` on protected `main` | `release.yml` | orchestration only (policy gate + reusable calls) |
-| called by `release.yml` | `release-build-publish.yml` | `docker:build`, `nx-release-publish`, release metadata/evidence |
-| called by `release.yml` | `release-attestation.yml` | metadata/attestation generation from publish artifacts |
-| called by `release.yml` | `promote-manifest.yml` | promotion dispatch from attested immutable digests |
+| Trigger                                 | Workflow                    | Nx targets / release responsibility                             |
+| --------------------------------------- | --------------------------- | --------------------------------------------------------------- |
+| `workflow_dispatch` on protected `main` | `release.yml`               | orchestration only (policy gate + reusable calls)               |
+| called by `release.yml`                 | `release-build-publish.yml` | `docker:build`, `nx-release-publish`, release metadata/evidence |
+| called by `release.yml`                 | `release-attestation.yml`   | metadata/attestation generation from publish artifacts          |
+| called by `release.yml`                 | `promote-manifest.yml`      | promotion dispatch from attested immutable digests              |
 
 # Workflow Integration Contract
 

@@ -427,7 +427,6 @@ jobs:
             echo "Created tmp/$root/.docker-version with tag ${image_tag}"
           done < <(pnpm nx show projects --withTarget nx-release-publish --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
 
-
       - name: Validate release target contracts (Publish Stage)
         if: ${{ inputs.event_name != 'pull_request' && (inputs.ref_name == 'testing' || inputs.ref_name == 'staging' || inputs.ref_name == 'main') }}
         shell: bash

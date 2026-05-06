@@ -134,12 +134,18 @@ async function validatePublishProjects(projects, reportPath) {
   };
 
   await fs.mkdir(path.dirname(reportPath), { recursive: true });
-  await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await fs.writeFile(
+    reportPath,
+    `${JSON.stringify(report, null, 2)}\n`,
+    'utf8',
+  );
 
   console.log('Release target contract summary:');
   for (const item of summary) {
     const symbol = item.status === 'ok' ? '✅' : '❌';
-    console.log(`- ${symbol} ${item.project}: ${item.status} — ${item.message}`);
+    console.log(
+      `- ${symbol} ${item.project}: ${item.status} — ${item.message}`,
+    );
   }
   console.log(`Report written to ${reportPath}`);
 
@@ -229,7 +235,8 @@ async function main() {
     if (!Array.isArray(projects)) {
       throw new Error('--projects-json must be a JSON array of project names.');
     }
-    const reportPath = args['report-path'] ?? 'release-target-contract-report.json';
+    const reportPath =
+      args['report-path'] ?? 'release-target-contract-report.json';
     await validatePublishProjects(projects, reportPath);
     return;
   }
