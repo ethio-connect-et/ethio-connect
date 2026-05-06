@@ -210,3 +210,39 @@ Reusable workflow interfaces should use these canonical names:
 - `nx_base` / `nx_head`
 - `tag_context_json` and `canonical_release_version`/`short_sha` image metadata outputs
 - deterministic artifact names (e.g. `publish-manifest-<ref>-<run_id>`, lane metrics artifacts)
+
+## Release scope model and CI contract
+
+Release behavior is split by project type and enforced by `tools/ci/validate-release-scope.mjs`.
+
+### Project classes
+
+- **Docker publish participants**: projects in `nx.json` `release.groups` with publish enabled (`release.publish` omitted or `true`) and an executable `nx-release-publish` target.
+  - `nx release version` runs for these projects.
+  - Publish lanes (`nx release publish` and CI container publish lanes) run for these projects.
+- **Version/changelog-only projects**: projects in `nx.json` `release.groups` with `release.publish: false`.
+  - `nx release version` still runs for these projects (version/changelog updates).
+  - Publish does **not** run; `nx-release-publish` may be absent or `nx:noop`, but must not be executable.
+
+### Where versioning runs vs where publish runs
+
+- `nx release version` scope is declared by `nx.json -> release.groups[*].projects`.
+- Publish scope is the subset of that version scope where `release.publish !== false` **and** `nx-release-publish` is executable (not `nx:noop`).
+
+### Drift checks enforced in CI
+
+`tools/ci/validate-release-scope.mjs` fails when contracts drift, including:
+
+- a release-group project no longer exists,
+- publish-enabled release-group project missing executable `nx-release-publish`,
+- version/changelog-only (`release.publish: false`) project has executable `nx-release-publish`,
+- executable `nx-release-publish` exists outside declared release groups,
+- publish-enabled project is not declared in `nx.json` release groups.
+
+### CI hook points
+
+The release-scope validator runs before release-capable lanes execute:
+
+- `orchestrator.yml` in the `plan` job (precedes quality/container lanes),
+- `ci.yml` compatibility shim governance job,
+- `release.yml` policy gate job (precedes release build/publish lane).

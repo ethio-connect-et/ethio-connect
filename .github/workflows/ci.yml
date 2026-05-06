@@ -19,6 +19,8 @@ jobs:
       - uses: ./.github/actions/setup-nx-node
       - name: Validate target contract
         run: pnpm run validate:target-contract
+      - name: Validate release scope contract
+        run: pnpm run validate:release-scope
       - name: Enforce secret handling policy
         run: ./scripts/check-no-plaintext-secrets.sh
 
