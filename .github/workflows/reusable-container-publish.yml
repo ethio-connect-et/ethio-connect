@@ -15,6 +15,12 @@ on:
       event_name:
         required: true
         type: string
+      nx_base:
+        required: true
+        type: string
+      nx_head:
+        required: true
+        type: string
     secrets:
       NX_CLOUD_ACCESS_TOKEN:
         required: true
@@ -113,12 +119,24 @@ jobs:
         run: |
           set -euo pipefail
           projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
-          [[ -n "$projects" ]] || { echo 'No docker build projects to process.'; exit 0; }
+          [[ -n "$projects" ]] || {
+            echo 'No docker build projects in optimization hint; writing deterministic skip artifact.'
+            echo '{"lane":"docker_build","status":"skipped-no-affected"}' > ci-metrics-docker-build.json
+            exit 0
+          }
           [[ -n "${IMAGE_TAG:-}" ]] || { echo "::error::IMAGE_TAG is required"; exit 1; }
           [[ -n "${BRANCH_TAG:-}" ]] || { echo "::error::BRANCH_TAG is required"; exit 1; }
           [[ "$IMAGE_TAG" != "latest" ]] || { echo "::error::IMAGE_TAG must not be latest"; exit 1; }
           [[ "$BRANCH_TAG" != "latest" ]] || { echo "::error::BRANCH_TAG must not be latest"; exit 1; }
           pnpm nx run-many -t docker:build --projects "$projects" --outputStyle=static
+
+      - name: Upload docker lane skip marker
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: ci-metrics-docker-build
+          path: ci-metrics-docker-build.json
+          if-no-files-found: ignore
 
       - name: Security scan built container images (Trivy gate)
         id: scan-gate

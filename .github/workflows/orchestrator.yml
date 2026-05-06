@@ -47,7 +47,10 @@ jobs:
       has_quality: ${{ steps.partition.outputs.has_quality }}
       has_docker_build: ${{ steps.partition.outputs.has_docker_build }}
       has_release_publish: ${{ steps.partition.outputs.has_release_publish }}
+      has_manifest_promotion: ${{ steps.partition.outputs.has_manifest_promotion }}
       tag_context: ${{ steps.partition.outputs.tag_context }}
+      nx_base: ${{ steps.resolve-shas.outputs.nx_base }}
+      nx_head: ${{ steps.resolve-shas.outputs.nx_head }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
@@ -56,19 +59,25 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
-      - name: Resolve Nx SHAs
+      - name: Resolve base/head range
+        id: resolve-shas
         shell: bash
         run: |
           set -euo pipefail
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             git fetch --no-tags origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
-            echo "NX_BASE=origin/${{ github.base_ref }}" >> "$GITHUB_ENV"
-            echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
+            nx_base="origin/${{ github.base_ref }}"
+            nx_head="${{ github.sha }}"
           else
             git fetch --no-tags origin "${{ github.event.before }}:refs/remotes/origin/${{ github.event.before }}" || true
-            echo "NX_BASE=${{ github.event.before }}" >> "$GITHUB_ENV"
-            echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
+            nx_base="${{ github.event.before }}"
+            nx_head="${{ github.sha }}"
           fi
+
+          echo "NX_BASE=${nx_base}" >> "$GITHUB_ENV"
+          echo "NX_HEAD=${nx_head}" >> "$GITHUB_ENV"
+          echo "nx_base=${nx_base}" >> "$GITHUB_OUTPUT"
+          echo "nx_head=${nx_head}" >> "$GITHUB_OUTPUT"
 
       - name: Validate Nx target contracts
         shell: bash
@@ -88,6 +97,7 @@ jobs:
           has_quality="$(jq -r 'if length>0 then "true" else "false" end' <<<"$quality_json")"
           has_docker="$(jq -r 'if length>0 then "true" else "false" end' <<<"$docker_json")"
           has_release="$(jq -r 'if length>0 then "true" else "false" end' <<<"$release_json")"
+          has_manifest_promotion="$has_docker"
           tag_context="$(jq -cn --arg ref "${{ github.ref_name }}" --arg sha "${{ github.sha }}" '{ref_name:$ref,sha:$sha}')"
           {
             echo "quality_projects=$quality_json"
@@ -96,6 +106,7 @@ jobs:
             echo "has_quality=$has_quality"
             echo "has_docker_build=$has_docker"
             echo "has_release_publish=$has_release"
+            echo "has_manifest_promotion=$has_manifest_promotion"
             echo "tag_context=$tag_context"
           } >> "$GITHUB_OUTPUT"
 
@@ -111,6 +122,8 @@ jobs:
       pull_request_draft: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft || false }}
       pull_request_number: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || 0 }}
       projects_json: ${{ needs.plan.outputs.quality_projects }}
+      nx_base: ${{ needs.plan.outputs.nx_base }}
+      nx_head: ${{ needs.plan.outputs.nx_head }}
 
   docker_build:
     name: Docker Build/Publish Lane
@@ -123,6 +136,8 @@ jobs:
       event_name: ${{ github.event_name }}
       projects_json: ${{ needs.plan.outputs.docker_build_projects }}
       tag_context_json: ${{ needs.plan.outputs.tag_context }}
+      nx_base: ${{ needs.plan.outputs.nx_base }}
+      nx_head: ${{ needs.plan.outputs.nx_head }}
 
   ci_summary:
     name: CI Summary
@@ -179,3 +194,14 @@ jobs:
               echo "- Nx Cloud run metadata: _not captured_"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+  manifest_promotion_trigger:
+    name: Manifest Promotion Trigger Lane
+    needs: [plan, docker_build]
+    if: needs.plan.outputs.has_manifest_promotion == 'true' && github.event_name == 'push' && (github.ref_name == 'testing' || github.ref_name == 'staging')
+    uses: ./.github/workflows/reusable-manifest-promotion-trigger.yml
+    secrets: inherit
+    with:
+      ref_name: ${{ github.ref_name }}
+      source_sha: ${{ github.sha }}
+      publish_manifest_artifact_name: publish-manifest-${{ github.ref_name }}-${{ github.run_id }}

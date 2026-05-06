@@ -1,3 +1,20 @@
+## Orchestrator ↔ Reusable workflow contract (affected-aware lanes)
+
+The caller workflow (`orchestrator.yml`) is the single source of truth for base/head resolution. It computes and exports `NX_BASE` and `NX_HEAD` once in the `plan` job, then passes them as explicit `workflow_call` inputs into each lane workflow.
+
+Contract details:
+
+- `projects_json` is only an optimization hint used for matrix/lane shaping and observability (counts, summaries).
+- Execution truth stays inside each lane reusable workflow via `pnpm nx affected ... --base=$NX_BASE --head=$NX_HEAD`.
+- This avoids drift between precomputed project lists and runtime task graph decisions, especially when target availability differs by project.
+- If a lane resolves to no affected work at execution time, the lane emits a deterministic artifact marker with `status=skipped-no-affected`.
+
+Why this separation exists:
+
+1. The orchestrator decides _which lanes to invoke_ and passes shared context.
+2. Lane workflows decide _which tasks actually run_ against the same SHA range, preserving Nx as runtime authority.
+3. Artifacts and summaries remain stable even when no affected tasks exist.
+
 # Workflow Integration Contract
 
 Contract marker: `testing|staging|main -> testing|staging|production`
@@ -114,3 +131,30 @@ Policy:
 
 - A sustained miss against either threshold for 3 consecutive runs should trigger investigation.
 - The Nx Cloud run URL captured in job summary is the audit reference for each run.
+
+## Workflow dependency map (2026-05 orchestrator unification)
+
+Top-level CI entry is now `orchestrator.yml` with canonical lanes:
+
+1. `quality` → `reusable-build-test-lint.yml`
+2. `container publish` → `reusable-container-publish.yml`
+3. `manifest promotion trigger` → `reusable-manifest-promotion-trigger.yml` (dispatches `promote-manifest-nonprod.yml` only for `testing`/`staging`)
+
+Release governance remains intentionally separate and minimal:
+
+- `release-attestation.yml`
+- `promote-manifest.yml`
+
+### Deprecation notes
+
+- `release-build-publish.yml` is deprecated as a top-level orchestration path; new CI lane ownership lives in `orchestrator.yml` reusable callees.
+- `promote-manifest-nonprod.yml` no longer owns branch push triggers directly; it is now trigger-consumed by the orchestrator manifest lane.
+
+### Standardized reusable schema
+
+Reusable workflow interfaces should use these canonical names:
+
+- `projects_json`
+- `nx_base` / `nx_head`
+- `tag_context_json` and `canonical_release_version`/`short_sha` image metadata outputs
+- deterministic artifact names (e.g. `publish-manifest-<ref>-<run_id>`, lane metrics artifacts)

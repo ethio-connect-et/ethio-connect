@@ -12,6 +12,12 @@ on:
       event_name:
         required: true
         type: string
+      nx_base:
+        required: true
+        type: string
+      nx_head:
+        required: true
+        type: string
       pull_request_draft:
         required: false
         type: boolean
@@ -47,21 +53,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
 
-      - name: Configure affected range for PRs and testing
-        if: inputs.event_name == 'pull_request' || inputs.ref_name == 'testing'
-        shell: bash
-        run: |
-          set -euo pipefail
-          base_ref="${{ inputs.event_name == 'pull_request' && github.base_ref || 'development' }}"
-          git fetch --no-tags origin "${base_ref}:refs/remotes/origin/${base_ref}"
-          echo "NX_BASE=origin/${base_ref}" >> "$GITHUB_ENV"
-          echo "NX_HEAD=HEAD" >> "$GITHUB_ENV"
-
-      - uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1
-        if: inputs.event_name != 'pull_request' && inputs.ref_name != 'testing'
-
       - name: Check formatting
-        run: pnpm nx format:check --base="$NX_BASE" --head="$NX_HEAD"
+        run: pnpm nx format:check --base="${{ inputs.nx_base }}" --head="${{ inputs.nx_head }}"
 
       - name: Enforce cache policy
         run: node tools/ci/check-cache-policy.mjs
@@ -74,11 +67,15 @@ jobs:
           projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
           affected_count=$(jq 'length' <<< '${{ inputs.projects_json }}')
           if [[ -z "$projects" ]]; then
-            echo 'No quality projects to process.'
-            echo '{"lane":"quality","affected_count":0,"cache_hits":0,"cache_misses":0,"duration_seconds":0,"nx_cloud_run_url":""}' > ci-metrics-quality.json
+            echo 'No quality projects in optimization hint; executing affected lane truth from nx_base/nx_head.'
+          fi
+          pnpm nx affected -t lint,test,build --base="${{ inputs.nx_base }}" --head="${{ inputs.nx_head }}" --parallel=3 --outputStyle=static | tee nx-quality.log
+
+          if rg -q "No tasks were run" nx-quality.log; then
+            echo 'No affected tasks for quality lane. Emitting deterministic skip artifact.'
+            echo '{"lane":"quality","status":"skipped-no-affected","affected_count":0,"cache_hits":0,"cache_misses":0,"duration_seconds":0,"nx_cloud_run_url":""}' > ci-metrics-quality.json
             exit 0
           fi
-          pnpm nx run-many -t lint test build --projects "$projects" --parallel=3 --outputStyle=static | tee nx-quality.log
 
           end_epoch=$(date +%s)
           duration=$((end_epoch - start_epoch))
