@@ -89,7 +89,7 @@
             "--file",
             "{projectRoot}/Dockerfile",
             "--platform",
-            "${DOCKER_PLATFORMS:-linux/amd64,linux/arm64}",
+            "${DOCKER_PLATFORMS:-linux/amd64}",
             "--tag",
             "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${IMAGE_TAG:-latest}",
             "--tag",
