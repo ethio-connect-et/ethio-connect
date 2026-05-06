@@ -252,7 +252,7 @@
         ]
       },
       "central-hub": {
-        "docker": true,
+        "docker": false,
         "projects": [
           "@ethio-connect/central-hub-api",
           "@ethio-connect/central-hub-dashboard",
@@ -260,14 +260,14 @@
         ]
       },
       "customer-portal": {
-        "docker": true,
+        "docker": false,
         "projects": [
           "@ethio-connect/customer-portal-api",
           "@ethio-connect/customer-portal-dashboard"
         ]
       },
       "vendor-portal": {
-        "docker": true,
+        "docker": false,
         "projects": [
           "@ethio-connect/vendor-api-server",
           "@ethio-connect/vendor-portal-dashboard"

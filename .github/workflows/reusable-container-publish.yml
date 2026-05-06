@@ -94,7 +94,16 @@ jobs:
           image_tag="${{ steps.publish-context.outputs.image_tag }}"
           # Initialize ephemeral release version to satisfy the publish executor.
           # Using 0.0.0-<tag> to ensure it's a valid semver string for Nx Release.
-          pnpm nx release version "0.0.0-${image_tag}" --dockerVersion "${image_tag}" --stage-changes=false --git-commit=false --git-tag=false
+          pnpm nx release version "0.0.0-${image_tag}" --stage-changes=false --git-commit=false --git-tag=false
+
+          # Manually create .docker-version files to satisfy the @nx/docker:release-publish executor,
+          # bypassing the problematic docker tag behavior of the nx release version command.
+          while IFS= read -r project; do
+            root=$(pnpm nx show project "$project" --json | jq -r .root)
+            mkdir -p "tmp/$root"
+            echo "${image_tag}" > "tmp/$root/.docker-version"
+            echo "Created tmp/$root/.docker-version with tag ${image_tag}"
+          done < <(pnpm nx show projects --withTarget nx-release-publish --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
 
       - name: Publish images (Stage B)
         shell: bash
