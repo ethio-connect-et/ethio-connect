@@ -1,19 +1,10 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
-  "analytics": false,
   "nxCloudId": "69f299b3bd50ccb2dc8f1fc7",
+  "analytics": false,
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
-    "sharedGlobals": [
-      "{workspaceRoot}/nx.json",
-      "{workspaceRoot}/package.json",
-      "{workspaceRoot}/pnpm-lock.yaml",
-      "{workspaceRoot}/tsconfig.base.json",
-      "{workspaceRoot}/eslint.config.mjs",
-      "{workspaceRoot}/jest.preset.js",
-      "{workspaceRoot}/.github/workflows/*.yml"
-    ],
     "production": [
       "default",
       "!{projectRoot}/.eslintrc.json",
@@ -22,12 +13,9 @@
       "!{projectRoot}/tsconfig.spec.json",
       "!{projectRoot}/jest.config.[jt]s",
       "!{projectRoot}/src/test-setup.[jt]s",
-      "!{projectRoot}/test-setup.[jt]s",
-      "!{projectRoot}/playwright.config.[jt]s",
-      "!{projectRoot}/**/*.stories.@(ts|tsx|js|jsx|mdx)"
+      "!{projectRoot}/test-setup.[jt]s"
     ],
-    "ci": ["default", "production"],
-    "e2e": ["default", "production", "{workspaceRoot}/playwright.config.*"]
+    "sharedGlobals": ["{workspaceRoot}/.github/workflows/*.yml"]
   },
   "plugins": [
     {
@@ -44,7 +32,8 @@
     {
       "plugin": "@nx/playwright/plugin",
       "options": {
-        "targetName": "e2e"
+        "targetName": "e2e",
+        "ciTargetName": "e2e-ci"
       }
     },
     {
@@ -93,17 +82,17 @@
             "--tag",
             "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${IMAGE_TAG:?IMAGE_TAG must be set}",
             "--tag",
-            "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${BRANCH_TAG:?BRANCH_TAG must be set}",
-            "--tag",
             "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${BUILD_NUMBER:-0}",
             "--label",
             "org.opencontainers.image.revision=${COMMIT_SHA:-unknown}",
+            "--label",
+            "org.opencontainers.image.created=${BUILD_DATE:-unknown}",
             "--label",
             "org.opencontainers.image.title=${PROJECT_NAME##*/}",
             "--label",
             "org.opencontainers.image.source=${REPO_URL:-unknown}",
             "--label",
-            "org.opencontainers.image.version=${VERSION:-0.0.1}",
+            "org.opencontainers.image.version=${VERSION:-0.0.0}",
             "--label",
             "org.opencontainers.image.licenses=${LICENCE:-MIT}",
             "--cache-from",
@@ -112,7 +101,14 @@
           ]
         },
         "runTarget": {
-          "name": "docker:run"
+          "name": "docker:run",
+          "args": [
+            "--rm",
+            "--publish",
+            "3000:3000",
+            "--env",
+            "NODE_ENV=production"
+          ]
         },
         "nx-release-publish": {
           "imageTag": "${IMAGE_TAG:-$VERSION}"
@@ -120,6 +116,11 @@
       }
     }
   ],
+  "pluginsConfig": {
+    "@nx/js": {
+      "projectsAffectedByDependencyUpdates": "auto"
+    }
+  },
   "generators": {
     "@nx/next": {
       "application": {
@@ -134,149 +135,92 @@
     }
   },
   "targetDefaults": {
-    "@nx/js:tsc": {
-      "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["production", "^production"],
-      "outputs": ["{options.outputPath}"]
-    },
-    "@nx/eslint:lint": {
-      "cache": true,
-      "inputs": ["default", "^default"],
-      "outputs": ["{options.outputFile}"]
-    },
-    "@nx/jest:jest": {
-      "cache": true,
-      "inputs": ["ci", "^production"],
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
-      "options": {
-        "passWithNoTests": true
-      }
-    },
-    "@nx/playwright:playwright": {
-      "cache": true,
-      "inputs": ["e2e", "^production"],
-      "outputs": [
-        "{workspaceRoot}/dist/.playwright/{projectRoot}",
-        "{workspaceRoot}/playwright-report/{projectRoot}"
-      ]
-    },
     "build": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["production", "^production"],
-      "outputs": [
-        "{workspaceRoot}/dist/{projectRoot}",
-        "{projectRoot}/dist",
-        "{projectRoot}/build",
-        "{projectRoot}/.next"
-      ]
-    },
-    "test": {
-      "cache": true,
-      "inputs": ["ci", "^production"],
-      "outputs": [
-        "{workspaceRoot}/coverage/{projectRoot}",
-        "{projectRoot}/test-results"
-      ]
-    },
-    "lint": {
-      "cache": true,
-      "inputs": ["default", "^default"],
-      "outputs": ["{options.outputFile}"]
-    },
-    "e2e": {
-      "cache": true,
-      "inputs": ["e2e", "^production"],
-      "outputs": [
-        "{workspaceRoot}/dist/.playwright/{projectRoot}",
-        "{workspaceRoot}/playwright-report/{projectRoot}",
-        "{projectRoot}/test-results"
-      ]
-    },
-    "package": {
-      "cache": true,
-      "inputs": ["production", "^production"],
-      "outputs": ["{workspaceRoot}/dist/{projectRoot}", "{projectRoot}/dist"]
-    },
-    "container": {
-      "cache": true,
-      "inputs": [
-        "production",
-        "^production",
-        "{workspaceRoot}/Dockerfile",
-        "{projectRoot}/Dockerfile"
-      ],
-      "outputs": ["{workspaceRoot}/dist/containers/{projectName}"]
-    },
-    "docker": {
-      "cache": true,
-      "inputs": [
-        "production",
-        "^production",
-        "{workspaceRoot}/Dockerfile",
-        "{projectRoot}/Dockerfile"
-      ],
-      "outputs": ["{workspaceRoot}/dist/containers/{projectName}"]
+      "inputs": ["production", "^production"]
     },
     "docker:build": {
-      "cache": true,
+      "cache": false,
       "dependsOn": ["build", "prune"],
       "inputs": [
         "production",
         "^production",
-        "{workspaceRoot}/Dockerfile",
-        "{projectRoot}/Dockerfile",
-        { "runtime": "DOCKER_PLATFORMS" },
-        { "runtime": "REGISTRY" },
-        { "runtime": "ORG_LC" }
-      ],
-      "outputs": ["{workspaceRoot}/dist/containers/{projectName}"]
+        "sharedGlobals",
+        "{projectRoot}/Dockerfile"
+      ]
     },
-    "@nx/docker:release-publish": {
-      "dependsOn": ["docker:build"],
+    "nx-release-publish": {
       "cache": false,
       "options": {
         "quiet": false
       }
     },
-    "format:check": {
+    "lint": {
       "cache": true,
-      "inputs": ["default", "^default"],
-      "outputs": []
+      "inputs": ["default", "^production", "sharedGlobals"]
     },
-    "format:write": {
-      "cache": false,
-      "inputs": ["default", "^default"],
-      "outputs": []
+    "test": {
+      "cache": true,
+      "inputs": ["default", "^production", "sharedGlobals"]
     },
     "typecheck": {
       "cache": true,
-      "inputs": ["ci", "^production"],
-      "outputs": []
+      "inputs": ["default", "^production", "sharedGlobals"],
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit"
+      }
+    },
+    "quality": {
+      "cache": true,
+      "inputs": ["default", "^production", "sharedGlobals"]
+    },
+    "format:write": {
+      "cache": false,
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css,scss}\""
+      }
+    },
+    "format:check": {
+      "cache": true,
+      "inputs": ["default", "^production", "sharedGlobals"],
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css,scss}\""
+      }
+    },
+    "@nx/next:build": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production", "sharedGlobals"],
+      "outputs": ["{options.outputPath}"]
     }
   },
   "release": {
-    "version": {
-      "conventionalCommits": true,
-      "fallbackCurrentVersionResolver": "disk",
-      "preVersionCommand": "pnpm nx run-many -t build --projects=@ethio-connect/api-common,@ethio-connect/api-features,@ethio-connect/frontend-features,@ethio-connect/ui-components,@ethio-connect/ethioconnect",
-      "git": {
-        "commit": true,
-        "tag": true
-      }
-    },
-    "projectsRelationship": "independent",
+    "releaseTagPattern": "v{version}",
     "groups": {
-      "shared-libs": {
-        "docker": false,
+      "shared-library": {
         "projects": [
           "@ethio-connect/api-common",
           "@ethio-connect/api-features",
           "@ethio-connect/frontend-features",
           "@ethio-connect/ui-components",
           "@ethio-connect/ethioconnect"
-        ]
+        ],
+        "docker": false,
+        "projectsRelationship": "independent",
+        "version": {
+          "specifierSource": "conventional-commits",
+          "currentVersionResolver": "git-tag",
+          "fallbackCurrentVersionResolver": "disk",
+          "updateDependents": "auto"
+        },
+        "changelog": {
+          "projectChangelogs": true,
+          "workspaceChangelog": false
+        }
       },
       "central-hub": {
         "docker": false,
@@ -301,6 +245,16 @@
         ]
       }
     },
+    "version": {
+      "conventionalCommits": true,
+      "fallbackCurrentVersionResolver": "disk",
+      "preVersionCommand": "pnpm nx run-many -t build --projects=@ethio-connect/api-common,@ethio-connect/api-features,@ethio-connect/frontend-features,@ethio-connect/ui-components,@ethio-connect/ethioconnect",
+      "git": {
+        "commit": true,
+        "tag": true
+      }
+    },
+    "projectsRelationship": "independent",
     "changelog": {
       "workspaceChangelog": {
         "createRelease": "github"
@@ -310,6 +264,15 @@
         "commit": true,
         "tag": true
       }
+    },
+    "releaseTagPatternCheckAllBranchesWhen": [
+      "development",
+      "testing",
+      "staging"
+    ],
+    "releaseTagPatternStrictPreid": true,
+    "versionPlans": {
+      "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
     }
   }
 }
