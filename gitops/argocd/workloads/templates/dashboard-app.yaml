@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ec-{{env}}-{{tenant}}-dashboard
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ethio-connect/manifest-repo.git
+    targetRevision: main
+    path: gitops/workloads/{{tenant}}/dashboard/overlays/{{env}}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ec-{{tenant}}-{{env}}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 6
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 40s
+  revisionHistoryLimit: 10
+  info:
+    - name: dependency
+      value: waits for ec-{{env}}-{{tenant}}-api via sync-wave ordering
