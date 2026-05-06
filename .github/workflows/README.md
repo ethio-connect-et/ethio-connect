@@ -1,3 +1,20 @@
+## Orchestrator ↔ Reusable workflow contract (affected-aware lanes)
+
+The caller workflow (`orchestrator.yml`) is the single source of truth for base/head resolution. It computes and exports `NX_BASE` and `NX_HEAD` once in the `plan` job, then passes them as explicit `workflow_call` inputs into each lane workflow.
+
+Contract details:
+
+- `projects_json` is only an optimization hint used for matrix/lane shaping and observability (counts, summaries).
+- Execution truth stays inside each lane reusable workflow via `pnpm nx affected ... --base=$NX_BASE --head=$NX_HEAD`.
+- This avoids drift between precomputed project lists and runtime task graph decisions, especially when target availability differs by project.
+- If a lane resolves to no affected work at execution time, the lane emits a deterministic artifact marker with `status=skipped-no-affected`.
+
+Why this separation exists:
+
+1. The orchestrator decides *which lanes to invoke* and passes shared context.
+2. Lane workflows decide *which tasks actually run* against the same SHA range, preserving Nx as runtime authority.
+3. Artifacts and summaries remain stable even when no affected tasks exist.
+
 # Workflow Integration Contract
 
 Contract marker: `testing|staging|main -> testing|staging|production`
