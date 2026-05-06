@@ -47,6 +47,7 @@ jobs:
       has_quality: ${{ steps.partition.outputs.has_quality }}
       has_docker_build: ${{ steps.partition.outputs.has_docker_build }}
       has_release_publish: ${{ steps.partition.outputs.has_release_publish }}
+      has_manifest_promotion: ${{ steps.partition.outputs.has_manifest_promotion }}
       tag_context: ${{ steps.partition.outputs.tag_context }}
       nx_base: ${{ steps.resolve-shas.outputs.nx_base }}
       nx_head: ${{ steps.resolve-shas.outputs.nx_head }}
@@ -96,6 +97,7 @@ jobs:
           has_quality="$(jq -r 'if length>0 then "true" else "false" end' <<<"$quality_json")"
           has_docker="$(jq -r 'if length>0 then "true" else "false" end' <<<"$docker_json")"
           has_release="$(jq -r 'if length>0 then "true" else "false" end' <<<"$release_json")"
+          has_manifest_promotion="$has_docker"
           tag_context="$(jq -cn --arg ref "${{ github.ref_name }}" --arg sha "${{ github.sha }}" '{ref_name:$ref,sha:$sha}')"
           {
             echo "quality_projects=$quality_json"
@@ -104,6 +106,7 @@ jobs:
             echo "has_quality=$has_quality"
             echo "has_docker_build=$has_docker"
             echo "has_release_publish=$has_release"
+            echo "has_manifest_promotion=$has_manifest_promotion"
             echo "tag_context=$tag_context"
           } >> "$GITHUB_OUTPUT"
 
@@ -191,3 +194,15 @@ jobs:
               echo "- Nx Cloud run metadata: _not captured_"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+
+  manifest_promotion_trigger:
+    name: Manifest Promotion Trigger Lane
+    needs: [plan, docker_build]
+    if: needs.plan.outputs.has_manifest_promotion == 'true' && github.event_name == 'push' && (github.ref_name == 'testing' || github.ref_name == 'staging')
+    uses: ./.github/workflows/reusable-manifest-promotion-trigger.yml
+    secrets: inherit
+    with:
+      ref_name: ${{ github.ref_name }}
+      source_sha: ${{ github.sha }}
+      publish_manifest_artifact_name: publish-manifest-${{ github.ref_name }}-${{ github.run_id }}

@@ -1,0 +1,49 @@
+name: Reusable Manifest Promotion Trigger
+
+on:
+  workflow_call:
+    inputs:
+      ref_name:
+        required: true
+        type: string
+      source_sha:
+        required: true
+        type: string
+      publish_manifest_artifact_name:
+        required: true
+        type: string
+
+concurrency:
+  group: reusable-manifest-promotion-${{ inputs.ref_name }}
+  cancel-in-progress: false
+
+env:
+  CI: true
+  NODE_VERSION: '24.11.0'
+  PNPM_VERSION: '10.20.0'
+
+jobs:
+  dispatch_to_manifest_nonprod:
+    if: inputs.ref_name == 'testing' || inputs.ref_name == 'staging'
+    name: Manifest · Dispatch (Non-Prod)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          fetch-depth: 1
+
+      - name: Trigger non-prod manifest promoter
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run promote-manifest-nonprod.yml \
+            --ref "${{ inputs.ref_name }}" \
+            -f source_sha="${{ inputs.source_sha }}" \
+            -f publish_manifest_artifact_name="${{ inputs.publish_manifest_artifact_name }}"

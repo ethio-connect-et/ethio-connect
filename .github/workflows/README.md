@@ -131,3 +131,31 @@ Policy:
 
 - A sustained miss against either threshold for 3 consecutive runs should trigger investigation.
 - The Nx Cloud run URL captured in job summary is the audit reference for each run.
+
+
+## Workflow dependency map (2026-05 orchestrator unification)
+
+Top-level CI entry is now `orchestrator.yml` with canonical lanes:
+
+1. `quality` → `reusable-build-test-lint.yml`
+2. `container publish` → `reusable-container-publish.yml`
+3. `manifest promotion trigger` → `reusable-manifest-promotion-trigger.yml` (dispatches `promote-manifest-nonprod.yml` only for `testing`/`staging`)
+
+Release governance remains intentionally separate and minimal:
+
+- `release-attestation.yml`
+- `promote-manifest.yml`
+
+### Deprecation notes
+
+- `release-build-publish.yml` is deprecated as a top-level orchestration path; new CI lane ownership lives in `orchestrator.yml` reusable callees.
+- `promote-manifest-nonprod.yml` no longer owns branch push triggers directly; it is now trigger-consumed by the orchestrator manifest lane.
+
+### Standardized reusable schema
+
+Reusable workflow interfaces should use these canonical names:
+
+- `projects_json`
+- `nx_base` / `nx_head`
+- `tag_context_json` and `canonical_release_version`/`short_sha` image metadata outputs
+- deterministic artifact names (e.g. `publish-manifest-<ref>-<run_id>`, lane metrics artifacts)
