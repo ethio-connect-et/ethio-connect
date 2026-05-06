@@ -12,7 +12,7 @@ COPY dist/apps/vendor-portal/vendor-api-server/workspace_modules ./workspace_mod
 
 RUN pnpm install --prod --frozen-lockfile
 
-FROM gcr.io/distroless/nodejs20-debian12@sha256:6fe218dbad37e979c7542e670d28d6e23d3f53d2929693bc9cdded8b622f339f AS runtime-base
+FROM gcr.io/distroless/nodejs20-debian12 AS runtime-base
 
 FROM scratch
 WORKDIR /app
