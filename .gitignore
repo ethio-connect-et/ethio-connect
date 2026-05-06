@@ -49,3 +49,7 @@ out
 .nx/polygraph
 .nx/self-healing
 .aider*
+
+# Tempo
+scripts/scan-images.sh
+scripts/local-docker-build.sh
