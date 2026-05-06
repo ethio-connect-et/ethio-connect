@@ -279,23 +279,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker_version="${{ steps.release-metadata.outputs.docker_version }}"
-          short_sha="${{ steps.release-metadata.outputs.short_sha }}"
-
-          while IFS= read -r project; do
-            app="${project#@ethio-connect/}"
-            version_ref="ghcr.io/ethio-connect-et/${app}:${docker_version}"
-            sha_ref="ghcr.io/ethio-connect-et/${app}:${short_sha}"
-
-            version_digest="$(docker buildx imagetools inspect "$version_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
-            sha_digest="$(docker buildx imagetools inspect "$sha_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
-
-            [[ "$version_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::Invalid version digest for $app: $version_digest"; exit 1; }
-            [[ "$sha_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::Invalid sha digest for $app: $sha_digest"; exit 1; }
-            [[ "$version_digest" == "$sha_digest" ]] || { echo "::error::Digest mismatch for $app between ${docker_version} and ${short_sha}"; exit 1; }
-
-            echo "Verified $app => $version_digest"
-          done < <(pnpm nx show projects --projects 'tag:release:docker' --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
+          projects_json="$(pnpm nx show projects --projects 'tag:release:docker' --json | jq -c '[.[] | select(startswith("@ethio-connect/"))]')"
+          pnpm nx run @ethio-connect/source:container:image-metadata -- \
+            --mode verify-tag-parity \
+            --projects-json "$projects_json" \
+            --primary-tag '${{ steps.release-metadata.outputs.docker_version }}' \
+            --secondary-tag '${{ steps.release-metadata.outputs.short_sha }}'
 
       - name: Upload container scan reports
         if: always()
@@ -386,24 +375,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts
-          docker_version="${{ steps.release-metadata.outputs.docker_version }}"
+          projects_json="$(pnpm nx show projects --projects 'tag:release:publish' --json | jq -c '[.[] | select(startswith("@ethio-connect/"))]')"
           manifest_path="artifacts/publish-manifest-${{ steps.context.outputs.version }}-${{ github.run_id }}.json"
-          while IFS= read -r project; do
-            app="${project#@ethio-connect/}"
-            image_ref="ghcr.io/ethio-connect-et/${app}:${docker_version}"
-            digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
-            jq -nc \
-              --arg project "$project" \
-              --arg app "$app" \
-              --arg image_ref "$image_ref" \
-              --arg digest "$digest" \
-              --arg source_sha "${GITHUB_SHA}" \
-              --arg tag "$docker_version" \
-              --arg artifact_run_id "${GITHUB_RUN_ID}" \
-              '{project:$project,app:$app,image_ref:$image_ref,digest:$digest,source_sha:$source_sha,tag:$tag,artifact_run_id:$artifact_run_id,attestation_status:"pending"}'
-          done < <(pnpm nx show projects --projects 'tag:release:publish' --json | jq -r '.[] | select(startswith("@ethio-connect/"))') \
-            | jq -sc . > "$manifest_path"
+          pnpm nx run @ethio-connect/source:container:image-metadata -- \
+            --mode generate-release-manifest \
+            --projects-json "$projects_json" \
+            --image-tag '${{ steps.release-metadata.outputs.docker_version }}' \
+            --source-sha '${{ github.sha }}' \
+            --artifact-run-id '${{ github.run_id }}' \
+            --output "$manifest_path"
 
       - name: Upload release publish manifest artifact
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
