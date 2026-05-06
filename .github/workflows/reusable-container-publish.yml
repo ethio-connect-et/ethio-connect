@@ -39,7 +39,7 @@ env:
 jobs:
   container_publish:
     name: Container · Publish
-    runs-on: ubuntu-latest
+    runs-on: self-host-runner
     timeout-minutes: 60
     permissions:
       contents: read

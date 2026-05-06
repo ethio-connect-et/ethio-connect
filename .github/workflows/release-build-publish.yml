@@ -42,7 +42,7 @@ env:
 
 jobs:
   build_publish:
-    runs-on: ubuntu-latest
+    runs-on: self-host-runner
     timeout-minutes: 30
     outputs:
       version: ${{ steps.context.outputs.version }}
