@@ -11,7 +11,7 @@ permissions: {}
 jobs:
   release_draft:
     name: Release · Draft Notes
-    runs-on: ubuntu-latest
+    runs-on: self-host-runner
     permissions:
       contents: write
       pull-requests: write
