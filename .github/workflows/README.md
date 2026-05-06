@@ -86,7 +86,6 @@ A formal JSON schema for the `client_payload` is maintained at
 `.github/contracts/promote-image.schema.json` in the source repo
 (`ethio-connect-et/ethio-connect`).
 
-
 ## Machine-readable promotion + ArgoCD reconciliation contract
 
 ```yaml
@@ -100,11 +99,11 @@ promotion_contract:
     - release_version
     - environment_target
   validation_rules:
-    project: "must match ^[a-z0-9._-]+$ and map to a deployable Nx app"
-    immutable_ref: "must match ghcr.io/ethio-connect-et/<project>@sha256:<64hex>; tags are rejected"
-    digest: "must match sha256:<64hex>"
-    source_sha: "must be a 40-character git commit SHA"
-    release_version: "non-empty canonical release version"
+    project: 'must match ^[a-z0-9._-]+$ and map to a deployable Nx app'
+    immutable_ref: 'must match ghcr.io/ethio-connect-et/<project>@sha256:<64hex>; tags are rejected'
+    digest: 'must match sha256:<64hex>'
+    source_sha: 'must be a 40-character git commit SHA'
+    release_version: 'non-empty canonical release version'
     environment_target:
       allowed_values: [testing, staging, production]
   rejection_conditions:
