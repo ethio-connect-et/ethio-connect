@@ -34,7 +34,10 @@ on:
         required: false
         type: string
 
-permissions: {}
+permissions:
+  contents: write
+  packages: write
+  actions: read
 
 jobs:
   release_build_publish:

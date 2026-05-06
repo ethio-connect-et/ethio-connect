@@ -5,9 +5,7 @@
   "projectType": "library",
   "release": {
     "version": {
-      "manifestRootsToUpdate": [
-        "dist/{projectRoot}"
-      ],
+      "manifestRootsToUpdate": ["dist/{projectRoot}"],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk"
     },
@@ -23,16 +21,12 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/libs/ethioconnect",
         "main": "libs/ethioconnect/src/index.ts",
         "tsConfig": "libs/ethioconnect/tsconfig.lib.json",
-        "assets": [
-          "libs/ethioconnect/*.md"
-        ],
+        "assets": ["libs/ethioconnect/*.md"],
         "generatePackageJson": true
       }
     },
@@ -41,9 +35,7 @@
     },
     "package": {
       "executor": "nx:noop",
-      "dependsOn": [
-        "build"
-      ]
+      "dependsOn": ["build"]
     }
   },
   "metadata": {
