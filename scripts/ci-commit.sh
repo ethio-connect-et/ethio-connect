@@ -60,7 +60,7 @@ DATE=$(date +"%b %d, %Y %H:%M:%S")
 gh pr create \
   --base "$TARGET_BRANCH" \
   --head "$BRANCH" \
-  --title "CI-UPDATE-$NEXT - ($DATE)" \
+  --title "CI-UPDATE-$NEXT ($DATE) - " \
   --body "Automated CI version increment to $NEXT on $DATE."
 
 # Step 12: Return to target branch
