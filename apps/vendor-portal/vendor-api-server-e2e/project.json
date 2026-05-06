@@ -9,6 +9,9 @@
     "type:app"
   ],
   "implicitDependencies": ["@ethio-connect/vendor-api-server"],
+  "metadata": {
+    "targetContractProfile": "e2e"
+  },
   "targets": {
     "e2e": {
       "executor": "@nx/jest:jest",
@@ -45,8 +48,5 @@
         "imageName": "ghcr.io/ethio-connect-et/vendor-api-server-e2e"
       }
     }
-  },
-  "metadata": {
-    "targetContractProfile": "e2e"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@ethio-connect/vendor-portal-dashboard",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "dependencies": {
     "next": "^16.2.3",
     "react": "^19.0.0",
