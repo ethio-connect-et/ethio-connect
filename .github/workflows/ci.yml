@@ -9,9 +9,19 @@ on:
 permissions: {}
 
 jobs:
+  target_contract_governance:
+    name: Target Contract Governance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./.github/actions/setup-nx-node
+      - name: Validate target contract
+        run: pnpm run validate:target-contract
+
   compatibility_notice:
     name: Compatibility Shim
     runs-on: ubuntu-latest
+    needs: [target_contract_governance]
     steps:
       - name: CI moved to orchestrator
         run: echo "Primary CI entrypoint is .github/workflows/orchestrator.yml"

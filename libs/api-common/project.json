@@ -5,31 +5,48 @@
   "projectType": "library",
   "release": {
     "version": {
-      "manifestRootsToUpdate": ["dist/{projectRoot}"],
+      "manifestRootsToUpdate": [
+        "dist/{projectRoot}"
+      ],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk"
     },
     "publish": false
   },
-  "tags": ["scope:shared", "type:util", "domain:shared", "platform:api"],
+  "tags": [
+    "scope:shared",
+    "type:util",
+    "domain:shared",
+    "platform:api",
+    "release:publish"
+  ],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/libs/api-common",
         "main": "libs/api-common/src/index.ts",
         "tsConfig": "libs/api-common/tsconfig.lib.json",
-        "assets": ["libs/api-common/*.md"],
+        "assets": [
+          "libs/api-common/*.md"
+        ],
         "generatePackageJson": true
       }
     },
     "package": {
       "executor": "nx:noop",
-      "dependsOn": ["build"]
+      "dependsOn": [
+        "build"
+      ]
     },
     "nx-release-publish": {
       "executor": "nx:noop"
     }
+  },
+  "metadata": {
+    "targetContractProfile": "library"
   }
 }
