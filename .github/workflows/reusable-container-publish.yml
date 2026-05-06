@@ -66,7 +66,6 @@ jobs:
             echo "build_date=${build_date}"
           } >> "$GITHUB_OUTPUT"
 
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e8 # v3.6.0
 
@@ -138,7 +137,6 @@ jobs:
           projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
           [[ -n "$projects" ]] || { echo 'No release publish projects to process.'; exit 0; }
           pnpm nx run-many -t nx-release-publish --projects "$projects" --outputStyle=static
-
 
       - name: Verify published tags resolve to immutable manifests
         shell: bash
