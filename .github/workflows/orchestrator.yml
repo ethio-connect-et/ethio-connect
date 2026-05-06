@@ -99,7 +99,7 @@ jobs:
           affected_json="$(pnpm nx show projects --affected --base="$NX_BASE" --head="$NX_HEAD" --json)"
           quality_json="$(jq -c '.' <<<"$affected_json")"
           docker_json="$(pnpm nx show projects --affected --withTarget=docker:build --base="$NX_BASE" --head="$NX_HEAD" --json)"
-          release_json="$docker_json"
+          release_json="$(pnpm nx show projects --affected --withTarget=nx-release-publish --base="$NX_BASE" --head="$NX_HEAD" --json)"
           has_quality="$(jq -r 'if length>0 then "true" else "false" end' <<<"$quality_json")"
           has_docker="$(jq -r 'if length>0 then "true" else "false" end' <<<"$docker_json")"
           has_release="$(jq -r 'if length>0 then "true" else "false" end' <<<"$release_json")"
@@ -134,13 +134,13 @@ jobs:
   docker_build:
     name: Docker Build/Publish Lane
     needs: [plan]
-    if: needs.plan.outputs.has_docker_build == 'true' && github.event_name == 'push' && (github.ref_name == 'testing' || github.ref_name == 'staging' || github.ref_name == 'main')
+    if: needs.plan.outputs.has_release_publish == 'true' && github.event_name == 'push' && (github.ref_name == 'testing' || github.ref_name == 'staging' || github.ref_name == 'main')
     uses: ./.github/workflows/reusable-container-publish.yml
     secrets: inherit
     with:
       ref_name: ${{ github.ref_name }}
       event_name: ${{ github.event_name }}
-      projects_json: ${{ needs.plan.outputs.docker_build_projects }}
+      projects_json: ${{ needs.plan.outputs.release_publish_projects }}
       tag_context_json: ${{ needs.plan.outputs.tag_context }}
       nx_base: ${{ needs.plan.outputs.nx_base }}
       nx_head: ${{ needs.plan.outputs.nx_head }}
