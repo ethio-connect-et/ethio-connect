@@ -13,6 +13,14 @@ on:
       changelog:
         required: false
         type: string
+      scan_gate_override:
+        required: false
+        type: boolean
+        default: false
+      scan_gate_override_reason:
+        required: false
+        type: string
+        default: ''
     secrets:
       NX_CLOUD_ACCESS_TOKEN:
         required: true
@@ -23,6 +31,8 @@ on:
         value: ${{ jobs.build_publish.outputs.docker_version }}
       short_sha:
         value: ${{ jobs.build_publish.outputs.short_sha }}
+      scan_gate_status:
+        value: ${{ jobs.build_publish.outputs.scan_gate_status }}
 
 env:
   CI: true
@@ -38,6 +48,7 @@ jobs:
       version: ${{ steps.context.outputs.version }}
       docker_version: ${{ steps.release-metadata.outputs.docker_version }}
       short_sha: ${{ steps.release-metadata.outputs.short_sha }}
+      scan_gate_status: ${{ steps.publish-targets.outputs.scan_gate_status }}
     permissions:
       contents: write
       packages: write
@@ -64,6 +75,11 @@ jobs:
 
           if [[ "$version" == *-* ]]; then
             prerelease=true
+          fi
+
+          if [[ "${{ inputs.scan_gate_override }}" == "true" ]] && [[ -z "${{ inputs.scan_gate_override_reason }}" ]]; then
+            echo "::error::scan_gate_override_reason is required when scan_gate_override=true"
+            exit 1
           fi
 
           {
@@ -96,7 +112,6 @@ jobs:
           docker_version="${version#v}"
           echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
           echo "docker_version=$docker_version" >> "$GITHUB_OUTPUT"
-
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e8 # v3.6.0
@@ -152,6 +167,69 @@ jobs:
           echo "Building docker images for docker-enabled release groups"
           pnpm nx run-many -t docker:build --projects "$central_hub_projects,$customer_portal_projects,$vendor_portal_projects"
 
+          mkdir -p artifacts/trivy/reports
+          sudo apt-get update -y
+          sudo apt-get install -y wget
+          wget -qO- https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+
+          failed=0
+          total_critical=0
+          total_high=0
+          {
+            echo "## Container Security Scan (Trivy)"
+            echo ""
+            echo "| App | Image Ref | CRITICAL | HIGH | Gate |"
+            echo "|---|---|---:|---:|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for group_projects in "$central_hub_projects" "$customer_portal_projects" "$vendor_portal_projects"; do
+            IFS=',' read -ra projects <<< "$group_projects"
+            for project in "${projects[@]}"; do
+              image="${project#@ethio-connect/}"
+              image_ref="ghcr.io/ethio-connect-et/${image}:${docker_version}"
+              safe_name="${image//\//-}"
+              json_report="artifacts/trivy/reports/${safe_name}-${docker_version}.json"
+              sarif_report="artifacts/trivy/reports/${safe_name}-${docker_version}.sarif"
+
+              trivy image --scanners vuln --format json --output "$json_report" "$image_ref"
+              trivy image --scanners vuln --format sarif --output "$sarif_report" "$image_ref"
+
+              critical_count="$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' "$json_report")"
+              high_count="$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' "$json_report")"
+              total_critical=$((total_critical + critical_count))
+              total_high=$((total_high + high_count))
+
+              gate="pass"
+              if (( critical_count > 0 || high_count > 0 )); then
+                gate="fail"
+                failed=1
+              fi
+              echo "| \`${image}\` | \`${image_ref}\` | ${critical_count} | ${high_count} | \`${gate}\` |" >> "$GITHUB_STEP_SUMMARY"
+            done
+          done
+
+          {
+            echo ""
+            echo "- Aggregate CRITICAL: ${total_critical}"
+            echo "- Aggregate HIGH: ${total_high}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if (( failed == 1 )); then
+            if [[ "${{ inputs.scan_gate_override }}" == "true" ]]; then
+              echo "::warning::Scan gate override enabled. Continuing despite HIGH/CRITICAL vulnerabilities."
+              echo "### Scan Gate Override" >> "$GITHUB_STEP_SUMMARY"
+              echo "- Override: \`true\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "- Reason: \`${{ inputs.scan_gate_override_reason || 'no reason provided' }}\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "scan_gate_status=overridden" >> "$GITHUB_OUTPUT"
+            else
+              echo "scan_gate_status=failed" >> "$GITHUB_OUTPUT"
+              echo "::error::Container scan gate failed due to HIGH/CRITICAL vulnerabilities."
+              exit 1
+            fi
+          else
+            echo "scan_gate_status=passed" >> "$GITHUB_OUTPUT"
+          fi
+
           : > release-publish.log
           : > published-images.md
           echo "### Published Docker Images" >> published-images.md
@@ -184,7 +262,6 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-
       - name: Verify published tags resolve to immutable manifests
         shell: bash
         run: |
@@ -206,6 +283,14 @@ jobs:
 
             echo "Verified $app => $version_digest"
           done < <(pnpm nx show projects --withTarget docker:build --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
+
+      - name: Upload container scan reports
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: trivy-scan-reports-release-${{ steps.context.outputs.version }}-${{ github.run_id }}
+          path: artifacts/trivy/reports
+          retention-days: 30
 
       - name: Generate release changelog from git history
         id: changelog

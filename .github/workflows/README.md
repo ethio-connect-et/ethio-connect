@@ -79,6 +79,18 @@ Publish verification enforces immutable digest behavior per tag:
 - Release flow validates `<docker_version>` and `<short_sha>` point to the same manifest digest.
 - All digests must match `sha256:<64hex>` and are resolved from GHCR using `docker buildx imagetools inspect`.
 
+## Container security scan gate
+
+Reusable publish and release publish workflows run a dedicated Trivy container scan step after `docker:build` and before `nx-release-publish`.
+
+- Scan source: GHCR image refs produced by the workflow.
+- Blocking severities: `HIGH`, `CRITICAL`.
+- Evidence: JSON and SARIF reports uploaded as workflow artifacts.
+- Summary: per-image and aggregate findings written to the GitHub job summary.
+- Promotion behavior: manifest promotion is blocked when the scan gate fails unless an explicit audited override is set (`scan_gate_override=true` with `scan_gate_override_reason`).
+
+Policy details and exception workflow are documented in `docs/security/container-scan-policy.md`.
+
 ## Rollback plan
 
 If a multi-platform publish regression occurs:
