@@ -66,13 +66,13 @@
     "format:check": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm nx format:check --projects={projectName}"
+        "command": "pnpm nx format:check --projects={projectName} --exclude=apps/central-hub/public-website/next-env.d.ts"
       }
     },
     "format:write": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm nx format:write --projects={projectName}"
+        "command": "pnpm nx format:write --projects={projectName} --exclude=apps/central-hub/public-website/next-env.d.ts"
       }
     },
     "typecheck": {
