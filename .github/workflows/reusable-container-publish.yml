@@ -22,6 +22,12 @@ on:
       image_tag:
         description: 'The Docker image tag generated during publishing.'
         value: ${{ jobs.container_publish.outputs.image_tag }}
+      short_sha:
+        description: 'Immutable short commit SHA tag emitted for all images.'
+        value: ${{ jobs.container_publish.outputs.short_sha }}
+      canonical_release_version:
+        description: 'Canonical release version tag (SemVer for main, SemVer prerelease for non-main).'
+        value: ${{ jobs.container_publish.outputs.canonical_release_version }}
 
 env:
   CI: true
@@ -40,6 +46,8 @@ jobs:
       packages: write
     outputs:
       image_tag: ${{ steps.publish-context.outputs.image_tag }}
+      short_sha: ${{ steps.publish-context.outputs.short_sha }}
+      canonical_release_version: ${{ steps.publish-context.outputs.canonical_release_version }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -57,12 +65,19 @@ jobs:
           set -euo pipefail
           branch_label="$(echo '${{ inputs.ref_name }}' | tr '[:upper:]' '[:lower:]' | sed 's#[^a-z0-9_.-]#-#g')"
           short_sha="$(git rev-parse --short=12 "${GITHUB_SHA}")"
-          image_tag="${branch_label}-${short_sha}"
+          if [[ "${{ inputs.ref_name }}" == "main" ]]; then
+            canonical_release_version="0.0.0+${short_sha}"
+            image_tag="${canonical_release_version}"
+          else
+            canonical_release_version="0.0.0-${branch_label}.${short_sha}"
+            image_tag="${canonical_release_version}"
+          fi
           build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           {
             echo "image_tag=${image_tag}"
             echo "short_sha=${short_sha}"
             echo "branch_label=${branch_label}"
+            echo "canonical_release_version=${canonical_release_version}"
             echo "build_date=${build_date}"
           } >> "$GITHUB_OUTPUT"
 
@@ -95,6 +110,7 @@ jobs:
           NX_DOCKER_VERSION: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
           NX_DOCKER_VERSION_SCHEME: production
+          RELEASE_VERSION: ${{ steps.publish-context.outputs.canonical_release_version }}
         run: |
           set -euo pipefail
           projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
@@ -133,6 +149,7 @@ jobs:
           NX_DOCKER_VERSION: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
           NX_DOCKER_VERSION_SCHEME: production
+          RELEASE_VERSION: ${{ steps.publish-context.outputs.canonical_release_version }}
         run: |
           set -euo pipefail
           projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
@@ -192,8 +209,10 @@ jobs:
               --arg digest "$digest" \
               --arg source_sha "${GITHUB_SHA}" \
               --arg tag "$image_tag" \
+              --arg short_sha "${{ steps.publish-context.outputs.short_sha }}" \
+              --arg canonical_release_version "${{ steps.publish-context.outputs.canonical_release_version }}" \
               --arg artifact_run_id "${GITHUB_RUN_ID}" \
-              '{project:$project,app:$app,image_ref:$image_ref,digest:$digest,source_sha:$source_sha,tag:$tag,artifact_run_id:$artifact_run_id,attestation_status:"not-required"}'
+              '{project:$project,app:$app,image_ref:$image_ref,digest:$digest,source_sha:$source_sha,tag:$tag,short_sha:$short_sha,canonical_release_version:$canonical_release_version,artifact_run_id:$artifact_run_id,attestation_status:"not-required"}'
           done < <(jq -r '.[]' <<< '${{ inputs.projects_json }}') | jq -sc . > "$manifest_path"
 
       - name: Upload publish manifest artifact

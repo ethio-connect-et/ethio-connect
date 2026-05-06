@@ -12,6 +12,16 @@ Contract marker: `testing|staging|main -> testing|staging|production`
 
 Non-production promotions are dispatched by `.github/workflows/promote-manifest-nonprod.yml` on pushes to `testing` and `staging`. The workflow resolves deployable apps via `pnpm nx show projects --withTarget docker:build --json`, resolves each app's digest from `ghcr.io/ethio-connect-et/<app>:<branch>`, validates against `DIGEST_REGEX`, and dispatches `promote-image` to `ethio-connect-et/ethio-connect-manifest` with branch-specific concurrency and exponential-backoff retries.
 
+## Tagging Contract (Single Source of Truth)
+
+Every published image MUST include immutable tags with the following contract:
+
+- Required: `<semver>` (canonical release version tag).
+- Required: `<shortsha>` (12-char source commit shorthand tag).
+- Optional (non-production only): `<branch>` (mutable convenience tag such as `testing` or `staging`).
+
+For non-`main` branches, the canonical release version uses a SemVer-compatible prerelease format (`0.0.0-<branch>.<shortsha>`). For `main`, the canonical release version is release-driven. Promotions MUST use digest references (`<image>@sha256:<64hex>`) and never rely on mutable branch tags.
+
 ## Dispatch Event Schema
 
 Repository target: `ethio-connect-et/ethio-connect-manifest`.
@@ -28,8 +38,10 @@ Event type: `promote-image`
     "source_repo": "ethio-connect-et/ethio-connect",
     "source_ref": "refs/heads/main",
     "source_commit": "<40-hex-sha>",
+    "source_sha": "<40-hex-sha>",
     "release_id": "<github-run-id>",
     "release_created_at": "2006-01-02T15:04:05Z",
+    "canonical_release_version": "<semver-or-semver-prerelease>",
     "signed_metadata": {
       "signature_algorithm": "ecdsa-p256-sha256",
       "key_id": "sigstore:github-actions-keyless",
@@ -49,6 +61,7 @@ Validation requirements:
 - app allowlist from `pnpm nx show projects --withTarget docker:build --json`
 - digest pattern: `sha256:<64hex>`
 - registry prefix: `ghcr.io/ethio-connect-et/` (never `ghcr.io/ethioconnect/`)
+- immutable-only promotion source: `ghcr.io/ethio-connect-et/<app>@sha256:<64hex>`
 
 ## JSON Schema
 
