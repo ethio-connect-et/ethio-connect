@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Generate draft release notes
         uses: release-drafter/release-drafter@563bf132657a13ded0b01fcb723c5a58cdd824e2

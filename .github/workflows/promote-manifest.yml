@@ -23,6 +23,10 @@ on:
 env:
   CI: true
 
+concurrency:
+  group: promote-manifest-production-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   promote:
     runs-on: ubuntu-latest
@@ -51,7 +55,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3.8.1
+        uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a # v3.8.1
 
       - name: Download promotion attestation artifact
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
