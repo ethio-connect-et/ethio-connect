@@ -10,6 +10,9 @@
     "type:app"
   ],
   "implicitDependencies": ["@ethio-connect/public-website"],
+  "metadata": {
+    "targetContractProfile": "e2e"
+  },
   "targets": {
     "lint": {
       "executor": "nx:noop"
@@ -37,8 +40,5 @@
         "imageName": "ghcr.io/ethio-connect-et/public-website-e2e"
       }
     }
-  },
-  "metadata": {
-    "targetContractProfile": "e2e"
   }
 }

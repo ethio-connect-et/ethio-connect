@@ -11,6 +11,9 @@
     "release:docker",
     "release:publish"
   ],
+  "metadata": {
+    "targetContractProfile": "app"
+  },
   "targets": {
     "build": {
       "executor": "nx:run-commands",
@@ -116,8 +119,5 @@
         "imageName": "ghcr.io/ethio-connect-et/vendor-api-server"
       }
     }
-  },
-  "metadata": {
-    "targetContractProfile": "app"
   }
 }

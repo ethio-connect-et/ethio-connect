@@ -11,6 +11,9 @@
     "release:docker",
     "release:publish"
   ],
+  "metadata": {
+    "targetContractProfile": "app"
+  },
   "targets": {
     "container": {
       "dependsOn": ["build", "^build"],
@@ -72,8 +75,5 @@
     "prune": {
       "executor": "nx:noop"
     }
-  },
-  "metadata": {
-    "targetContractProfile": "app"
   }
 }
