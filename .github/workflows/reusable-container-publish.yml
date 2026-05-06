@@ -160,9 +160,9 @@ jobs:
       - name: Set up Trivy (pinned + validated asset resolution)
         shell: bash
         env:
-          TRIVY_VERSION: '0.65.0'
-          TRIVY_LINUX_AMD64_DEB_SHA256: 'REPLACE_WITH_TRIVY_0_65_0_LINUX_AMD64_DEB_SHA256'
-          TRIVY_LINUX_AMD64_TAR_GZ_SHA256: 'REPLACE_WITH_TRIVY_0_65_0_LINUX_AMD64_TAR_GZ_SHA256'
+          TRIVY_VERSION: '0.70.0'
+          TRIVY_LINUX_AMD64_DEB_SHA256: 'a9f6ce99fa942759ee914d821b9ad38b6d6887e7d1b4d4415c1c9c7387c7bc94'
+          TRIVY_LINUX_AMD64_TAR_GZ_SHA256: '8b4376d5d6befe5c24d503f10ff136d9e0c49f9127a4279fd110b727929a5aa9'
         run: |
           set -euo pipefail
 
