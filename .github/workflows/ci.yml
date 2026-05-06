@@ -13,7 +13,7 @@ permissions:
 jobs:
   target_contract_governance:
     name: Target Contract Governance
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
       - uses: ./.github/actions/setup-nx-node
@@ -22,7 +22,7 @@ jobs:
 
   compatibility_notice:
     name: Compatibility Shim
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     needs: [target_contract_governance]
     steps:
       - name: CI moved to orchestrator

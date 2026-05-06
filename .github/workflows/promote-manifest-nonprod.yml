@@ -20,7 +20,7 @@ env:
 jobs:
   dispatch_to_manifest_nonprod:
     name: Manifest · Dispatch (Non-Prod)
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 15
     permissions:
       contents: read

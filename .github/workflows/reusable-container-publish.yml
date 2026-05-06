@@ -39,7 +39,7 @@ env:
 jobs:
   container_publish:
     name: Container · Publish
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 60
     permissions:
       contents: read

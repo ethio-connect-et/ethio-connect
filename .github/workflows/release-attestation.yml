@@ -20,7 +20,7 @@ env:
 
 jobs:
   attestation:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 15
     permissions:
       contents: read
