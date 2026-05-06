@@ -32,7 +32,7 @@ env:
 jobs:
   quality_gate:
     name: Quality · Gate
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
       actions: read

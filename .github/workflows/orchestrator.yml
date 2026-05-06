@@ -36,7 +36,7 @@ concurrency:
 jobs:
   plan:
     name: Plan · Affected Partition
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
