@@ -10,7 +10,7 @@ COPY dist/apps/central-hub/central-hub-api/package.json ./package.json
 COPY dist/apps/central-hub/central-hub-api/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY dist/apps/central-hub/central-hub-api/workspace_modules ./workspace_modules
 
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod
 
 FROM gcr.io/distroless/nodejs20-debian12 AS runtime-base
 

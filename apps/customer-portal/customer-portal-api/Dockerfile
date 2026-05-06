@@ -10,7 +10,7 @@ COPY dist/apps/customer-portal/customer-portal-api/package.json ./package.json
 COPY dist/apps/customer-portal/customer-portal-api/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY dist/apps/customer-portal/customer-portal-api/workspace_modules ./workspace_modules
 
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod
 
 FROM gcr.io/distroless/nodejs20-debian12 AS runtime-base
 

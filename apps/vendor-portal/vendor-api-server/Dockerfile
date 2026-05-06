@@ -10,7 +10,7 @@ COPY dist/apps/vendor-portal/vendor-api-server/package.json ./package.json
 COPY dist/apps/vendor-portal/vendor-api-server/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY dist/apps/vendor-portal/vendor-api-server/workspace_modules ./workspace_modules
 
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod
 
 FROM gcr.io/distroless/nodejs20-debian12 AS runtime-base
 
