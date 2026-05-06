@@ -124,13 +124,24 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/trivy/reports
+
           projects="$(jq -r '.[]' <<< '${{ inputs.projects_json }}')"
-          [[ -n "$projects" ]] || { echo "scan_gate_status=skipped-no-projects" >> "$GITHUB_OUTPUT"; exit 0; }
+          [[ -n "$projects" ]] || {
+            echo "scan_gate_status=skipped-no-projects" >> "$GITHUB_OUTPUT"
+            echo "::notice::Trivy gate skipped — no projects to scan."
+            exit 0
+          }
 
-          sudo apt-get update -y
-          sudo apt-get install -y wget
-          wget -qO- https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+          # ── Install Trivy ──────────────────────────────────────────────────
+          echo "::group::Install Trivy"
+          sudo apt-get update -y -qq
+          sudo apt-get install -y -qq wget
+          wget -qO- https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sudo sh -s -- -b /usr/local/bin
+          trivy --version
+          echo "::endgroup::"
 
+          # ── Summary header ─────────────────────────────────────────────────
           failed=0
           total_critical=0
           total_high=0
@@ -142,49 +153,114 @@ jobs:
             echo "|---|---|---:|---:|---|"
           } >> "$GITHUB_STEP_SUMMARY"
 
+          # ── Per-image scan loop ────────────────────────────────────────────
           while IFS= read -r project; do
             app="${project#@ethio-connect/}"
             image_ref="ghcr.io/ethio-connect-et/${app}:${IMAGE_TAG}"
             safe_name="${app//\//-}"
             json_report="artifacts/trivy/reports/${safe_name}-${IMAGE_TAG}.json"
             sarif_report="artifacts/trivy/reports/${safe_name}-${IMAGE_TAG}.sarif"
+            trivy_stderr="artifacts/trivy/reports/${safe_name}-${IMAGE_TAG}.stderr.log"
 
+            echo "::group::Scan ${image_ref}"
+
+            # Check the image exists locally before scanning
             if ! docker image inspect "$image_ref" >/dev/null 2>&1; then
-              echo "| \`${app}\` | \`${image_ref}\` | 0 | 0 | \`skipped-missing-image\` |" >> "$GITHUB_STEP_SUMMARY"
+              echo "::warning title=Trivy Skipped::Image not found locally — skipping scan for ${image_ref}"
+              echo "| \`${app}\` | \`${image_ref}\` | — | — | \`skipped-missing-image\` |" >> "$GITHUB_STEP_SUMMARY"
               skipped_missing=$((skipped_missing + 1))
+              echo "::endgroup::"
               continue
             fi
 
-            trivy image --ignorefile .trivyignore.yaml --scanners vuln --format json --output "$json_report" "$image_ref"
-            trivy image --ignorefile .trivyignore.yaml --scanners vuln --format sarif --output "$sarif_report" "$image_ref"
+            # Run JSON scan (used for gate logic + summary)
+            echo "Running JSON scan…"
+            if ! trivy image \
+                --ignorefile .trivyignore.yaml \
+                --scanners vuln \
+                --format json \
+                --output "$json_report" \
+                "$image_ref" 2>"$trivy_stderr"; then
+              cat "$trivy_stderr" >&2
+              echo "::error title=Trivy scan error [${app}]::trivy exited non-zero while scanning ${image_ref}. Check the step log for details."
+              echo "| \`${app}\` | \`${image_ref}\` | ? | ? | \`scan-error\` |" >> "$GITHUB_STEP_SUMMARY"
+              failed=1
+              echo "::endgroup::"
+              continue
+            fi
+            # Surface any trivy warnings even on success
+            [[ -s "$trivy_stderr" ]] && cat "$trivy_stderr" >&2
 
+            # Run SARIF scan (for GitHub Code Scanning upload)
+            echo "Running SARIF scan…"
+            trivy image \
+              --ignorefile .trivyignore.yaml \
+              --scanners vuln \
+              --format sarif \
+              --output "$sarif_report" \
+              "$image_ref" 2>>"$trivy_stderr" || true
+
+            # Parse counts
             critical_count="$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' "$json_report")"
             high_count="$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' "$json_report")"
             total_critical=$((total_critical + critical_count))
             total_high=$((total_high + high_count))
 
-            gate="pass"
+            gate="✅ pass"
             if (( critical_count > 0 || high_count > 0 )); then
-              gate="fail"
+              gate="❌ fail"
               failed=1
+
+              # Emit a GitHub error annotation for the image
+              echo "::error title=Security gate failed [${app}]::${image_ref} has ${critical_count} CRITICAL and ${high_count} HIGH vulnerabilities. See job summary for details."
+
+              # Print a detail table of failing CVEs to the log
+              echo "--- Failing CVEs for ${image_ref} ---"
+              jq -r '
+                .Results[]? |
+                .Target as $tgt |
+                .Vulnerabilities[]? |
+                select(.Severity == "CRITICAL" or .Severity == "HIGH") |
+                "  [\(.Severity)] \(.VulnerabilityID)  pkg=\(.PkgName)  installed=\(.InstalledVersion)  fixed=\(.FixedVersion // "no-fix")  \(.Title // "")"
+              ' "$json_report"
+              echo "--------------------------------------"
+
+              # Append CVE detail table to the step summary
+              {
+                echo ""
+                echo "### ❌ \`${app}\` — Failing CVEs"
+                echo ""
+                echo "| Severity | CVE | Package | Installed | Fixed | Title |"
+                echo "|---|---|---|---|---|---|"
+                jq -r '
+                  .Results[]? |
+                  .Vulnerabilities[]? |
+                  select(.Severity == "CRITICAL" or .Severity == "HIGH") |
+                  "| \(.Severity) | [\(.VulnerabilityID)](https://avd.aquasec.com/nvd/\(.VulnerabilityID | ascii_downcase)) | `\(.PkgName)` | `\(.InstalledVersion)` | `\(.FixedVersion // "none")` | \(.Title // "") |"
+                ' "$json_report"
+              } >> "$GITHUB_STEP_SUMMARY"
             fi
+
             echo "| \`${app}\` | \`${image_ref}\` | ${critical_count} | ${high_count} | \`${gate}\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "::endgroup::"
           done < <(printf '%s\n' "$projects")
 
+          # ── Aggregate summary footer ───────────────────────────────────────
           {
             echo ""
-            echo "- Aggregate CRITICAL: ${total_critical}"
-            echo "- Aggregate HIGH: ${total_high}"
-            echo "- Skipped (missing local image): ${skipped_missing}"
+            echo "---"
+            echo "**Aggregate CRITICAL:** ${total_critical}  |  **Aggregate HIGH:** ${total_high}  |  **Skipped (missing image):** ${skipped_missing}"
           } >> "$GITHUB_STEP_SUMMARY"
 
+          # ── Gate decision ──────────────────────────────────────────────────
           if (( failed == 1 )); then
             echo "scan_gate_status=failed" >> "$GITHUB_OUTPUT"
-            echo "::error::Container scan gate failed due to HIGH/CRITICAL vulnerabilities."
+            echo "::error::Security gate FAILED — ${total_critical} CRITICAL and ${total_high} HIGH vulnerabilities detected across all images. Rebuild images with patched base layers before publishing."
             exit 1
           fi
 
           echo "scan_gate_status=passed" >> "$GITHUB_OUTPUT"
+          echo "::notice::Security gate PASSED — no CRITICAL or HIGH vulnerabilities detected."
 
       - name: Initialize release version for Docker
         shell: bash

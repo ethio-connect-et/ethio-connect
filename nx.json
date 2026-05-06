@@ -259,7 +259,7 @@
         "projects": [
           "@ethio-connect/central-hub-api",
           "@ethio-connect/central-hub-dashboard",
-          "@ethio-connect/central-hub-public-dashboard"
+          "@ethio-connect/public-website"
         ]
       },
       "customer-portal": {

@@ -1,5 +1,5 @@
 {
-  "name": "@ethio-connect/central-hub-public-dashboard-e2e",
+  "name": "@ethio-connect/public-website-e2e",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "sourceRoot": "apps/central-hub/public-website-e2e/src",
@@ -9,7 +9,7 @@
     "scope:central-hub",
     "type:app"
   ],
-  "implicitDependencies": ["@ethio-connect/central-hub-public-dashboard"],
+  "implicitDependencies": ["@ethio-connect/public-website"],
   "targets": {
     "lint": {
       "executor": "nx:noop"
@@ -34,7 +34,7 @@
     },
     "nx-release-publish": {
       "options": {
-        "imageName": "ghcr.io/ethio-connect-et/central-hub-public-dashboard-e2e"
+        "imageName": "ghcr.io/ethio-connect-et/public-website-e2e"
       }
     }
   },

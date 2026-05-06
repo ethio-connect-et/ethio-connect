@@ -2248,8 +2248,8 @@
           "implicitDependencies": []
         }
       },
-      "@ethio-connect/central-hub-public-dashboard-e2e": {
-        "name": "@ethio-connect/central-hub-public-dashboard-e2e",
+      "@ethio-connect/public-website-e2e": {
+        "name": "@ethio-connect/public-website-e2e",
         "type": "e2e",
         "data": {
           "root": "apps/central-hub/public-website-e2e",
@@ -2429,13 +2429,13 @@
               ],
               "options": {
                 "cwd": "",
-                "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"@ethio-connect/central-hub-public-dashboard-e2e\",\\n  \"root\": \"apps/central-hub/public-website-e2e\",\\n  \"type\": \"e2e\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/@ethio-connect/central-hub-public-dashboard-e2e.json"
+                "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"@ethio-connect/public-website-e2e\",\\n  \"root\": \"apps/central-hub/public-website-e2e\",\\n  \"type\": \"e2e\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/@ethio-connect/public-website-e2e.json"
               },
               "configurations": {},
               "parallelism": true
             }
           },
-          "name": "@ethio-connect/central-hub-public-dashboard-e2e",
+          "name": "@ethio-connect/public-website-e2e",
           "$schema": "../../../node_modules/nx/schemas/project-schema.json",
           "projectType": "application",
           "sourceRoot": "apps/central-hub/public-website-e2e/src",
@@ -2445,9 +2445,7 @@
             "scope:central-hub",
             "type:app"
           ],
-          "implicitDependencies": [
-            "@ethio-connect/central-hub-public-dashboard"
-          ]
+          "implicitDependencies": ["@ethio-connect/public-website"]
         }
       },
       "@ethio-connect/central-hub-api": {
@@ -2786,8 +2784,8 @@
           "implicitDependencies": []
         }
       },
-      "@ethio-connect/central-hub-public-dashboard": {
-        "name": "@ethio-connect/central-hub-public-dashboard",
+      "@ethio-connect/public-website": {
+        "name": "@ethio-connect/public-website",
         "type": "app",
         "data": {
           "root": "apps/central-hub/public-website",
@@ -2851,7 +2849,7 @@
               "dependsOn": ["build-deps"],
               "executor": "nx:run-commands",
               "options": {
-                "command": "pnpm exec nx watch --projects @ethio-connect/central-hub-public-dashboard --includeDependentProjects -- pnpm exec nx build-deps @ethio-connect/central-hub-public-dashboard"
+                "command": "pnpm exec nx watch --projects @ethio-connect/public-website --includeDependentProjects -- pnpm exec nx build-deps @ethio-connect/public-website"
               },
               "configurations": {},
               "parallelism": true
@@ -2904,7 +2902,7 @@
                   "type=registry,ref=${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect}/${PROJECT_NAME##*/}:cache"
                 ],
                 "env": {
-                  "PROJECT_NAME": "@ethio-connect/central-hub-public-dashboard"
+                  "PROJECT_NAME": "@ethio-connect/public-website"
                 },
                 "command": "docker build ."
               },
@@ -2964,7 +2962,7 @@
               ],
               "options": {
                 "cwd": "",
-                "command": "docker buildx build --load --file apps/central-hub/public-website/Dockerfile --tag ${NX_DOCKER_REGISTRY:-ghcr.io}/${NX_DOCKER_REPOSITORY:-ethio-connect}/@ethio-connect/central-hub-public-dashboard:${NX_IMAGE_TAG:-local} --metadata-file dist/containers/@ethio-connect/central-hub-public-dashboard/container-metadata.json apps/central-hub/public-website"
+                "command": "docker buildx build --load --file apps/central-hub/public-website/Dockerfile --tag ${NX_DOCKER_REGISTRY:-ghcr.io}/${NX_DOCKER_REPOSITORY:-ethio-connect}/@ethio-connect/public-website:${NX_IMAGE_TAG:-local} --metadata-file dist/containers/@ethio-connect/public-website/container-metadata.json apps/central-hub/public-website"
               },
               "configurations": {},
               "parallelism": true,
@@ -2984,7 +2982,7 @@
               ],
               "options": {
                 "cwd": "",
-                "command": "mkdir -p dist/containers/@ethio-connect/central-hub-public-dashboard && docker buildx build --push --file apps/central-hub/public-website/Dockerfile --tag ${NX_DOCKER_REGISTRY:-ghcr.io}/${NX_DOCKER_REPOSITORY:-ethio-connect}/@ethio-connect/central-hub-public-dashboard:${NX_IMAGE_TAG:-${NX_TASK_HASH:-latest}} --metadata-file dist/containers/@ethio-connect/central-hub-public-dashboard/push-metadata.json apps/central-hub/public-website && DIGEST=$(python - <<'P'\nimport json\nfrom pathlib import Path\np=Path('dist/containers/@ethio-connect/central-hub-public-dashboard/push-metadata.json')\nj=json.loads(p.read_text()) if p.exists() else {}\nprint(j.get('containerimage.digest',''))\nP\n) && printf \"{\\n  \\\"project\\\": \\\"@ethio-connect/central-hub-public-dashboard\\\",\\n  \\\"image\\\": \\\"%s/%s/@ethio-connect/central-hub-public-dashboard:%s\\\",\\n  \\\"digest\\\": \\\"%s\\\",\\n  \\\"ref\\\": \\\"%s/%s/@ethio-connect/central-hub-public-dashboard@%s\\\"\\n}\\n\" \"${NX_DOCKER_REGISTRY:-ghcr.io}\" \"${NX_DOCKER_REPOSITORY:-ethio-connect}\" \"${NX_IMAGE_TAG:-${NX_TASK_HASH:-latest}}\" \"$DIGEST\" \"${NX_DOCKER_REGISTRY:-ghcr.io}\" \"${NX_DOCKER_REPOSITORY:-ethio-connect}\" \"$DIGEST\" > dist/containers/@ethio-connect/central-hub-public-dashboard/image.json"
+                "command": "mkdir -p dist/containers/@ethio-connect/public-website && docker buildx build --push --file apps/central-hub/public-website/Dockerfile --tag ${NX_DOCKER_REGISTRY:-ghcr.io}/${NX_DOCKER_REPOSITORY:-ethio-connect}/@ethio-connect/public-website:${NX_IMAGE_TAG:-${NX_TASK_HASH:-latest}} --metadata-file dist/containers/@ethio-connect/public-website/push-metadata.json apps/central-hub/public-website && DIGEST=$(python - <<'P'\nimport json\nfrom pathlib import Path\np=Path('dist/containers/@ethio-connect/public-website/push-metadata.json')\nj=json.loads(p.read_text()) if p.exists() else {}\nprint(j.get('containerimage.digest',''))\nP\n) && printf \"{\\n  \\\"project\\\": \\\"@ethio-connect/public-website\\\",\\n  \\\"image\\\": \\\"%s/%s/@ethio-connect/public-website:%s\\\",\\n  \\\"digest\\\": \\\"%s\\\",\\n  \\\"ref\\\": \\\"%s/%s/@ethio-connect/public-website@%s\\\"\\n}\\n\" \"${NX_DOCKER_REGISTRY:-ghcr.io}\" \"${NX_DOCKER_REPOSITORY:-ethio-connect}\" \"${NX_IMAGE_TAG:-${NX_TASK_HASH:-latest}}\" \"$DIGEST\" \"${NX_DOCKER_REGISTRY:-ghcr.io}\" \"${NX_DOCKER_REPOSITORY:-ethio-connect}\" \"$DIGEST\" > dist/containers/@ethio-connect/public-website/image.json"
               },
               "configurations": {},
               "parallelism": true
@@ -2997,7 +2995,7 @@
               ],
               "options": {
                 "cwd": "",
-                "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"@ethio-connect/central-hub-public-dashboard\",\\n  \"root\": \"apps/central-hub/public-website\",\\n  \"type\": \"application\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/@ethio-connect/central-hub-public-dashboard.json"
+                "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"@ethio-connect/public-website\",\\n  \"root\": \"apps/central-hub/public-website\",\\n  \"type\": \"application\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/@ethio-connect/public-website.json"
               },
               "configurations": {},
               "parallelism": true
@@ -3008,12 +3006,12 @@
               "Docker": ["docker:build", "docker:run", "nx-release-publish"]
             },
             "js": {
-              "packageName": "@ethio-connect/central-hub-public-dashboard",
+              "packageName": "@ethio-connect/public-website",
               "packageVersion": "0.0.0",
               "isInPackageManagerWorkspaces": false
             }
           },
-          "name": "@ethio-connect/central-hub-public-dashboard",
+          "name": "@ethio-connect/public-website",
           "tags": [
             "npm:public",
             "domain:central-hub",
@@ -3819,10 +3817,10 @@
           "type": "static"
         }
       ],
-      "@ethio-connect/central-hub-public-dashboard-e2e": [
+      "@ethio-connect/public-website-e2e": [
         {
-          "source": "@ethio-connect/central-hub-public-dashboard-e2e",
-          "target": "@ethio-connect/central-hub-public-dashboard",
+          "source": "@ethio-connect/public-website-e2e",
+          "target": "@ethio-connect/public-website",
           "type": "implicit"
         }
       ],
@@ -3838,19 +3836,19 @@
           "type": "static"
         }
       ],
-      "@ethio-connect/central-hub-public-dashboard": [
+      "@ethio-connect/public-website": [
         {
-          "source": "@ethio-connect/central-hub-public-dashboard",
+          "source": "@ethio-connect/public-website",
           "target": "@ethio-connect/ui-components",
           "type": "static"
         },
         {
-          "source": "@ethio-connect/central-hub-public-dashboard",
+          "source": "@ethio-connect/public-website",
           "target": "@ethio-connect/frontend-features",
           "type": "static"
         },
         {
-          "source": "@ethio-connect/central-hub-public-dashboard",
+          "source": "@ethio-connect/public-website",
           "target": "@ethio-connect/ethioconnect",
           "type": "static"
         }
