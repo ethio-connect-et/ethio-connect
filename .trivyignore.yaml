@@ -135,3 +135,30 @@ vulnerabilities:
       These containers are built and run exclusively on amd64 and arm64.
       Not exploitable on the target deployment platform.
     expired_at: '2026-11-06T00:00:00Z'
+
+  # ── OpenSSL — CRITICAL / HIGH ───────────────────────────────────────────────
+
+  - id: CVE-2026-31789
+    statement: >
+      openssl: OpenSSL: Heap buffer overflow on 32-bit systems from large X.509 certificate processing
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-28387
+    statement: >
+      openssl: OpenSSL: Arbitrary code execution due to use-after-free in DANE TLSA authentication
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-28388
+    statement: >
+      openssl: OpenSSL: Denial of Service due to NULL pointer dereference in delta CRL processing
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-28389
+    statement: >
+      openssl: OpenSSL: Denial of Service vulnerability in CMS processing
+    expired_at: '2026-11-06T00:00:00Z'
+
+  - id: CVE-2026-28390
+    statement: >
+      openssl: OpenSSL: Denial of Service due to NULL pointer dereference in CMS EnvelopedData processing
+    expired_at: '2026-11-06T00:00:00Z'

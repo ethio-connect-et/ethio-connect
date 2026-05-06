@@ -71,6 +71,8 @@ A formal JSON schema for the `client_payload` is maintained at
 
 ## Multi-platform container behavior
 
+All Docker tag inputs are mandatory in CI: `IMAGE_TAG` and `BRANCH_TAG` must be set and must never be `latest`. Workflows now fail fast before invoking `pnpm nx run ...:docker:build` if either variable is missing or set to `latest`.
+
 All Docker builds run through Nx targets (`pnpm nx run <project>:docker:build`) which now invoke Buildx with explicit target platforms via `--platform ${DOCKER_PLATFORMS:-linux/amd64}`. CI workflows initialize `docker/setup-qemu-action` and `docker/setup-buildx-action` before `docker:build` and `nx-release-publish` targets so cross-architecture manifests are produced consistently.
 
 Publish verification enforces immutable digest behavior per tag:
