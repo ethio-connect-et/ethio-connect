@@ -86,6 +86,54 @@ A formal JSON schema for the `client_payload` is maintained at
 `.github/contracts/promote-image.schema.json` in the source repo
 (`ethio-connect-et/ethio-connect`).
 
+
+## Machine-readable promotion + ArgoCD reconciliation contract
+
+```yaml
+contract_version: 1
+promotion_contract:
+  required_payload_fields:
+    - project
+    - immutable_ref
+    - digest
+    - source_sha
+    - release_version
+    - environment_target
+  validation_rules:
+    project: "must match ^[a-z0-9._-]+$ and map to a deployable Nx app"
+    immutable_ref: "must match ghcr.io/ethio-connect-et/<project>@sha256:<64hex>; tags are rejected"
+    digest: "must match sha256:<64hex>"
+    source_sha: "must be a 40-character git commit SHA"
+    release_version: "non-empty canonical release version"
+    environment_target:
+      allowed_values: [testing, staging, production]
+  rejection_conditions:
+    - missing digest
+    - missing source_sha
+    - immutable_ref that is tag-based (image:tag)
+    - immutable_ref not aligned with project + digest
+
+argocd_reconciliation_contract:
+  source_paths:
+    - gitops/argocd/apps
+    - gitops/argocd/tenants
+    - gitops/argocd/workloads
+  sync_window_seconds_max: 60
+  required_health_checks:
+    - application_status_synced
+    - application_status_healthy
+    - workloads_progressing_condition_false
+  rollback_trigger_conditions:
+    - sync_timeout_exceeds_60s
+    - health_state_degraded
+    - repeated_sync_failures_ge_3
+    - rollout_failure_or_crashloop
+```
+
+The reusable manifest promotion trigger enforces the payload fields above and fails fast when digest or SHA provenance is missing or malformed. Promotions are accepted only for immutable references (`image@sha256:...`) and rejected for mutable tag references.
+
+ArgoCD automation must reconcile from the GitOps sources represented in diagrams (`gitops/argocd/apps`, `gitops/argocd/tenants`, `gitops/argocd/workloads`), meet the `<=60s` sync window expectation, pass health checks, and trigger rollback when contract conditions are met.
+
 ## Multi-platform container behavior
 
 All Docker tag inputs are mandatory in CI: `IMAGE_TAG` and `BRANCH_TAG` must be set and must never be `latest`. Workflows now fail fast before invoking `pnpm nx run ...:docker:build` if either variable is missing or set to `latest`.
