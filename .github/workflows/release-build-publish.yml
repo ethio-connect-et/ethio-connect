@@ -147,6 +147,12 @@ jobs:
             echo "Created tmp/$root/.docker-version with tag ${docker_version}"
           done < <(pnpm nx show projects --projects 'tag:release:publish' --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
 
+      # Pinned maintained installer for Trivy binary (supply-chain hardening).
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@3e7ba765ad86a8a2d93fa95ac0f956935f8059a7 # v0.2.4
+        with:
+          trivy-version: v0.65.0
+
       - name: Build and publish docker images via Nx targets
         id: publish-targets
         shell: bash
@@ -175,9 +181,8 @@ jobs:
           pnpm nx run-many -t docker:build --projects "$central_hub_projects,$customer_portal_projects,$vendor_portal_projects"
 
           mkdir -p artifacts/trivy/reports
-          sudo apt-get update -y
-          sudo apt-get install -y wget
-          wget -qO- https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+
+          trivy --version
 
           failed=0
           total_critical=0

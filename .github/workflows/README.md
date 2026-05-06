@@ -151,6 +151,7 @@ Publish verification enforces immutable digest behavior per tag:
 Reusable publish and release publish workflows run a dedicated Trivy container scan step after `docker:build` and before `nx-release-publish`.
 
 - Scan source: GHCR image refs produced by the workflow.
+- Scanner provenance: Trivy is installed through pinned `aquasecurity/setup-trivy` action commit (`v0.2.4` SHA) with explicit Trivy version pinning (`v0.65.0`).
 - Blocking severities: `HIGH`, `CRITICAL`.
 - Evidence: JSON and SARIF reports uploaded as workflow artifacts.
 - Summary: per-image and aggregate findings written to the GitHub job summary.
