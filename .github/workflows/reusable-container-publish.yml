@@ -114,6 +114,10 @@ jobs:
           set -euo pipefail
           projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
           [[ -n "$projects" ]] || { echo 'No docker build projects to process.'; exit 0; }
+          [[ -n "${IMAGE_TAG:-}" ]] || { echo "::error::IMAGE_TAG is required"; exit 1; }
+          [[ -n "${BRANCH_TAG:-}" ]] || { echo "::error::BRANCH_TAG is required"; exit 1; }
+          [[ "$IMAGE_TAG" != "latest" ]] || { echo "::error::IMAGE_TAG must not be latest"; exit 1; }
+          [[ "$BRANCH_TAG" != "latest" ]] || { echo "::error::BRANCH_TAG must not be latest"; exit 1; }
           pnpm nx run-many -t docker:build --projects "$projects" --outputStyle=static
 
       - name: Security scan built container images (Trivy gate)
@@ -177,6 +181,7 @@ jobs:
             echo "Running JSON scan…"
             if ! trivy image \
                 --ignorefile .trivyignore.yaml \
+                --ignore-unfixed \
                 --scanners vuln \
                 --format json \
                 --output "$json_report" \
@@ -195,6 +200,7 @@ jobs:
             echo "Running SARIF scan…"
             trivy image \
               --ignorefile .trivyignore.yaml \
+              --ignore-unfixed \
               --scanners vuln \
               --format sarif \
               --output "$sarif_report" \

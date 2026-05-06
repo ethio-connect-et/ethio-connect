@@ -166,6 +166,11 @@ jobs:
           export COMMIT_SHA="${GITHUB_SHA}"
           export VERSION="$docker_version"
 
+          [[ -n "${IMAGE_TAG:-}" ]] || { echo "::error::IMAGE_TAG is required"; exit 1; }
+          [[ -n "${BRANCH_TAG:-}" ]] || { echo "::error::BRANCH_TAG is required"; exit 1; }
+          [[ "$IMAGE_TAG" != "latest" ]] || { echo "::error::IMAGE_TAG must not be latest"; exit 1; }
+          [[ "$BRANCH_TAG" != "latest" ]] || { echo "::error::BRANCH_TAG must not be latest"; exit 1; }
+
           echo "Building docker images for docker-enabled release groups"
           pnpm nx run-many -t docker:build --projects "$central_hub_projects,$customer_portal_projects,$vendor_portal_projects"
 
