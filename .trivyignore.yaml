@@ -4,7 +4,6 @@
 # - Always include an expiry and review reference.
 # - Remove entries as soon as remediated by dependency/base-image upgrades.
 ignore: []
-
 # Example entry (do not keep unused examples committed in active policy):
 # - id: CVE-2026-00000
 #   statement: "Temporary exception for <reason>."
