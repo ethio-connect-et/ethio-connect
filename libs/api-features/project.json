@@ -5,7 +5,9 @@
   "projectType": "library",
   "release": {
     "version": {
-      "manifestRootsToUpdate": ["dist/{projectRoot}"],
+      "manifestRootsToUpdate": [
+        "dist/{projectRoot}"
+      ],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk"
     },
@@ -24,21 +26,24 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/libs/api-features",
         "main": "libs/api-features/src/index.ts",
         "tsConfig": "libs/api-features/tsconfig.lib.json",
-        "assets": ["libs/api-features/*.md"],
+        "assets": [
+          "libs/api-features/*.md"
+        ],
         "generatePackageJson": true
       }
     },
     "package": {
       "executor": "nx:noop",
-      "dependsOn": ["build"]
-    },
-    "nx-release-publish": {
-      "executor": "nx:noop"
+      "dependsOn": [
+        "build"
+      ]
     }
   }
 }
