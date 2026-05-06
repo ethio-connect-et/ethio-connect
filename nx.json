@@ -99,8 +99,6 @@
             "--label",
             "org.opencontainers.image.revision=${COMMIT_SHA:-unknown}",
             "--label",
-            "org.opencontainers.image.created=${BUILD_DATE:-unknown}",
-            "--label",
             "org.opencontainers.image.title=${PROJECT_NAME##*/}",
             "--label",
             "org.opencontainers.image.source=${REPO_URL:-unknown}",
@@ -228,7 +226,10 @@
         "production",
         "^production",
         "{workspaceRoot}/Dockerfile",
-        "{projectRoot}/Dockerfile"
+        "{projectRoot}/Dockerfile",
+        { "runtime": "DOCKER_PLATFORMS" },
+        { "runtime": "REGISTRY" },
+        { "runtime": "ORG_LC" }
       ],
       "outputs": ["{workspaceRoot}/dist/containers/{projectName}"]
     },
