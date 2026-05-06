@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ec-{{env}}-{{tenant}}-smoke
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    argocd.argoproj.io/sync-wave: '20'
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: smoke
+          image: curlimages/curl:8.8.0
+          command:
+            [
+              'sh',
+              '-c',
+              'curl -fsS http://ec-{{tenant}}-api:3000/healthz && curl -fsS http://ec-{{tenant}}-dashboard:3000/api/health',
+            ]
