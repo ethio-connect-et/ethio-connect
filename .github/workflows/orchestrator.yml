@@ -107,7 +107,7 @@ jobs:
   docker_build:
     name: Docker Build/Publish Lane
     needs: [plan]
-    if: needs.plan.outputs.has_docker_build == 'true'
+    if: needs.plan.outputs.has_docker_build == 'true' && github.event_name == 'push' && (github.ref_name == 'testing' || github.ref_name == 'staging' || github.ref_name == 'main')
     uses: ./.github/workflows/reusable-container-publish.yml
     secrets: inherit
     with:
