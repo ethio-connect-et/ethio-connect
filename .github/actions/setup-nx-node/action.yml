@@ -12,9 +12,30 @@ inputs:
     required: false
     default: '10.20.0'
 
+outputs:
+  dependency-cache-hit:
+    description: Whether the pnpm store dependency cache was restored via an exact key match.
+    value: ${{ steps.pnpm-cache-restore.outputs.cache-hit }}
+  dependency-cache-key:
+    description: Cache key used for pnpm store dependency cache.
+    value: ${{ steps.pnpm-cache-restore.outputs.cache-primary-key }}
+
 runs:
   using: composite
   steps:
+    - name: Resolve Node.js major version
+      id: node-major
+      shell: bash
+      run: |
+        set -euo pipefail
+        node_major="${{ inputs.node-version }}"
+        node_major="${node_major%%.*}"
+        if [[ -z "$node_major" ]]; then
+          echo "Failed to resolve Node.js major version from '${{ inputs.node-version }}'" >&2
+          exit 1
+        fi
+        echo "value=$node_major" >> "$GITHUB_OUTPUT"
+
     - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
       with:
         version: ${{ inputs.pnpm-version }}
@@ -23,9 +44,32 @@ runs:
     - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
       with:
         node-version: ${{ inputs.node-version }}
-        cache: pnpm
-        cache-dependency-path: pnpm-lock.yaml
+
+    - name: Resolve pnpm store path
+      id: pnpm-store-path
+      shell: bash
+      run: |
+        set -euo pipefail
+        store_dir="$(pnpm store path --silent)"
+        echo "path=$store_dir" >> "$GITHUB_OUTPUT"
+
+    - name: Restore pnpm store cache
+      id: pnpm-cache-restore
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ steps.pnpm-store-path.outputs.path }}
+        key: pnpm-store-${{ runner.os }}-node${{ steps.node-major.outputs.value }}-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          pnpm-store-${{ runner.os }}-node${{ steps.node-major.outputs.value }}-
+          pnpm-store-${{ runner.os }}-
 
     - name: Install dependencies
       shell: bash
       run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
+
+    - name: Save pnpm store cache
+      if: always() && steps.pnpm-cache-restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ steps.pnpm-store-path.outputs.path }}
+        key: ${{ steps.pnpm-cache-restore.outputs.cache-primary-key }}

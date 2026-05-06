@@ -48,7 +48,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: ./.github/actions/setup-nx-node
+      - id: setup_nx_node
+        uses: ./.github/actions/setup-nx-node
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -70,7 +71,10 @@ jobs:
 
           if rg -q "No tasks were run" nx-quality.log; then
             echo 'No affected tasks for quality lane. Emitting deterministic skip artifact.'
-            echo '{"lane":"quality","status":"skipped-no-affected","affected_count":0,"cache_hits":0,"cache_misses":0,"duration_seconds":0,"nx_cloud_run_url":""}' > ci-metrics-quality.json
+            jq -n \
+              --arg dependency_cache_hit "${{ steps.setup_nx_node.outputs.dependency-cache-hit || 'false' }}" \
+              --arg dependency_cache_key "${{ steps.setup_nx_node.outputs.dependency-cache-key || '' }}" \
+              '{lane:"quality",status:"skipped-no-affected",affected_count:0,cache_hits:0,cache_misses:0,duration_seconds:0,dependency_cache_hit:($dependency_cache_hit == "true"),dependency_cache_key:$dependency_cache_key,nx_cloud_run_url:""}' > ci-metrics-quality.json
             exit 0
           fi
 
@@ -85,8 +89,10 @@ jobs:
             --argjson cache_hits "${cache_hits:-0}" \
             --argjson cache_misses "${cache_misses:-0}" \
             --argjson duration_seconds "$duration" \
+            --arg dependency_cache_hit "${{ steps.setup_nx_node.outputs.dependency-cache-hit || 'false' }}" \
+            --arg dependency_cache_key "${{ steps.setup_nx_node.outputs.dependency-cache-key || '' }}" \
             --arg nx_cloud_run_url "${nx_cloud_run_url:-}" \
-            '{lane:"quality",affected_count:$affected_count,cache_hits:$cache_hits,cache_misses:$cache_misses,duration_seconds:$duration_seconds,nx_cloud_run_url:$nx_cloud_run_url}' > ci-metrics-quality.json
+            '{lane:"quality",affected_count:$affected_count,cache_hits:$cache_hits,cache_misses:$cache_misses,duration_seconds:$duration_seconds,dependency_cache_hit:($dependency_cache_hit == "true"),dependency_cache_key:$dependency_cache_key,nx_cloud_run_url:$nx_cloud_run_url}' > ci-metrics-quality.json
 
       - name: Upload quality metrics
         if: always()
