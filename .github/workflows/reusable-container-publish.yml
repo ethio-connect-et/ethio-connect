@@ -427,6 +427,26 @@ jobs:
             echo "Created tmp/$root/.docker-version with tag ${image_tag}"
           done < <(pnpm nx show projects --withTarget nx-release-publish --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
 
+
+      - name: Validate release target contracts (Publish Stage)
+        if: ${{ inputs.event_name != 'pull_request' && (inputs.ref_name == 'testing' || inputs.ref_name == 'staging' || inputs.ref_name == 'main') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/ci/validate-project-targets.mjs \
+            --mode publish-target-contract \
+            --projects-json '${{ inputs.projects_json }}' \
+            --report-path release-target-contract-report.json
+
+      - name: Upload release target contract report
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: release-target-contract-report-${{ inputs.ref_name }}-${{ github.run_id }}
+          path: release-target-contract-report.json
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Publish images (Publish Stage)
         if: ${{ inputs.event_name != 'pull_request' && (inputs.ref_name == 'testing' || inputs.ref_name == 'staging' || inputs.ref_name == 'main') }}
         shell: bash
