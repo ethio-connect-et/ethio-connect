@@ -1,0 +1,14 @@
+# Trivy ignore policy for temporary, risk-accepted CVE suppressions.
+# Keep this file auditable:
+# - Scope narrowly by image/package when possible.
+# - Always include an expiry and review reference.
+# - Remove entries as soon as remediated by dependency/base-image upgrades.
+ignore: []
+# Example entry (do not keep unused examples committed in active policy):
+# - id: CVE-2026-00000
+#   statement: "Temporary exception for <reason>."
+#   expired_at: 2026-06-30
+#   paths:
+#     - "usr/lib/x86_64-linux-gnu/libexample.so"
+#   # Trivy supports package/path selectors depending on report metadata.
+#   # Add ticket/review IDs in statement for auditability.

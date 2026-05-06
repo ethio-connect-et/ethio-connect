@@ -52,3 +52,10 @@ Audit trail sources:
 2. Patch base images/dependencies and rebuild.
 3. Re-run publish and confirm gate passes.
 4. Use override only when risk is accepted by authorized approver.
+
+## Trivy Ignore Governance
+
+- Repository-level ignore policy is stored in `.trivyignore.yaml` and is applied in CI scans.
+- Suppressions must be narrowly scoped to specific CVEs and time-bound with an expiry/review date.
+- Each suppression must include auditable justification (for example, incident/ticket reference).
+- Ignore entries are temporary and must be removed once base image or dependency remediation is available.
