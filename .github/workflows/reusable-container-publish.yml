@@ -3,6 +3,12 @@ name: Reusable Container Publish
 on:
   workflow_call:
     inputs:
+      projects_json:
+        required: true
+        type: string
+      tag_context_json:
+        required: true
+        type: string
       ref_name:
         required: true
         type: string
@@ -85,7 +91,9 @@ jobs:
           NX_DOCKER_VERSION_SCHEME: production
         run: |
           set -euo pipefail
-          pnpm nx run-many -t docker:build --all --outputStyle=static
+          projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
+          [[ -n "$projects" ]] || { echo 'No docker build projects to process.'; exit 0; }
+          pnpm nx run-many -t docker:build --projects "$projects" --outputStyle=static
 
       - name: Initialize release version for Docker
         shell: bash
@@ -121,7 +129,9 @@ jobs:
           NX_DOCKER_VERSION_SCHEME: production
         run: |
           set -euo pipefail
-          pnpm nx run-many -t nx-release-publish --all --outputStyle=static
+          projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
+          [[ -n "$projects" ]] || { echo 'No release publish projects to process.'; exit 0; }
+          pnpm nx run-many -t nx-release-publish --projects "$projects" --outputStyle=static
 
       - name: Summarize published images
         shell: bash
@@ -156,8 +166,7 @@ jobs:
               --arg tag "$image_tag" \
               --arg artifact_run_id "${GITHUB_RUN_ID}" \
               '{project:$project,app:$app,image_ref:$image_ref,digest:$digest,source_sha:$source_sha,tag:$tag,artifact_run_id:$artifact_run_id,attestation_status:"not-required"}'
-          done < <(pnpm nx show projects --withTarget nx-release-publish --json | jq -r '.[] | select(startswith("@ethio-connect/"))') \
-            | jq -sc . > "$manifest_path"
+          done < <(jq -r '.[]' <<< '${{ inputs.projects_json }}') | jq -sc . > "$manifest_path"
 
       - name: Upload publish manifest artifact
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
