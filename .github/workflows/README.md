@@ -100,4 +100,17 @@ If a multi-platform publish regression occurs:
 1. Re-run publish with `DOCKER_PLATFORMS=linux/amd64` to force a single-platform emergency image while keeping the Nx execution contract unchanged.
 2. Re-promote the last known-good digest from the manifest repo workflows (`promote-manifest*.yml`) rather than republishing mutable tags.
 3. Revert the failing workflow or `nx.json` change and republish the same release tag; digest verification steps will fail fast if tag determinism is broken.
-4. After stabilization, restore `DOCKER_PLATFORMS=linux/amd64` and validate digest parity checks before promotion.
+
+## CI Performance SLOs (Nx Cloud metadata source of truth)
+
+Performance trend tracking must use Nx Cloud run metadata links emitted by CI lane summaries. The quality lane summary records affected count, cache hit/miss indicators, and runtime deltas.
+
+| Lane                               | Target cache hit rate (rolling)                                            | Expected runtime threshold |
+| ---------------------------------- | -------------------------------------------------------------------------- | -------------------------- |
+| Quality (lint/test/build affected) | >= 70%                                                                     | <= 15 minutes (900s)       |
+| Docker Build/Publish               | >= 60% for cacheable prerequisites (`build`, `docker:build` prerequisites) | <= 25 minutes (1500s)      |
+
+Policy:
+
+- A sustained miss against either threshold for 3 consecutive runs should trigger investigation.
+- The Nx Cloud run URL captured in job summary is the audit reference for each run.

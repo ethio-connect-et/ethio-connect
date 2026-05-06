@@ -110,14 +110,13 @@
         "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"{projectName}\",\\n  \"root\": \"{projectRoot}\",\\n  \"type\": \"application\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/{projectName}.json"
       }
     },
+    "docker:build": {
+      "executor": "nx:noop",
+      "dependsOn": ["container"]
+    },
     "nx-release-publish": {
-      "executor": "@nx/docker:release-publish",
-      "dependsOn": ["docker:build"],
-      "cache": false,
-      "options": {
-        "quiet": false,
-        "imageName": "ghcr.io/ethio-connect-et/vendor-api-server"
-      }
+      "executor": "nx:noop",
+      "dependsOn": ["docker:build"]
     }
   }
 }
