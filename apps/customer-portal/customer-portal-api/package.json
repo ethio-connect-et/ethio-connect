@@ -1,6 +1,6 @@
 {
   "name": "@ethio-connect/customer-portal-api",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "dependencies": {
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",

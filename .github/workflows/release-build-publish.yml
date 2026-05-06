@@ -156,7 +156,7 @@ jobs:
           short_sha="${{ steps.release-metadata.outputs.short_sha }}"
 
           shared_libs_projects="@ethio-connect/api-common,@ethio-connect/api-features,@ethio-connect/frontend-features,@ethio-connect/ui-components,@ethio-connect/ethioconnect"
-          central_hub_projects="@ethio-connect/central-hub-api,@ethio-connect/central-hub-dashboard,@ethio-connect/central-hub-public-dashboard"
+          central_hub_projects="@ethio-connect/central-hub-api,@ethio-connect/central-hub-dashboard,@ethio-connect/public-website"
           customer_portal_projects="@ethio-connect/customer-portal-api,@ethio-connect/customer-portal-dashboard"
           vendor_portal_projects="@ethio-connect/vendor-api-server,@ethio-connect/vendor-portal-dashboard"
 
