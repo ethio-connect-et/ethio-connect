@@ -11,7 +11,7 @@ permissions: {}
 jobs:
   release_draft:
     name: Release · Draft Notes
-    runs-on: self-host-runner
+    runs-on: self-hosted
     permissions:
       contents: write
       pull-requests: write
