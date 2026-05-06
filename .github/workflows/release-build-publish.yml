@@ -113,7 +113,6 @@ jobs:
           echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
           echo "docker_version=$docker_version" >> "$GITHUB_OUTPUT"
 
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e8 # v3.6.0
 
@@ -262,7 +261,6 @@ jobs:
             cat published-images.md
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-
 
       - name: Verify published tags resolve to immutable manifests
         shell: bash

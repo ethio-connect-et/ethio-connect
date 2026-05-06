@@ -4,10 +4,7 @@
   "analytics": false,
   "nxCloudId": "69f299b3bd50ccb2dc8f1fc7",
   "namedInputs": {
-    "default": [
-      "{projectRoot}/**/*",
-      "sharedGlobals"
-    ],
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "sharedGlobals": [
       "{workspaceRoot}/nx.json",
       "{workspaceRoot}/package.json",
@@ -29,15 +26,8 @@
       "!{projectRoot}/playwright.config.[jt]s",
       "!{projectRoot}/**/*.stories.@(ts|tsx|js|jsx|mdx)"
     ],
-    "ci": [
-      "default",
-      "production"
-    ],
-    "e2e": [
-      "default",
-      "production",
-      "{workspaceRoot}/playwright.config.*"
-    ]
+    "ci": ["default", "production"],
+    "e2e": ["default", "production", "{workspaceRoot}/playwright.config.*"]
   },
   "plugins": [
     {
@@ -148,46 +138,26 @@
   "targetDefaults": {
     "@nx/js:tsc": {
       "cache": true,
-      "dependsOn": [
-        "^build"
-      ],
-      "inputs": [
-        "production",
-        "^production"
-      ],
-      "outputs": [
-        "{options.outputPath}"
-      ]
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"],
+      "outputs": ["{options.outputPath}"]
     },
     "@nx/eslint:lint": {
       "cache": true,
-      "inputs": [
-        "default",
-        "^default"
-      ],
-      "outputs": [
-        "{options.outputFile}"
-      ]
+      "inputs": ["default", "^default"],
+      "outputs": ["{options.outputFile}"]
     },
     "@nx/jest:jest": {
       "cache": true,
-      "inputs": [
-        "ci",
-        "^production"
-      ],
-      "outputs": [
-        "{workspaceRoot}/coverage/{projectRoot}"
-      ],
+      "inputs": ["ci", "^production"],
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
       "options": {
         "passWithNoTests": true
       }
     },
     "@nx/playwright:playwright": {
       "cache": true,
-      "inputs": [
-        "e2e",
-        "^production"
-      ],
+      "inputs": ["e2e", "^production"],
       "outputs": [
         "{workspaceRoot}/dist/.playwright/{projectRoot}",
         "{workspaceRoot}/playwright-report/{projectRoot}"
@@ -195,13 +165,8 @@
     },
     "build": {
       "cache": true,
-      "dependsOn": [
-        "^build"
-      ],
-      "inputs": [
-        "production",
-        "^production"
-      ],
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"],
       "outputs": [
         "{workspaceRoot}/dist/{projectRoot}",
         "{projectRoot}/dist",
@@ -211,10 +176,7 @@
     },
     "test": {
       "cache": true,
-      "inputs": [
-        "ci",
-        "^production"
-      ],
+      "inputs": ["ci", "^production"],
       "outputs": [
         "{workspaceRoot}/coverage/{projectRoot}",
         "{projectRoot}/test-results"
@@ -222,20 +184,12 @@
     },
     "lint": {
       "cache": true,
-      "inputs": [
-        "default",
-        "^default"
-      ],
-      "outputs": [
-        "{options.outputFile}"
-      ]
+      "inputs": ["default", "^default"],
+      "outputs": ["{options.outputFile}"]
     },
     "e2e": {
       "cache": true,
-      "inputs": [
-        "e2e",
-        "^production"
-      ],
+      "inputs": ["e2e", "^production"],
       "outputs": [
         "{workspaceRoot}/dist/.playwright/{projectRoot}",
         "{workspaceRoot}/playwright-report/{projectRoot}",
@@ -244,14 +198,8 @@
     },
     "package": {
       "cache": true,
-      "inputs": [
-        "production",
-        "^production"
-      ],
-      "outputs": [
-        "{workspaceRoot}/dist/{projectRoot}",
-        "{projectRoot}/dist"
-      ]
+      "inputs": ["production", "^production"],
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}", "{projectRoot}/dist"]
     },
     "container": {
       "cache": true,
@@ -261,9 +209,7 @@
         "{workspaceRoot}/Dockerfile",
         "{projectRoot}/Dockerfile"
       ],
-      "outputs": [
-        "{workspaceRoot}/dist/containers/{projectName}"
-      ]
+      "outputs": ["{workspaceRoot}/dist/containers/{projectName}"]
     },
     "docker": {
       "cache": true,
@@ -273,20 +219,13 @@
         "{workspaceRoot}/Dockerfile",
         "{projectRoot}/Dockerfile"
       ],
-      "outputs": [
-        "{workspaceRoot}/dist/containers/{projectName}"
-      ]
+      "outputs": ["{workspaceRoot}/dist/containers/{projectName}"]
     },
     "docker:build": {
-      "dependsOn": [
-        "build",
-        "prune"
-      ]
+      "dependsOn": ["build", "prune"]
     },
     "@nx/docker:release-publish": {
-      "dependsOn": [
-        "docker:build"
-      ],
+      "dependsOn": ["docker:build"],
       "cache": false,
       "options": {
         "quiet": false
