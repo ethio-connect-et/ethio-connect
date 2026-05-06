@@ -15,7 +15,7 @@ RUN node -e 'const fs = require("fs"); const pkg = JSON.parse(fs.readFileSync("p
 
 FROM gcr.io/distroless/nodejs20-debian12@sha256:6fe218dbad37e979c7542e670d28d6e23d3f53d2929693bc9cdded8b622f339f AS runtime-base
 
-FROM busybox:1.36.1 AS runtime-fs
+FROM debian:12-slim AS runtime-prune
 COPY --from=runtime-base / /rootfs
 RUN rm -f /rootfs/usr/lib/x86_64-linux-gnu/libssl.so.3 \
     /rootfs/usr/lib/x86_64-linux-gnu/libcrypto.so.3 \
@@ -30,7 +30,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-COPY --from=runtime-fs /rootfs/ /
+COPY --from=runtime-prune /rootfs/ /
 
 COPY --chown=65532:65532 dist/apps/vendor-portal/vendor-api-server/ ./
 COPY --from=deps --chown=65532:65532 /app/node_modules ./node_modules
