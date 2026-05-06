@@ -97,6 +97,12 @@ jobs:
           echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
           echo "docker_version=$docker_version" >> "$GITHUB_OUTPUT"
 
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e8 # v3.6.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4c0219f9cb90f071d9068e28f2f97a8deca89c6b # v3.11.1
       - name: Authenticate with GitHub Container Registry
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
         with:
@@ -177,6 +183,29 @@ jobs:
             cat published-images.md
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+
+
+      - name: Verify published tags resolve to immutable manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker_version="${{ steps.release-metadata.outputs.docker_version }}"
+          short_sha="${{ steps.release-metadata.outputs.short_sha }}"
+
+          while IFS= read -r project; do
+            app="${project#@ethio-connect/}"
+            version_ref="ghcr.io/ethio-connect-et/${app}:${docker_version}"
+            sha_ref="ghcr.io/ethio-connect-et/${app}:${short_sha}"
+
+            version_digest="$(docker buildx imagetools inspect "$version_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+            sha_digest="$(docker buildx imagetools inspect "$sha_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+
+            [[ "$version_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::Invalid version digest for $app: $version_digest"; exit 1; }
+            [[ "$sha_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::Invalid sha digest for $app: $sha_digest"; exit 1; }
+            [[ "$version_digest" == "$sha_digest" ]] || { echo "::error::Digest mismatch for $app between ${docker_version} and ${short_sha}"; exit 1; }
+
+            echo "Verified $app => $version_digest"
+          done < <(pnpm nx show projects --withTarget docker:build --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
 
       - name: Generate release changelog from git history
         id: changelog

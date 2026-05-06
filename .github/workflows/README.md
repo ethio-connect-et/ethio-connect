@@ -55,3 +55,22 @@ Validation requirements:
 A formal JSON schema for the `client_payload` is maintained at
 `.github/contracts/promote-image.schema.json` in the source repo
 (`ethio-connect-et/ethio-connect`).
+
+## Multi-platform container behavior
+
+All Docker builds run through Nx targets (`pnpm nx run <project>:docker:build`) which now invoke Buildx with explicit target platforms via `--platform ${DOCKER_PLATFORMS:-linux/amd64,linux/arm64}`. CI workflows initialize `docker/setup-qemu-action` and `docker/setup-buildx-action` before `docker:build` and `nx-release-publish` targets so cross-architecture manifests are produced consistently.
+
+Publish verification enforces immutable digest behavior per tag:
+
+- Branch publish flow validates `<image_tag>` and `<branch_tag>` point to the same manifest digest.
+- Release flow validates `<docker_version>` and `<short_sha>` point to the same manifest digest.
+- All digests must match `sha256:<64hex>` and are resolved from GHCR using `docker buildx imagetools inspect`.
+
+## Rollback plan
+
+If a multi-platform publish regression occurs:
+
+1. Re-run publish with `DOCKER_PLATFORMS=linux/amd64` to force a single-platform emergency image while keeping the Nx execution contract unchanged.
+2. Re-promote the last known-good digest from the manifest repo workflows (`promote-manifest*.yml`) rather than republishing mutable tags.
+3. Revert the failing workflow or `nx.json` change and republish the same release tag; digest verification steps will fail fast if tag determinism is broken.
+4. After stabilization, restore `DOCKER_PLATFORMS=linux/amd64,linux/arm64` and validate digest parity checks before promotion.

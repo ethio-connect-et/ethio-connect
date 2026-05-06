@@ -66,6 +66,12 @@ jobs:
             echo "build_date=${build_date}"
           } >> "$GITHUB_OUTPUT"
 
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e8 # v3.6.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4c0219f9cb90f071d9068e28f2f97a8deca89c6b # v3.11.1
       - name: Log in to GHCR
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
         with:
@@ -132,6 +138,28 @@ jobs:
           projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
           [[ -n "$projects" ]] || { echo 'No release publish projects to process.'; exit 0; }
           pnpm nx run-many -t nx-release-publish --projects "$projects" --outputStyle=static
+
+
+      - name: Verify published tags resolve to immutable manifests
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
+          BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r project; do
+            app="${project#@ethio-connect/}"
+            image_ref="ghcr.io/ethio-connect-et/${app}:${IMAGE_TAG}"
+            branch_ref="ghcr.io/ethio-connect-et/${app}:${BRANCH_TAG}"
+            image_digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+            branch_digest="$(docker buildx imagetools inspect "$branch_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+
+            [[ "$image_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::Invalid digest for $image_ref: $image_digest"; exit 1; }
+            [[ "$branch_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::Invalid digest for $branch_ref: $branch_digest"; exit 1; }
+            [[ "$image_digest" == "$branch_digest" ]] || { echo "::error::Digest mismatch for $app between ${IMAGE_TAG} and ${BRANCH_TAG}"; exit 1; }
+
+            echo "Verified $app => $image_digest"
+          done < <(jq -r '.[]' <<< '${{ inputs.projects_json }}')
 
       - name: Summarize published images
         shell: bash
