@@ -157,6 +157,80 @@ jobs:
           path: ci-metrics-docker-build.json
           if-no-files-found: ignore
 
+      - name: Set up Trivy (pinned + validated asset resolution)
+        shell: bash
+        env:
+          TRIVY_VERSION: '0.65.0'
+          TRIVY_LINUX_AMD64_DEB_SHA256: 'REPLACE_WITH_TRIVY_0_65_0_LINUX_AMD64_DEB_SHA256'
+          TRIVY_LINUX_AMD64_TAR_GZ_SHA256: 'REPLACE_WITH_TRIVY_0_65_0_LINUX_AMD64_TAR_GZ_SHA256'
+        run: |
+          set -euo pipefail
+
+          release_tag="v${TRIVY_VERSION}"
+          release_api="https://api.github.com/repos/aquasecurity/trivy/releases/tags/${release_tag}"
+
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "$tmp_dir"' EXIT
+
+          release_json="${tmp_dir}/release.json"
+          curl -fsSL "${release_api}" -o "${release_json}"
+          mapfile -t available_assets < <(jq -r '.assets[].name' "${release_json}")
+
+          if [[ ${#available_assets[@]} -eq 0 ]]; then
+            echo "::error::No release assets found for ${release_tag}."
+            exit 1
+          fi
+
+          deb_pattern='^trivy_.*_Linux-64bit\.deb$'
+          tar_pattern='^trivy_.*_Linux-64bit\.tar\.gz$'
+
+          installer_method="deb"
+          installer_name="$(jq -r --arg re "${deb_pattern}" '.assets[] | select(.name | test($re)) | .name' "${release_json}" | head -n1)"
+          installer_url="$(jq -r --arg re "${deb_pattern}" '.assets[] | select(.name | test($re)) | .browser_download_url' "${release_json}" | head -n1)"
+          expected_sha256="${TRIVY_LINUX_AMD64_DEB_SHA256}"
+
+          if [[ -z "${installer_name}" || -z "${installer_url}" ]]; then
+            installer_method="fallback-tarball"
+            installer_name="$(jq -r --arg re "${tar_pattern}" '.assets[] | select(.name | test($re)) | .name' "${release_json}" | head -n1)"
+            installer_url="$(jq -r --arg re "${tar_pattern}" '.assets[] | select(.name | test($re)) | .browser_download_url' "${release_json}" | head -n1)"
+            expected_sha256="${TRIVY_LINUX_AMD64_TAR_GZ_SHA256}"
+          fi
+
+          if [[ -z "${installer_name}" || -z "${installer_url}" ]]; then
+            echo "::error::No matching Trivy Linux amd64 installer asset found for ${release_tag}."
+            echo "::error::Looked for patterns: ${deb_pattern} (preferred), ${tar_pattern} (fallback)."
+            echo "::error::Available assets: ${available_assets[*]}"
+            exit 1
+          fi
+
+          if [[ "${expected_sha256}" == REPLACE_WITH_* || -z "${expected_sha256}" ]]; then
+            echo "::error::Pinned SHA256 is not configured for ${installer_method} asset (${installer_name})."
+            echo "::error::Set TRIVY_LINUX_AMD64_DEB_SHA256 and TRIVY_LINUX_AMD64_TAR_GZ_SHA256 alongside TRIVY_VERSION."
+            exit 1
+          fi
+
+          installer_path="${tmp_dir}/${installer_name}"
+          echo "Resolved Trivy installer:"
+          echo "  method=${installer_method}"
+          echo "  version=${release_tag}"
+          echo "  asset=${installer_name}"
+          echo "  url=${installer_url}"
+
+          curl -fsSL "${installer_url}" -o "${installer_path}"
+          actual_sha256="$(sha256sum "${installer_path}" | awk '{print $1}')"
+          [[ "${actual_sha256}" == "${expected_sha256}" ]] || {
+            echo "::error::SHA256 verification failed for ${installer_name}."
+            echo "::error::Expected ${expected_sha256}, got ${actual_sha256}."
+            exit 1
+          }
+
+          if [[ "${installer_method}" == "deb" ]]; then
+            sudo dpkg -i "${installer_path}"
+          else
+            tar -xzf "${installer_path}" -C "${tmp_dir}" trivy
+            sudo install -m 0755 "${tmp_dir}/trivy" /usr/local/bin/trivy
+          fi
+
       - name: Security scan built container images (Trivy gate)
         id: scan-gate
         shell: bash
@@ -173,18 +247,7 @@ jobs:
             exit 0
           }
 
-          # ── Install Trivy (pinned + checksum verified provenance) ─────────
-          # Provenance: release artifact from aquasecurity/trivy GitHub releases.
-          # We pin an explicit version and verify SHA256 before installing.
-          echo "::group::Install Trivy"
-          TRIVY_VERSION="0.65.0"
-          TRIVY_DEB="trivy_${TRIVY_VERSION}_Linux-64bit.deb"
-          TRIVY_SHA256="35f0b74ebf63ce8b1f48f15133634cb6ec67f649edb2677a334e2fb31f57ec5f"
-
-          curl -fsSLo "${TRIVY_DEB}" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${TRIVY_DEB}"
-          echo "${TRIVY_SHA256}  ${TRIVY_DEB}" | sha256sum --check --strict
-          sudo dpkg -i "${TRIVY_DEB}"
-
+          echo "::group::Trivy version"
           trivy --version
           echo "::endgroup::"
 

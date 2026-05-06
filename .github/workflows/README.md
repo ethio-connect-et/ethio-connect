@@ -86,7 +86,6 @@ A formal JSON schema for the `client_payload` is maintained at
 `.github/contracts/promote-image.schema.json` in the source repo
 (`ethio-connect-et/ethio-connect`).
 
-
 ## Machine-readable promotion + ArgoCD reconciliation contract
 
 ```yaml
@@ -100,11 +99,11 @@ promotion_contract:
     - release_version
     - environment_target
   validation_rules:
-    project: "must match ^[a-z0-9._-]+$ and map to a deployable Nx app"
-    immutable_ref: "must match ghcr.io/ethio-connect-et/<project>@sha256:<64hex>; tags are rejected"
-    digest: "must match sha256:<64hex>"
-    source_sha: "must be a 40-character git commit SHA"
-    release_version: "non-empty canonical release version"
+    project: 'must match ^[a-z0-9._-]+$ and map to a deployable Nx app'
+    immutable_ref: 'must match ghcr.io/ethio-connect-et/<project>@sha256:<64hex>; tags are rejected'
+    digest: 'must match sha256:<64hex>'
+    source_sha: 'must be a 40-character git commit SHA'
+    release_version: 'non-empty canonical release version'
     environment_target:
       allowed_values: [testing, staging, production]
   rejection_conditions:
@@ -151,7 +150,7 @@ Publish verification enforces immutable digest behavior per tag:
 Reusable publish and release publish workflows run a dedicated Trivy container scan step after `docker:build` and before `nx-release-publish`.
 
 - Scan source: GHCR image refs produced by the workflow.
-- Scanner provenance: Trivy is installed from a pinned `aquasecurity/trivy` GitHub release artifact (`v0.65.0`) with an in-workflow SHA256 verification before `dpkg -i`.
+- Scanner provenance: Trivy is installed through pinned `aquasecurity/setup-trivy` action commit (`v0.2.4` SHA) with explicit Trivy version pinning (`v0.65.0`).
 - Blocking severities: `HIGH`, `CRITICAL`.
 - Evidence: JSON and SARIF reports uploaded as workflow artifacts.
 - Summary: per-image and aggregate findings written to the GitHub job summary.

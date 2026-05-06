@@ -19,23 +19,17 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "webpack-cli build",
-        "args": [
-          "--node-env=production"
-        ],
+        "args": ["--node-env=production"],
         "cwd": "apps/customer-portal/customer-portal-api"
       },
       "configurations": {
         "development": {
-          "args": [
-            "--node-env=development"
-          ]
+          "args": ["--node-env=development"]
         }
       }
     },
     "prune-lockfile": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "cache": true,
       "executor": "@nx/js:prune-lockfile",
       "outputs": [
@@ -47,9 +41,7 @@
       }
     },
     "copy-workspace-modules": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "cache": true,
       "outputs": [
         "{workspaceRoot}/dist/apps/customer-portal/customer-portal-api/workspace_modules"
@@ -60,19 +52,14 @@
       }
     },
     "prune": {
-      "dependsOn": [
-        "prune-lockfile",
-        "copy-workspace-modules"
-      ],
+      "dependsOn": ["prune-lockfile", "copy-workspace-modules"],
       "executor": "nx:noop"
     },
     "serve": {
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "options": {
         "buildTarget": "@ethio-connect/customer-portal-api:build",
         "runBuildTargetDependencies": false
@@ -95,13 +82,9 @@
       "executor": "nx:noop"
     },
     "deploy-metadata": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "executor": "nx:run-commands",
-      "outputs": [
-        "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
-      ],
+      "outputs": ["{workspaceRoot}/dist/deploy-metadata/{projectName}.json"],
       "options": {
         "cwd": "{workspaceRoot}",
         "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"{projectName}\",\\n  \"root\": \"{projectRoot}\",\\n  \"type\": \"application\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/{projectName}.json"
@@ -109,18 +92,12 @@
     },
     "nx-release-publish": {
       "executor": "@nx/docker:release-publish",
-      "dependsOn": [
-        "docker:build"
-      ]
+      "dependsOn": ["docker:build"]
     },
     "docker:metadata": {
       "executor": "nx:run-commands",
-      "dependsOn": [
-        "nx-release-publish"
-      ],
-      "outputs": [
-        "{workspaceRoot}/dist/containers/{projectName}/image.json"
-      ],
+      "dependsOn": ["nx-release-publish"],
+      "outputs": ["{workspaceRoot}/dist/containers/{projectName}/image.json"],
       "options": {
         "cwd": "{workspaceRoot}",
         "command": "node tools/containers/write-image-manifest.mjs --project {projectName}"

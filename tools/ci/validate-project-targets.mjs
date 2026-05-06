@@ -7,23 +7,11 @@ const DEPLOY_TARGETS = ['nx-release-publish'];
 
 const ARCHETYPES = {
   deployableApp: {
-    required: [
-      'typecheck',
-      'build',
-      'lint',
-      'test',
-      'nx-release-publish',
-    ],
+    required: ['typecheck', 'build', 'lint', 'test', 'nx-release-publish'],
     forbidden: [],
   },
   e2eApp: {
-    required: [
-      'typecheck',
-      'build',
-      'lint',
-      'test',
-      'e2e',
-    ],
+    required: ['typecheck', 'build', 'lint', 'test', 'e2e'],
     forbidden: DEPLOY_TARGETS,
   },
   sharedLib: {
