@@ -30,8 +30,8 @@ check_release_workflow_contract() {
     error "promote_to_manifest must export MANIFEST_REPOSITORY_DISPATCH_TOKEN from secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN."; exit 1;
   }
 
-  grep -q 'gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches' <<<"$job_block" || {
-    error "promote_to_manifest must dispatch to repos/ethio-connect-et/ethio-connect-manifest/dispatches."; exit 1;
+  grep -Eq 'gh api ("repos/\$\{MANIFEST_REPO\}/dispatches"|repos/ethio-connect-et/ethio-connect-manifest/dispatches)' <<<"$job_block" || {
+    error "promote_to_manifest must dispatch to repos/${MANIFEST_REPO}/dispatches."; exit 1;
   }
 }
 

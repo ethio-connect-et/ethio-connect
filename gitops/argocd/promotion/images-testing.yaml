@@ -1,0 +1,19 @@
+images:
+  central-hub-api:
+    tag: testing-latest
+    digest: sha256:replace-by-ci
+  central-hub-dashboard:
+    tag: testing-latest
+    digest: sha256:replace-by-ci
+  customer-portal-api:
+    tag: testing-latest
+    digest: sha256:replace-by-ci
+  customer-portal-dashboard:
+    tag: testing-latest
+    digest: sha256:replace-by-ci
+  vendor-portal-api:
+    tag: testing-latest
+    digest: sha256:replace-by-ci
+  vendor-portal-dashboard:
+    tag: testing-latest
+    digest: sha256:replace-by-ci

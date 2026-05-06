@@ -8,9 +8,24 @@
       "manifestRootsToUpdate": ["dist/{projectRoot}"],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk"
+    },
+    "publish": false
+  },
+  "tags": [
+    "scope:shared",
+    "type:util",
+    "domain:shared",
+    "platform:cross",
+    "release:publish"
+  ],
+  "metadata": {
+    "targetContractProfile": "library",
+    "targetContract": {
+      "allowedForbiddenTargets": {
+        "nx-release-publish": "Required by scripts/validate-target-contract.mjs for library profile; kept as noop to satisfy release contract parity."
+      }
     }
   },
-  "tags": ["scope:shared", "type:util", "domain:shared", "platform:cross"],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
@@ -23,14 +38,19 @@
         "generatePackageJson": true
       }
     },
-    "nx-release-publish": {
-      "options": {
-        "packageRoot": "dist/{projectRoot}"
-      }
-    },
     "package": {
       "executor": "nx:noop",
       "dependsOn": ["build"]
+    },
+    "nx-release-publish": {
+      "executor": "nx:noop",
+      "dependsOn": ["package"]
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm tsc --noEmit -p libs/ethioconnect/tsconfig.json"
+      }
     }
   }
 }

@@ -1,0 +1,63 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: ec-tenants
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ethio-connect
+spec:
+  generators:
+    - list:
+        elements:
+          - env: testing
+            tenant: central-hub
+          - env: testing
+            tenant: customer-portal
+          - env: testing
+            tenant: vendor-portal
+          - env: staging
+            tenant: central-hub
+          - env: staging
+            tenant: customer-portal
+          - env: staging
+            tenant: vendor-portal
+          - env: production
+            tenant: central-hub
+            autoSync: 'false'
+          - env: production
+            tenant: customer-portal
+            autoSync: 'false'
+          - env: production
+            tenant: vendor-portal
+            autoSync: 'false'
+  template:
+    metadata:
+      name: 'ec-{{env}}-{{tenant}}'
+      annotations:
+        argocd.argoproj.io/sync-wave: '2'
+      labels:
+        app.kubernetes.io/part-of: ethio-connect
+        ec.environment: '{{env}}'
+        ec.tenant: '{{tenant}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/ethio-connect/manifest-repo.git
+        targetRevision: main
+        path: 'gitops/argocd/workloads/{{tenant}}/{{env}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'ec-{{tenant}}-{{env}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 6
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 40s

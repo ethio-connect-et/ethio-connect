@@ -1,57 +1,53 @@
-# Workflow Integration Contract
+Use a small number of explicit workflows in this repository.
 
-Contract marker: `testing|staging|main -> testing|staging|production`
+## Deployment Model
 
-## Branch and Registry Mapping
+- Deployment Model: External environment-repository promotion
+- Push-to-environment deployment from this repo: Disabled
+- Protected branch ladder: `feat|fix|codex|... -> development -> testing -> staging -> main`
 
-| Source branch | Manifest branch | Expected immutable image reference              |
-| ------------- | --------------- | ----------------------------------------------- |
-| `testing`     | `testing`       | `ghcr.io/ethio-connect-et/<app>@sha256:<64hex>` |
-| `staging`     | `staging`       | `ghcr.io/ethio-connect-et/<app>@sha256:<64hex>` |
-| `main`        | `production`    | `ghcr.io/ethio-connect-et/<app>@sha256:<64hex>` |
+This repository builds, signs, and attests application images, then emits a repository dispatch event to `ethio-connect-environments`.
+Environment overlays, promotion between environments, and rollback remain outside this repository boundary.
 
-Non-production promotions are dispatched by `.github/workflows/promote-manifest-nonprod.yml` on pushes to `testing` and `staging`. The workflow resolves deployable apps via `pnpm nx show projects --withTarget docker:build --json`, resolves each app's digest from `ghcr.io/ethio-connect-et/<app>:<branch>`, validates against `DIGEST_REGEX`, and dispatches `promote-image` to `ethio-connect-et/ethio-connect-manifest` with branch-specific concurrency and exponential-backoff retries.
+## Workflow Architecture
 
-## Dispatch Event Schema
+```mermaid
+flowchart TD
+  A[ci.yml\nApplication Continuous Integration] --> B[ci-policy-governance.yml\nPolicy/Governance checks]
+  A --> C[ci-quality-security.yml\nQuality/Security checks]
+  A --> E[ci-image-publish-attest.yml\nImage publish + attest]
+  A --> F[ci-release-dispatch.yml\nRelease dispatch]
 
-Repository target: `ethio-connect-et/ethio-connect-manifest`.
-
-Event type: `promote-image`
-
-```json
-{
-  "event_type": "promote-image",
-  "client_payload": {
-    "app": "<app-name>",
-    "digest": "sha256:<64hex>",
-    "env": "testing|staging|production",
-    "source_repo": "ethio-connect-et/ethio-connect",
-    "source_ref": "refs/heads/main",
-    "source_commit": "<40-hex-sha>",
-    "release_id": "<github-run-id>",
-    "release_created_at": "2006-01-02T15:04:05Z",
-    "signed_metadata": {
-      "signature_algorithm": "ecdsa-p256-sha256",
-      "key_id": "sigstore:github-actions-keyless",
-      "cert_chain": ["<base64-leaf-cert-pem>"],
-      "signature": "<base64-signature>",
-      "canonical_payload": "{\"app\":\"...\",\"digest\":\"sha256:...\",...}"
-    },
-    "attestation_bundle": "{\"app\":\"...\",\"digest\":\"sha256:...\",\"release_id\":\"...\",...}"
-  }
-}
+  E --> F
 ```
 
-Validation requirements:
+| Workflow                                        | Owner                                      | Trigger                                                    | Inputs                                                                                                                                                                                    | Outputs                                                                                                                  | Notes                                                                                                                                   |
+| ----------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `.github/workflows/ci.yml`                      | Platform Engineering                       | `pull_request`, `merge_group`, `push`, `workflow_dispatch` | n/a                                                                                                                                                                                       | n/a                                                                                                                      | Orchestrator that calls reusable CI workflows and enforces stage ordering.                                                              |
+| `.github/workflows/ci-policy-governance.yml`    | Platform Engineering                       | `workflow_call`                                            | `node_version`, `pnpm_version`, `event_name`, `base_ref`, `head_ref`                                                                                                                      | n/a                                                                                                                      | Branch ladder enforcement, workflow linting, immutable action pin checks.                                                               |
+| `.github/workflows/ci-quality-security.yml`     | Security + Platform Engineering            | `workflow_call`                                            | `node_version`, `pnpm_version`, `event_name`, `ref_name`, `base_ref`                                                                                                                      | n/a                                                                                                                      | Dependency review, Snyk, CodeQL, deploy asset checks, Nx lint/typecheck/test/build.                                                     |
+| `.github/workflows/ci-image-publish-attest.yml` | Security Provenance + Platform Engineering | `workflow_call`                                            | `node_version`, `pnpm_version`                                                                                                                                                            | `infra_environment`, `target_branch`, `image_tag`, `release_version`, `applications_json`, `attestation_references_json` | Protected-branch image publish, SBOM generation, signing, provenance attestation.                                                       |
+| `.github/workflows/ci-release-dispatch.yml`     | Platform Engineering                       | `workflow_call`                                            | `source_sha`, `source_ref`, `target_environment`, `image_tag`, `release_version`, `release_schema_version`, `applications_json`, `attestation_references_json`, `environments_repository` | n/a                                                                                                                      | Validates payload against the versioned schema, then dispatches `app-release-published` to `ethio-connect-environments` (staging only). |
+| `.github/workflows/release.yml`                 | Release Management                         | `workflow_dispatch`                                        | `version`, `source_sha`, `changelog`, `prerelease`                                                                                                                                        | n/a                                                                                                                      | Manual release metadata and post-publish release artifacts/signing flow.                                                                |
+| `.github/workflows/release-drafter.yml`         | Release Management                         | `push` to `main`, `workflow_dispatch`                      | n/a                                                                                                                                                                                       | n/a                                                                                                                      | Maintains draft release notes for `main`.                                                                                               |
 
-- source env allowlist: `testing|staging|main`
-- manifest env allowlist: `testing|staging|production`
-- app allowlist from `pnpm nx show projects --withTarget docker:build --json`
-- digest pattern: `sha256:<64hex>`
-- registry prefix: `ghcr.io/ethio-connect-et/` (never `ghcr.io/ethioconnect/`)
+## Shared Workflow Conventions
 
-## JSON Schema
+- **Reusable workflow boundary:** responsibilities are split into policy/governance, quality/security, image publish/attest, and release dispatch; `ci.yml` is the only orchestration entrypoint.
+- **Consistent runtime inputs:** reusable workflows accept `node_version` and `pnpm_version` where Node toolchain setup is required.
+- **Timeout convention:** default CI jobs use `20` minutes unless intentionally extended (`60` minutes for Nx validation, `90` minutes for image publish).
+- **Concurrency convention:** each reusable workflow defines a deterministic workflow-level concurrency group and cancels non-push superseded runs.
+- **Artifact retention convention:** CI artifacts in reusable workflows default to `30` days retention.
 
-A formal JSON schema for the `client_payload` is maintained at
-`.github/contracts/promote-image.schema.json` in the source repo
-(`ethio-connect-et/ethio-connect`).
+## Deliberate Omissions From The Source Repo Structure
+
+This repository does not own:
+
+- environment inventory mutation
+- environment promotion
+- environment rollback
+- cluster bootstrap or admission policy state
+
+Those responsibilities belong to `ethio-connect-environments`, `ethio-connect-platform`, and `ethio-connect-security-provenance`.
+
+Ownership validation note: changes under `.github/workflows/**` should request review from `@ethio-connect/platform-team` via CODEOWNERS.

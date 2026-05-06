@@ -27,7 +27,7 @@ fi
 CURRENT=$(cat "$VERSION_FILE")
 
 # Step 4: Increment
-NEXT=$((CURRENT + 1))
+NEXT=$((CURRENT + 10))
 echo "$NEXT" > "$VERSION_FILE"
 
 # Step 5: Stage changes
@@ -60,7 +60,7 @@ DATE=$(date +"%b %d, %Y %H:%M:%S")
 gh pr create \
   --base "$TARGET_BRANCH" \
   --head "$BRANCH" \
-  --title "CI-UPDATE-$NEXT ($DATE)" \
+  --title "CI-UPDATE-$NEXT ($DATE) - Feat/Commit" \
   --body "Automated CI version increment to $NEXT on $DATE."
 
 # Step 12: Return to target branch

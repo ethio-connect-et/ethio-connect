@@ -1,49 +1,94 @@
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '24px', 'fontFamily': 'arial', 'primaryColor': '#e1f5fe', 'edgeLabelBackground':'#ffffff' }, 'flowchart': {'nodeSpacing': 70, 'rankSpacing': 70}}}%%
-graph TD
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'primaryColor': '#e8f5e9', 'primaryTextColor': '#1b1b1b', 'edgeLabelBackground':'#ffffff' }, 'flowchart': {'nodeSpacing': 55, 'rankSpacing': 70}}}%%
+flowchart TD
     classDef app fill:#e3f2fd,stroke:#1565c0,stroke-width:3px,font-weight:bold;
     classDef lib fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,stroke-dasharray: 5 5;
     classDef ci fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
-    classDef infra fill:#eceff1,stroke:#546e7a,stroke-width:4px;
+    classDef infra fill:#eceff1,stroke:#546e7a,stroke-width:3px;
+    classDef security fill:#ffebee,stroke:#c62828,stroke-width:3px;
+    classDef cache fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,stroke-dasharray: 3 3;
+    classDef artifact fill:#ede7f6,stroke:#512da8,stroke-width:2px;
+    classDef gitops fill:#e1f5fe,stroke:#01579b,stroke-width:3px;
 
-    subgraph "Workspace Root"
-        direction LR
-        subgraph "Nx Monorepo (ethio-connect)"
-            direction TB
-            subgraph "Apps"
-                A[vendor-portal-dashboard]:::app
-                B[central-hub-dashboard]:::app
-                C[customer-portal-dashboard]:::app
-                D[central-hub-api]:::app
-                E[customer-portal-api]:::app
-                F[vendor-api-server]:::app
+    subgraph Product["Ethio Connect Product Platform"]
+        direction TB
+
+        subgraph Repository["Repository: ethio-connect | Workspace package: @ethio-connect/source"]
+            direction LR
+
+            subgraph Apps["Applications (apps/**)"]
+                direction TB
+                VendorDash["apps/vendor-portal/vendor-portal-dashboard"]:::app
+                VendorApi["apps/vendor-portal/vendor-api-server"]:::app
+                CustomerDash["apps/customer-portal/customer-portal-dashboard"]:::app
+                CustomerApi["apps/customer-portal/customer-portal-api"]:::app
+                HubDash["apps/central-hub/central-hub-dashboard"]:::app
+                PublicWebsite["apps/central-hub/public-website"]:::app
+                HubApi["apps/central-hub/central-hub-api"]:::app
             end
 
-            subgraph "Libs"
-                G[api-common]:::lib
-                H[api-features]:::lib
-                I[ethioconnect]:::lib
-                J[frontend-features]:::lib
-                K[ui-components]:::lib
+            subgraph Libs["Shared Libraries"]
+                direction TB
+                ApiCommon["@ethio-connect/api-common"]:::lib
+                ApiFeatures["@ethio-connect/api-features"]:::lib
+                ProductLib["@ethio-connect/ethioconnect"]:::lib
+                FrontendFeatures["@ethio-connect/frontend-features"]:::lib
+                UiComponents["@ethio-connect/ui-components"]:::lib
             end
-
-            subgraph "CI/CD"
-                CI_Main("ci.yml"):::ci
-                CI_Build("reusable-build-test-lint.yml"):::ci
-                CI_Publish("reusable-container-publish.yml"):::ci
-            end
-
-            CI_Main --> CI_Build
-            CI_Main --> CI_Publish
-            CI_Build -->|Builds| GHCR["GHCR (Container Registry)"]:::infra
-            CI_Publish -->|Publishes| GHCR
-
-            A & B & C & D & E & F -->|depends on| G & H & I & J & K
         end
 
-        subgraph "DevOps"
-            SC("GitHub") --> CI_Main
-            CI_Publish -->|Deployment Manifests| GR["GitOps Repo"]:::infra
-            GHCR -->|Images| GR
-            GR --> ArgoCD("ArgoCD"):::infra
+        subgraph CICD["CI/CD lifecycle"]
+            direction LR
+            GitPush["git push"]:::ci
+            NxAffected["nx affected\nlint/test/build"]:::ci
+            DockerBuild["nx docker:build"]:::ci
+            DigestPublish["digest publish\n(GHCR immutable digest)"]:::ci
+            ManifestUpdate["manifest repo update\n(gitops/argocd/envs/*)"]:::gitops
+            ArgoSync["ArgoCD sync"]:::infra
+        end
+
+        subgraph GitOps["GitOps topology"]
+            direction TB
+            AppOfApps["gitops/argocd/apps\nApp-of-Apps root"]:::gitops
+            Tenants["gitops/argocd/tenants\ntenant ownership"]:::gitops
+            Workloads["gitops/argocd/workloads\nworkload ownership"]:::gitops
+            Envs["gitops/argocd/envs\nenvironment overlays"]:::gitops
+        end
+
+        subgraph Security["Security overlays"]
+            direction TB
+            OIDC["OIDC trust boundary\nGitHub Actions -> cloud identity"]:::security
+            VerifySignatures["signature verification\ncosign/attestation gate"]:::security
+            SecretFlow["secret operator flow\ngitops/argocd/secrets -> cluster secrets"]:::security
         end
     end
+
+    VendorDash --> FrontendFeatures
+    VendorDash --> UiComponents
+    CustomerDash --> FrontendFeatures
+    CustomerDash --> UiComponents
+    HubDash --> FrontendFeatures
+    HubDash --> UiComponents
+    PublicWebsite --> FrontendFeatures
+    PublicWebsite --> UiComponents
+    VendorApi --> ApiCommon
+    VendorApi --> ApiFeatures
+    CustomerApi --> ApiCommon
+    CustomerApi --> ApiFeatures
+    HubApi --> ApiCommon
+    HubApi --> ApiFeatures
+    ApiFeatures --> ProductLib
+    FrontendFeatures --> ProductLib
+
+    GitPush --> NxAffected --> DockerBuild --> DigestPublish --> ManifestUpdate --> ArgoSync
+
+    DigestPublish --> AppOfApps
+    AppOfApps --> Tenants
+    AppOfApps --> Workloads
+    Tenants --> Envs
+    Workloads --> Envs
+    Envs --> ArgoSync
+
+    OIDC --> NxAffected
+    OIDC --> DockerBuild
+    VerifySignatures --> ManifestUpdate
+    SecretFlow --> ArgoSync

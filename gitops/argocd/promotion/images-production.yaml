@@ -1,0 +1,19 @@
+images:
+  central-hub-api:
+    tag: prod-approved
+    digest: sha256:replace-by-release
+  central-hub-dashboard:
+    tag: prod-approved
+    digest: sha256:replace-by-release
+  customer-portal-api:
+    tag: prod-approved
+    digest: sha256:replace-by-release
+  customer-portal-dashboard:
+    tag: prod-approved
+    digest: sha256:replace-by-release
+  vendor-portal-api:
+    tag: prod-approved
+    digest: sha256:replace-by-release
+  vendor-portal-dashboard:
+    tag: prod-approved
+    digest: sha256:replace-by-release

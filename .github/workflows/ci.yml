@@ -1,12 +1,15 @@
-name: CI
+name: Application Continuous Integration
 
 on:
   pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
+    branches:
+      - development
+      - testing
+      - staging
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+    types: [checks_requested]
   push:
     branches:
       - development
@@ -14,454 +17,119 @@ on:
       - staging
       - main
     paths:
+      - '.github/workflows/**'
       - 'apps/**'
       - 'libs/**'
-      - '.github/workflows/**'
+      - 'deploy/**'
+      - 'scripts/**'
+      - 'nx.json'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
-      - 'nx.json'
       - 'tsconfig.base.json'
-      - 'eslint.config.mjs'
-      - 'jest.config.ts'
-      - 'jest.preset.js'
+  workflow_dispatch:
 
-permissions: {}
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+  security-events: write
 
 env:
-  CI: true
   NODE_VERSION: '24.11.0'
   PNPM_VERSION: '10.20.0'
-  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
-  DOCKER_BUILDKIT: 1
-  ALLOW_AGENT_SCAFFOLDING: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 jobs:
-  governance_branch_policy:
-    name: Governance · Branch Policy
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+  governance_policy_checks:
+    name: Governance Branch and Workflow Policy
+    uses: ./.github/workflows/ci-policy-governance.yml
+    with:
+      node_version: '24.11.0'
+      pnpm_version: '10.20.0'
+      event_name: ${{ github.event_name }}
+      base_ref: ${{ github.base_ref }}
+      head_ref: ${{ github.head_ref }}
+    secrets: inherit
+
+  quality_and_security:
+    name: Quality and Security Gate
+    needs: [governance_policy_checks]
+    uses: ./.github/workflows/ci-quality-security.yml
+    with:
+      node_version: '24.11.0'
+      pnpm_version: '10.20.0'
+      event_name: ${{ github.event_name }}
+      ref_name: ${{ github.ref_name }}
+      base_ref: ${{ github.base_ref }}
+    secrets: inherit
+
+  publish_container_images:
+    name: Publish Signed Application Images
+    needs: [quality_and_security]
+    if: >-
+      github.event_name == 'push' &&
+      (
+        github.ref == 'refs/heads/testing' ||
+        github.ref == 'refs/heads/staging' ||
+        github.ref == 'refs/heads/main'
+      ) &&
+      !contains(github.event.head_commit.message, '[skip ci]')
     permissions:
       contents: read
-      pull-requests: read
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-        with:
-          fetch-depth: 1
-
-      - name: Block local agent scaffolding artifacts
-        shell: bash
-        run: |
-          set -euo pipefail
-          # If ALLOW_AGENT_SCAFFOLDING is not set, default to true (consider it passed)
-          allow_reintroduction="${{ env.ALLOW_AGENT_SCAFFOLDING || 'true' }}"
-
-          if [[ "$allow_reintroduction" == "true" ]]; then
-            echo "Local-agent scaffolding reintroduction approved (ALLOW_AGENT_SCAFFOLDING=$allow_reintroduction)."
-            exit 0
-          fi
-
-          disallowed_paths=()
-          while IFS= read -r path; do
-            disallowed_paths+=("$path")
-          done < <(git ls-files .agents .gemini AGENTS.md)
-
-          if (( ${#disallowed_paths[@]} > 0 )); then
-            echo "::error::Detected blocked local-agent scaffolding artifacts:"
-            printf ' - %s\n' "${disallowed_paths[@]}"
-            echo "Remove these files or approve with PR label 'allow-agent-scaffolding' (or '[allow-agent-scaffolding]' in a push commit message)."
-            exit 1
-          fi
-          echo "No blocked local-agent scaffolding artifacts tracked in repository."
-
-      - name: Enforce pull request promotion policy
-        if: github.event_name == 'pull_request'
-        shell: bash
-        env: { BASE: '${{ github.base_ref }}', HEAD: '${{ github.head_ref }}' }
-        run: |
-          set -euo pipefail
-          target_branch="$BASE"
-          source_branch="$HEAD"
-          case "$target_branch" in
-            development)
-              if [[ ! "$source_branch" =~ ^((feat|fix|chore|update)/.+|ops/development/.+)$ ]]; then
-                echo "::error::Development only accepts PRs from feat/*, fix/*, chore/*, update/*, or ops/development/* branches. Got: $source_branch"
-                exit 1
-              fi
-              ;;
-            testing)
-              if [[ "$source_branch" != "development" && ! "$source_branch" =~ ^ops/testing/.+$ ]]; then
-                echo "::error::Testing only accepts PRs from development or ops/testing/* branches. Got: $source_branch"
-                exit 1
-              fi
-              ;;
-            staging)
-              if [[ "$source_branch" != "testing" && ! "$source_branch" =~ ^ops/staging/.+$ ]]; then
-                echo "::error::Staging only accepts PRs from testing or ops/staging/* branches. Got: $source_branch"
-                exit 1
-              fi
-              ;;
-            main)
-              if [[ "$source_branch" != "staging" && ! "$source_branch" =~ ^ops/main/.+$ ]]; then
-                echo "::error::Main only accepts PRs from staging or ops/main/* branches. Got: $source_branch"
-                exit 1
-              fi
-              ;;
-          esac
-
-      - name: Enforce merge-time branch policy
-        if: github.event_name == 'push'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const commitSha = context.sha;
-            const targetBase = context.ref.replace('refs/heads/', '');
-            const rules = {
-              development: {
-                expected: 'feat/*, fix/*, chore/*, update/*, or ops/development/*',
-                matchers: [/^(feat|fix|chore|update)\/.+$/, /^ops\/development\/.+$/],
-              },
-              testing: {
-                expected: 'development or ops/testing/*',
-                matchers: [/^development$/, /^ops\/testing\/.+$/],
-              },
-              staging: {
-                expected: 'testing or ops/staging/*',
-                matchers: [/^testing$/, /^ops\/staging\/.+$/],
-              },
-              main: {
-                expected: 'staging or ops/main/*',
-                matchers: [/^staging$/, /^ops\/main\/.+$/],
-              },
-            };
-            const rule = rules[targetBase];
-            if (!rule) { core.info(`No merge-time branch policy for ${targetBase}.`); return; }
-            if (context.payload.forced) { core.setFailed(`Force pushes to ${targetBase} are not allowed.`); return; }
-            const commitResponse = await github.rest.repos.getCommit({ owner, repo, ref: commitSha });
-            const commitMessage = commitResponse.data.commit.message ?? '';
-            const commitSubject = commitMessage.split('\n')[0] ?? '';
-            const prs = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, { owner, repo, commit_sha: commitSha });
-            const sourceMatchesRule = (source) => Boolean(source) && rule.matchers.some((m) => m.test(source));
-            const matches = prs.filter((pr) => pr.base?.ref === targetBase && sourceMatchesRule(pr.head?.ref) && pr.merged_at);
-            if (matches.length > 0) { core.info(`Validated merged PR #${matches[0].number} from ${matches[0].head?.ref} to ${targetBase}.`); return; }
-            const mergeMatch = commitSubject.match(/^Merge pull request #(\d+) from /);
-            if (mergeMatch) {
-              const prNumber = Number(mergeMatch[1]);
-              const prResponse = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
-              const pr = prResponse.data;
-              if (pr.base?.ref === targetBase && sourceMatchesRule(pr.head?.ref) && pr.merged_at && pr.merge_commit_sha === commitSha) {
-                core.info(`Validated merged PR #${pr.number} from ${pr.head?.ref} to ${targetBase}.`); return;
-              }
-            }
-            const associated = prs.map((pr) => `#${pr.number}: ${pr.head.ref} -> ${pr.base.ref} (merged=${pr.merged_at ?? 'no'})`).join('\n');
-            core.setFailed(`${targetBase} must not receive direct pushes. Only merged PRs from ${rule.expected} to ${targetBase} are allowed for commit ${commitSha}.` + `\nCommit: ${commitSubject || '(empty)'}` + (associated ? `\nAssociated PRs:\n${associated}` : '\nNo PRs associated.'));
-
-  workflow_contract_guard:
-    name: Governance · Workflow Contract Guard
-    needs: [governance_branch_policy]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-        with:
-          fetch-depth: 1
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with:
-          version: ${{ env.PNPM_VERSION }}
-          run_install: false
-
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: |
-          pnpm fetch --frozen-lockfile
-          pnpm install --frozen-lockfile --prefer-offline
-
-      - name: Validate workflow contract
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts/validate-workflow-contract.sh
-
-      - name: Enforce contract docs drift
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts/sync-contract-docs.sh
-          if [[ -n "$(git status --porcelain README.md)" ]]; then
-            echo "::error::Contract documentation in README.md is out of sync. Please run scripts/sync-contract-docs.sh locally and commit the result."
-            git diff README.md
-            exit 1
-          fi
-
-  security_sast:
-    name: Security · SAST
-    needs: [governance_branch_policy]
-    if: |
-      always() && needs.governance_branch_policy.result == 'success' &&
-      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
-      (github.event_name != 'push' || contains(fromJSON('["development","testing","staging","main"]'), github.ref_name))
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      actions: read
-      contents: read
+      id-token: write
+      packages: write
       security-events: write
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-        with:
-          fetch-depth: 1
+    uses: ./.github/workflows/ci-image-publish-attest.yml
+    with:
+      node_version: '24.11.0'
+      pnpm_version: '10.20.0'
+    secrets: inherit
 
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with:
-          version: ${{ env.PNPM_VERSION }}
-          run_install: false
+  dispatch_staging_release:
+    name: Dispatch Staging Release to Environments
+    needs: [publish_container_images]
+    if: >-
+      needs.publish_container_images.result == 'success' &&
+      needs.publish_container_images.outputs['infra_environment'] == 'staging'
+    uses: ./.github/workflows/ci-release-dispatch.yml
+    with:
+      source_sha: ${{ github.sha }}
+      source_ref: refs/heads/staging
+      target_environment: staging
+      image_tag: ${{ needs.publish_container_images.outputs['image_tag'] }}
+      release_version: ${{ needs.publish_container_images.outputs['release_version'] }}
+      release_schema_version: 1.0.0
+      applications_json: ${{ needs.publish_container_images.outputs['applications_json'] }}
+      attestation_references_json: ${{ needs.publish_container_images.outputs['attestation_references_json'] }}
+    secrets: inherit
 
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: |
-          pnpm fetch --frozen-lockfile
-          pnpm install --frozen-lockfile --prefer-offline
-
-      - name: Run Snyk vulnerability scanner
-        continue-on-error: true
-        uses: snyk/actions/node@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --sarif-file-output=snyk.sarif
-
-      - name: Upload Snyk results to GitHub
-        if: hashFiles('snyk.sarif')
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: snyk.sarif
-
-  security_codeql:
-    name: Security · CodeQL
-    needs: [governance_branch_policy]
-    if: |
-      always() && needs.governance_branch_policy.result == 'success' &&
-      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
-      (github.event_name != 'push' || contains(fromJSON('["development","testing","staging","main"]'), github.ref_name))
+  summarize_protected_branch_publish:
+    name: Summarize Protected Branch Publish
+    needs: [publish_container_images, dispatch_staging_release]
+    if: always() && needs.publish_container_images.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-    outputs:
-      enabled: ${{ steps.advanced-security.outputs.enabled }}
+
     steps:
-      - name: Check if Advanced Security is enabled
-        id: advanced-security
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
-        with:
-          script: |
-            try {
-              const response = await github.request('GET /repos/{owner}/{repo}', { owner: context.repo.owner, repo: context.repo.repo, headers: { 'X-GitHub-Api-Version': '2022-11-28' } });
-              const enabled = response.data.security_and_analysis?.advanced_security?.status === 'enabled';
-              core.info(`Advanced Security enabled: ${enabled}`);
-              core.setOutput('enabled', enabled ? 'true' : 'false');
-            } catch (error) { core.warning(`Unable to determine Advanced Security status: ${error.message}`); core.setOutput('enabled', 'false'); }
-
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-        if: steps.advanced-security.outputs.enabled == 'true'
-        with: { fetch-depth: 1 }
-
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        if: steps.advanced-security.outputs.enabled == 'true'
-        with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
-
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        if: steps.advanced-security.outputs.enabled == 'true'
-        with:
-          {
-            node-version: '${{ env.NODE_VERSION }}',
-            cache: pnpm,
-            cache-dependency-path: pnpm-lock.yaml,
-          }
-
-      - name: Install dependencies
-        if: steps.advanced-security.outputs.enabled == 'true'
-        run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
-
-      - name: Initialize CodeQL
-        if: steps.advanced-security.outputs.enabled == 'true'
-        uses: github/codeql-action/init@v3
-        with:
-          { languages: 'javascript,typescript', queries: 'security-extended' }
-
-      - name: Perform CodeQL Analysis
-        if: steps.advanced-security.outputs.enabled == 'true'
-        uses: github/codeql-action/analyze@v3
-        with: { category: '/language:javascript-typescript' }
-
-      - name: Skip CodeQL when disabled
-        if: steps.advanced-security.outputs.enabled != 'true'
-        run: "echo 'Skipping CodeQL: Advanced Security not enabled.'"
-
-  call-build-test-lint:
-    permissions:
-      actions: read
-      contents: read
-    uses: ./.github/workflows/reusable-build-test-lint.yml
-    needs: [governance_branch_policy, security_sast, security_codeql]
-    if: |
-      always() && needs.governance_branch_policy.result == 'success' &&
-      needs.security_sast.result != 'failure' && needs.security_codeql.result != 'failure' &&
-      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
-      (github.event_name != 'push' || contains(fromJSON('["development","testing","staging","main"]'), github.ref_name))
-    with:
-      ref_name: ${{ github.ref_name }}
-      event_name: ${{ github.event_name }}
-      pull_request_draft: ${{ github.event.pull_request.draft || false }}
-      pull_request_number: ${{ github.event.pull_request.number || 0 }}
-    secrets:
-      NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
-
-  manifest_dispatch_contract:
-    name: Contract · Manifest Dispatch
-    needs: [call-build-test-lint, workflow_contract_guard]
-    if: github.event_name == 'push' && contains(fromJSON('["testing","staging","main"]'), github.ref_name)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with: { node-version: '${{ env.NODE_VERSION }}' }
-      - name: Install dependencies
-        run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
-      - name: Validate dispatch contract
+      - name: Write publish summary
         env:
-          MANIFEST_REPOSITORY_DISPATCH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
-        shell: bash
+          INFRA_ENVIRONMENT: ${{ needs.publish_container_images.outputs['infra_environment'] }}
+          IMAGE_TAG: ${{ needs.publish_container_images.outputs['image_tag'] }}
+          RELEASE_VERSION: ${{ needs.publish_container_images.outputs['release_version'] }}
+          DISPATCH_RESULT: ${{ needs.dispatch_staging_release.result }}
         run: |
-          set -euo pipefail
-          source scripts/manifest-dispatch.sh
-          apps="$(resolve_apps_with_docker_target)"
-          validate_dispatch_preconditions "${{ github.ref_name }}" "$apps"
-          target_env="$(map_source_to_target_env "${{ github.ref_name }}")"
-          while IFS= read -r app; do
-            [[ -z "$app" ]] && continue
-            [[ "$app" == @ethio-connect/* ]] || { echo "Invalid app from nx: $app"; exit 1; }
-            app_name="${app#@ethio-connect/}"
-            [[ "$app_name" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "Invalid app name: $app_name"; exit 1; }
-            sample_digest="sha256:$(printf '0%.0s' {1..64})"
-            build_dispatch_payload "$app_name" "$sample_digest" "$target_env" >/dev/null
-          done <<< "$apps"
-
-  call-container-publish:
-    name: Container · Publish
-    permissions:
-      contents: read
-      packages: write
-    uses: ./.github/workflows/reusable-container-publish.yml
-    needs: [call-build-test-lint, manifest_dispatch_contract]
-    if: github.event_name == 'push' && contains(fromJSON('["testing","staging","main"]'), github.ref_name)
-    with:
-      ref_name: ${{ github.ref_name }}
-      event_name: ${{ github.event_name }}
-    secrets:
-      NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
-
-  dispatch_to_manifest:
-    name: Manifest · Dispatch
-    needs: [call-container-publish]
-    if: github.event_name == 'push' && contains(fromJSON('["testing","staging","main"]'), github.ref_name)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      packages: read
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-        with: { fetch-depth: 1 }
-
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with: { version: '${{ env.PNPM_VERSION }}', run_install: false }
-
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with:
           {
-            node-version: '${{ env.NODE_VERSION }}',
-            cache: pnpm,
-            cache-dependency-path: pnpm-lock.yaml,
-          }
-
-      - name: Install dependencies
-        run: pnpm fetch --frozen-lockfile && pnpm install --frozen-lockfile --prefer-offline
-
-      - name: Log in to GHCR
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Dispatch promoted images to manifest repository
-        env:
-          GH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
-          MANIFEST_REPOSITORY_DISPATCH_TOKEN: ${{ secrets.MANIFEST_REPOSITORY_DISPATCH_TOKEN }}
-          IMAGE_TAG: ${{ needs.call-container-publish.outputs.image_tag }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          source scripts/manifest-dispatch.sh
-          projects="$(resolve_apps_with_docker_target)"
-          validate_dispatch_preconditions "${{ github.ref_name }}" "$projects"
-          target_env="$(map_source_to_target_env "${{ github.ref_name }}")"
-
-          {
+            echo "## Protected Branch Image Publish"
             echo ""
-            echo "## Manifest Dispatch"
-            echo ""
-            echo "| App | Digest | Env |"
-            echo "|---|---|---|"
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Environment | \`${INFRA_ENVIRONMENT}\` |"
+            echo "| Image Tag | \`${IMAGE_TAG}\` |"
+            echo "| Release Version | \`${RELEASE_VERSION}\` |"
+            echo "| Staging Dispatch | \`${DISPATCH_RESULT:-not-applicable}\` |"
           } >> "$GITHUB_STEP_SUMMARY"
-
-          while IFS= read -r project; do
-            [[ -z "$project" ]] && continue
-            app="${project#@ethio-connect/}"
-            image="ghcr.io/ethio-connect-et/${app}:${IMAGE_TAG}"
-            digest="$(docker buildx imagetools inspect "$image" --format '{{json .Manifest.Digest}}' | tr -d '"')"
-            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::Unable to resolve valid digest for ${image}: ${digest}"; exit 1; }
-            payload="$(build_dispatch_payload "$app" "$digest" "$target_env")"
-            gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches -X POST -H "Accept: application/vnd.github+json" --input - <<<"$payload"
-
-            echo "| \`${app}\` | \`${digest}\` | \`${target_env}\` |" >> "$GITHUB_STEP_SUMMARY"
-          done <<< "$projects"
-
-  release_draft:
-    name: Release · Draft
-    needs: [call-build-test-lint]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-        with: { fetch-depth: 0 }
-
-      - name: Generate draft release notes
-        uses: release-drafter/release-drafter@563bf132657a13ded0b01fcb723c5a58cdd824e2
-        env: { GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }

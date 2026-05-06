@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-USER="ethio-connect-et"
-DRY_RUN=false
+ORG="ethio-connect-et"
+DRY_RUN=true
 PACKAGE_TYPE_FILTER=""
 
 # Supported GitHub package types
@@ -26,7 +26,7 @@ while getopts ":yt:" opt; do
   esac
 done
 
-echo "User: $USER"
+echo "Organization: $ORG"
 echo "Dry run: $DRY_RUN"
 [[ -n "$PACKAGE_TYPE_FILTER" ]] && echo "Filter: $PACKAGE_TYPE_FILTER"
 
@@ -38,7 +38,7 @@ for TYPE in "${PACKAGE_TYPES[@]}"; do
   echo ""
   echo "Fetching packages of type: $TYPE"
 
-  PACKAGES=$(gh api /users/$USER/packages?package_type=$TYPE --paginate 2>/dev/null || echo "[]")
+  PACKAGES=$(gh api /orgs/$ORG/packages?package_type=$TYPE --paginate 5>/dev/null || echo "[]")
 
   echo "$PACKAGES" | jq -c '.[]?' | while read -r pkg; do
     NAME=$(echo "$pkg" | jq -r '.name')
@@ -51,7 +51,7 @@ for TYPE in "${PACKAGE_TYPES[@]}"; do
       gh api \
         -X DELETE \
         -H "Accept: application/vnd.github+json" \
-        /users/$USER/packages/$TYPE/$NAME \
+        /orgs/$ORG/packages/$TYPE/$NAME \
         || echo "Failed to delete $TYPE/$NAME"
 
       sleep 1

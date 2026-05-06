@@ -1,34 +1,97 @@
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '24px', 'fontFamily': 'arial', 'primaryColor': '#e8f5e9', 'edgeLabelBackground':'#ffffff' }, 'flowchart': {'nodeSpacing': 70, 'rankSpacing': 70}}}%%
-graph TD
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '18px', 'fontFamily': 'arial', 'primaryColor': '#e8f5e9', 'primaryTextColor': '#1b1b1b', 'edgeLabelBackground':'#ffffff' }, 'flowchart': {'nodeSpacing': 55, 'rankSpacing': 70}}}%%
+flowchart TD
+    classDef ci fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
+    classDef infra fill:#eceff1,stroke:#546e7a,stroke-width:3px;
     classDef cluster fill:#f1f8e9,stroke:#33691e,stroke-width:4px,font-weight:bold;
-    classDef ns fill:#ffffff,stroke:#33691e,stroke-width:2px;
     classDef gitops fill:#e1f5fe,stroke:#01579b,stroke-width:3px;
-    classDef vcluster fill:#fff3e0,stroke:#e65100,stroke-width:2px,stroke-dasharray:5 5;
+    classDef security fill:#ffebee,stroke:#c62828,stroke-width:3px;
+    classDef artifact fill:#ede7f6,stroke:#512da8,stroke-width:2px;
+    classDef storage fill:#fffde7,stroke:#f9a825,stroke-width:3px;
 
-    subgraph "GitOps Flow"
-        A["Nx Monorepo (Source)"] --> B{"GitHub Actions"}
-        C["GitOps Repo (ethio-connect-manifest)"]:::gitops --> ArgoCD("ArgoCD"):::gitops
+    subgraph CI["CI lifecycle - ethio-connect repository"]
+        direction LR
+        Push["git push"]:::ci
+        Affected["nx affected"]:::ci
+        DockerBuild["docker:build"]:::ci
+        DigestPublish["digest publish\nGHCR sha256 refs"]:::artifact
+        ManifestUpdate["manifest repo update\ngitops/argocd/envs/*"]:::gitops
+        ArgoSync["ArgoCD sync"]:::infra
     end
 
-    subgraph "Production Cluster"
+    subgraph Security["Supply-chain & identity security"]
         direction TB
-        P_NS_Vendor[Namespace: vendor-prod]:::ns
-        P_NS_Customer[Namespace: customer-prod]:::ns
-        P_NS_Central[Namespace: central-hub-prod]:::ns
+        OIDC["OIDC trust boundary\nGitHub Actions -> cloud OIDC provider"]:::security
+        SigVerify["signature verification\ncosign + attestations"]:::security
+        SecretOperator["secret operator flow\ngitops/argocd/secrets -> runtime secrets"]:::security
     end
 
-    subgraph "Development Cluster"
+    subgraph Manifest["ethio-connect-manifest + gitops/argocd hierarchy"]
         direction TB
-        subgraph "Virtual Clusters"
-            T_vCluster[vcluster: testing-env]:::vcluster
-            S_vCluster[vcluster: staging-env]:::vcluster
+        RootApp["gitops/argocd/apps\nApp-of-Apps root"]:::gitops
+        TenantDefs["gitops/argocd/tenants\ntenant ownership"]:::gitops
+        WorkloadDefs["gitops/argocd/workloads\nworkload ownership"]:::gitops
+        EnvOverlays["gitops/argocd/envs/{testing,staging,production}"]:::gitops
+    end
+
+    subgraph Cluster["Kubernetes runtime"]
+        direction TB
+        MetalLB["MetalLB\nLoadBalancer IP allocator"]:::infra
+
+        subgraph TestingBoundary["vCluster boundary: testing"]
+            direction LR
+            TestingVCluster["vcluster-testing"]:::cluster
+            TestingApps["apps/* testing workloads"]:::cluster
+        end
+
+        subgraph StagingBoundary["vCluster boundary: staging"]
+            direction LR
+            StagingVCluster["vcluster-staging"]:::cluster
+            StagingApps["apps/* staging workloads"]:::cluster
+        end
+
+        subgraph ProductionBoundary["vCluster boundary: production"]
+            direction LR
+            ProductionVCluster["vcluster-production"]:::cluster
+            ProdApps["apps/* production workloads"]:::cluster
+        end
+
+        subgraph Storage["Stateful storage"]
+            direction TB
+            PVClass["PersistentVolume classes\n(e.g. fast-ssd, standard)"]:::storage
+            PVCs["PersistentVolumeClaims\nstateful workloads"]:::storage
         end
     end
 
-    ArgoCD -->|Syncs| P_NS_Vendor
-    ArgoCD -->|Syncs| P_NS_Customer
-    ArgoCD -->|Syncs| P_NS_Central
-    ArgoCD -->|Syncs| T_vCluster
-    ArgoCD -->|Syncs| S_vCluster
-    class B cluster;
-    class P_NS_Vendor,P_NS_Customer,P_NS_Central,ArgoCD,T_vCluster,S_vCluster cluster;
+    Push --> Affected --> DockerBuild --> DigestPublish --> ManifestUpdate --> ArgoSync
+    OIDC --> Affected
+    OIDC --> DockerBuild
+    DigestPublish --> SigVerify
+    SigVerify --> ManifestUpdate
+
+    ManifestUpdate --> RootApp
+    RootApp --> TenantDefs
+    RootApp --> WorkloadDefs
+    TenantDefs --> EnvOverlays
+    WorkloadDefs --> EnvOverlays
+    EnvOverlays --> ArgoSync
+
+    ArgoSync --> TestingVCluster
+    ArgoSync --> StagingVCluster
+    ArgoSync --> ProductionVCluster
+
+    MetalLB --> TestingVCluster
+    MetalLB --> StagingVCluster
+    MetalLB --> ProductionVCluster
+
+    TestingVCluster --> TestingApps
+    StagingVCluster --> StagingApps
+    ProductionVCluster --> ProdApps
+
+    PVClass --> PVCs
+    PVCs --> TestingApps
+    PVCs --> StagingApps
+    PVCs --> ProdApps
+
+    SecretOperator --> TestingVCluster
+    SecretOperator --> StagingVCluster
+    SecretOperator --> ProductionVCluster
