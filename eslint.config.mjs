@@ -26,11 +26,17 @@ export default [
             },
             {
               sourceTag: 'domain:customer-portal',
-              onlyDependOnLibsWithTags: ['domain:customer-portal', 'scope:shared'],
+              onlyDependOnLibsWithTags: [
+                'domain:customer-portal',
+                'scope:shared',
+              ],
             },
             {
               sourceTag: 'domain:vendor-portal',
-              onlyDependOnLibsWithTags: ['domain:vendor-portal', 'scope:shared'],
+              onlyDependOnLibsWithTags: [
+                'domain:vendor-portal',
+                'scope:shared',
+              ],
             },
             {
               sourceTag: 'domain:shared',
@@ -42,7 +48,10 @@ export default [
             },
             {
               sourceTag: 'scope:customer-portal',
-              onlyDependOnLibsWithTags: ['scope:customer-portal', 'scope:shared'],
+              onlyDependOnLibsWithTags: [
+                'scope:customer-portal',
+                'scope:shared',
+              ],
             },
             {
               sourceTag: 'scope:vendor-portal',
@@ -54,11 +63,19 @@ export default [
             },
             {
               sourceTag: 'platform:api',
-              onlyDependOnLibsWithTags: ['platform:api', 'platform:cross', 'scope:shared'],
+              onlyDependOnLibsWithTags: [
+                'platform:api',
+                'platform:cross',
+                'scope:shared',
+              ],
             },
             {
               sourceTag: 'platform:web',
-              onlyDependOnLibsWithTags: ['platform:web', 'platform:cross', 'scope:shared'],
+              onlyDependOnLibsWithTags: [
+                'platform:web',
+                'platform:cross',
+                'scope:shared',
+              ],
             },
             {
               sourceTag: 'platform:cross',
@@ -66,35 +83,73 @@ export default [
             },
             {
               allSourceTags: ['platform:e2e', 'scope:central-hub'],
-              onlyDependOnLibsWithTags: ['scope:central-hub', 'type:app', 'type:api'],
+              onlyDependOnLibsWithTags: [
+                'scope:central-hub',
+                'type:app',
+                'type:api',
+              ],
             },
             {
               allSourceTags: ['platform:e2e', 'scope:customer-portal'],
-              onlyDependOnLibsWithTags: ['scope:customer-portal', 'type:app', 'type:api'],
+              onlyDependOnLibsWithTags: [
+                'scope:customer-portal',
+                'type:app',
+                'type:api',
+              ],
             },
             {
               allSourceTags: ['platform:e2e', 'scope:vendor-portal'],
-              onlyDependOnLibsWithTags: ['scope:vendor-portal', 'type:app', 'type:api'],
+              onlyDependOnLibsWithTags: [
+                'scope:vendor-portal',
+                'type:app',
+                'type:api',
+              ],
             },
             {
               sourceTag: 'type:app',
-              onlyDependOnLibsWithTags: ['type:feature', 'type:ui', 'type:util', 'type:data-access', 'scope:shared'],
+              onlyDependOnLibsWithTags: [
+                'type:feature',
+                'type:ui',
+                'type:util',
+                'type:data-access',
+                'scope:shared',
+              ],
             },
             {
               sourceTag: 'type:dashboard',
-              onlyDependOnLibsWithTags: ['type:feature', 'type:ui', 'type:util', 'scope:shared'],
+              onlyDependOnLibsWithTags: [
+                'type:feature',
+                'type:ui',
+                'type:util',
+                'scope:shared',
+              ],
             },
             {
               sourceTag: 'type:feature',
-              onlyDependOnLibsWithTags: ['type:feature', 'type:ui', 'type:util', 'type:data-access', 'scope:shared'],
+              onlyDependOnLibsWithTags: [
+                'type:feature',
+                'type:ui',
+                'type:util',
+                'type:data-access',
+                'scope:shared',
+              ],
             },
             {
               sourceTag: 'type:api',
-              onlyDependOnLibsWithTags: ['type:feature', 'type:data-access', 'type:util', 'scope:shared'],
+              onlyDependOnLibsWithTags: [
+                'type:feature',
+                'type:data-access',
+                'type:util',
+                'scope:shared',
+              ],
             },
             {
               sourceTag: 'type:ui',
-              onlyDependOnLibsWithTags: ['type:ui', 'type:util', 'scope:shared'],
+              onlyDependOnLibsWithTags: [
+                'type:ui',
+                'type:util',
+                'scope:shared',
+              ],
             },
             {
               sourceTag: 'type:util',
