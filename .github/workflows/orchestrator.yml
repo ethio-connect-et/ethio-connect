@@ -177,11 +177,15 @@ jobs:
             cache_hits=$(jq -r '.cache_hits' ci-metrics/ci-metrics-quality.json)
             cache_misses=$(jq -r '.cache_misses' ci-metrics/ci-metrics-quality.json)
             duration_seconds=$(jq -r '.duration_seconds' ci-metrics/ci-metrics-quality.json)
+            dependency_cache_hit=$(jq -r '.dependency_cache_hit // false' ci-metrics/ci-metrics-quality.json)
+            dependency_cache_key=$(jq -r '.dependency_cache_key // ""' ci-metrics/ci-metrics-quality.json)
             nx_cloud_run_url=$(jq -r '.nx_cloud_run_url' ci-metrics/ci-metrics-quality.json)
           else
             cache_hits=0
             cache_misses=0
             duration_seconds=0
+            dependency_cache_hit=false
+            dependency_cache_key=""
             nx_cloud_run_url=""
           fi
 
@@ -208,7 +212,9 @@ jobs:
             echo "## CI Lane Summary"
             echo ""
             echo "- Affected projects: **${affected_count}**"
-            echo "- Cache hits/misses (quality lane): **${cache_hits}/${cache_misses}** (hit rate: **${hit_rate}%**)"
+            echo "- Dependency cache (pnpm store) hit: **${dependency_cache_hit}**"
+            echo "- Dependency cache key: \`${dependency_cache_key:-n/a}\`"
+            echo "- Nx task cache hits/misses (quality lane): **${cache_hits}/${cache_misses}** (hit rate: **${hit_rate}%**)"
             echo "- Duration (quality lane): **${duration_seconds}s** (delta vs baseline ${baseline_seconds}s: **${duration_delta}s**)"
             echo "- Cache uplift (quality lane) vs baseline ${baseline_hit_rate}%: **${quality_hit_uplift}%**"
             echo "- SLA objective (>50% duration reduction): **target ${sla_reduction_target}%**, current duration delta **${duration_delta}s**"
