@@ -94,7 +94,7 @@ jobs:
           image_tag="${{ steps.publish-context.outputs.image_tag }}"
           # Initialize ephemeral release version to satisfy the publish executor.
           # Using 0.0.0-<tag> to ensure it's a valid semver string for Nx Release.
-          pnpm nx release version "0.0.0-${image_tag}" --stage-changes=false --git-commit=false --git-tag=false
+          pnpm nx release version "0.0.0-${image_tag}" --dockerVersion "${image_tag}" --stage-changes=false --git-commit=false --git-tag=false
 
       - name: Publish images (Stage B)
         shell: bash

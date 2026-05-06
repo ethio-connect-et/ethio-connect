@@ -63,7 +63,8 @@
       "dependsOn": ["docker:build"],
       "cache": false,
       "options": {
-        "quiet": false
+        "quiet": false,
+        "imageName": "ghcr.io/ethio-connect-et/customer-portal-dashboard"
       }
     },
     "prune": {
