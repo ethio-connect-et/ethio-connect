@@ -1,33 +1,135 @@
-name: CI (Compatibility Shim)
+name: Application Continuous Integration
 
 on:
   pull_request:
+    branches:
+      - development
+      - testing
+      - staging
+      - main
     types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+    types: [checks_requested]
   push:
-    branches: [development, testing, staging, main]
+    branches:
+      - development
+      - testing
+      - staging
+      - main
+    paths:
+      - '.github/workflows/**'
+      - 'apps/**'
+      - 'libs/**'
+      - 'deploy/**'
+      - 'scripts/**'
+      - 'nx.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig.base.json'
+  workflow_dispatch:
 
 permissions:
-  contents: read
   actions: read
+  contents: read
+  pull-requests: read
+  security-events: write
+
+env:
+  NODE_VERSION: '24.11.0'
+  PNPM_VERSION: '10.20.0'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 jobs:
-  target_contract_governance:
-    name: Target Contract Governance
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.2.2
-      - uses: ./.github/actions/setup-nx-node
-      - name: Validate target contract
-        run: pnpm run validate:target-contract
-      - name: Validate release scope contract
-        run: pnpm run validate:release-scope
-      - name: Enforce secret handling policy
-        run: ./scripts/check-no-plaintext-secrets.sh
+  governance_policy_checks:
+    name: Governance Branch and Workflow Policy
+    uses: ./.github/workflows/ci-policy-governance.yml
+    with:
+      node_version: '24.11.0'
+      pnpm_version: '10.20.0'
+      event_name: ${{ github.event_name }}
+      base_ref: ${{ github.base_ref }}
+      head_ref: ${{ github.head_ref }}
+    secrets: inherit
 
-  compatibility_notice:
-    name: Compatibility Shim
+  quality_and_security:
+    name: Quality and Security Gate
+    needs: [governance_policy_checks]
+    uses: ./.github/workflows/ci-quality-security.yml
+    with:
+      node_version: '24.11.0'
+      pnpm_version: '10.20.0'
+      event_name: ${{ github.event_name }}
+      ref_name: ${{ github.ref_name }}
+      base_ref: ${{ github.base_ref }}
+    secrets: inherit
+
+  publish_container_images:
+    name: Publish Signed Application Images
+    needs: [quality_and_security]
+    if: >-
+      github.event_name == 'push' &&
+      (
+        github.ref == 'refs/heads/testing' ||
+        github.ref == 'refs/heads/staging' ||
+        github.ref == 'refs/heads/main'
+      ) &&
+      !contains(github.event.head_commit.message, '[skip ci]')
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+      security-events: write
+    uses: ./.github/workflows/ci-image-publish-attest.yml
+    with:
+      node_version: '24.11.0'
+      pnpm_version: '10.20.0'
+    secrets: inherit
+
+  dispatch_staging_release:
+    name: Dispatch Staging Release to Environments
+    needs: [publish_container_images]
+    if: >-
+      needs.publish_container_images.result == 'success' &&
+      needs.publish_container_images.outputs['infra_environment'] == 'staging'
+    uses: ./.github/workflows/ci-release-dispatch.yml
+    with:
+      source_sha: ${{ github.sha }}
+      source_ref: refs/heads/staging
+      target_environment: staging
+      image_tag: ${{ needs.publish_container_images.outputs['image_tag'] }}
+      release_version: ${{ needs.publish_container_images.outputs['release_version'] }}
+      release_schema_version: 1.0.0
+      applications_json: ${{ needs.publish_container_images.outputs['applications_json'] }}
+      attestation_references_json: ${{ needs.publish_container_images.outputs['attestation_references_json'] }}
+    secrets: inherit
+
+  summarize_protected_branch_publish:
+    name: Summarize Protected Branch Publish
+    needs: [publish_container_images, dispatch_staging_release]
+    if: always() && needs.publish_container_images.result == 'success'
     runs-on: ubuntu-latest
-    needs: [target_contract_governance]
+    timeout-minutes: 20
+
     steps:
-      - name: CI moved to orchestrator
-        run: echo "Primary CI entrypoint is .github/workflows/orchestrator.yml"
+      - name: Write publish summary
+        env:
+          INFRA_ENVIRONMENT: ${{ needs.publish_container_images.outputs['infra_environment'] }}
+          IMAGE_TAG: ${{ needs.publish_container_images.outputs['image_tag'] }}
+          RELEASE_VERSION: ${{ needs.publish_container_images.outputs['release_version'] }}
+          DISPATCH_RESULT: ${{ needs.dispatch_staging_release.result }}
+        run: |
+          {
+            echo "## Protected Branch Image Publish"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Environment | \`${INFRA_ENVIRONMENT}\` |"
+            echo "| Image Tag | \`${IMAGE_TAG}\` |"
+            echo "| Release Version | \`${RELEASE_VERSION}\` |"
+            echo "| Staging Dispatch | \`${DISPATCH_RESULT:-not-applicable}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
