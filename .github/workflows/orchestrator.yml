@@ -135,6 +135,12 @@ jobs:
           set -euo pipefail
           node tools/ci/validate-project-targets.mjs
 
+      - name: Validate release scope contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/ci/validate-release-scope.mjs
+
       - name: Enforce secret handling policy
         shell: bash
         run: |

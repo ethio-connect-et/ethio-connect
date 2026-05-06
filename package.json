@@ -82,7 +82,8 @@
     "release:dry-run": "nx release --dry-run",
     "release:version": "nx release version",
     "release:publish": "nx release publish",
-    "validate:target-contract": "node scripts/validate-target-contract.mjs"
+    "validate:target-contract": "node scripts/validate-target-contract.mjs",
+    "validate:release-scope": "node tools/ci/validate-release-scope.mjs"
   },
   "pnpm": {
     "overrides": {
