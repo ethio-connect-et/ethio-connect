@@ -130,26 +130,16 @@ jobs:
       - name: Build immutable image metadata
         id: image-metadata
         shell: bash
-        env:
-          IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
-          CANONICAL_RELEASE_VERSION: ${{ steps.publish-context.outputs.canonical_release_version }}
         run: |
           set -euo pipefail
-          mkdir -p artifacts
           metadata_path="artifacts/publish-image-metadata-${{ inputs.ref_name }}-${{ github.run_id }}.json"
-          jq -n '[]' > "$metadata_path"
-
-          while IFS= read -r project; do
-            [[ -z "$project" ]] && continue
-            app="${project#@ethio-connect/}"
-            image_ref="ghcr.io/ethio-connect-et/${app}:${IMAGE_TAG}"
-            digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest}}' | jq -r '.digest')"
-            immutable_ref="ghcr.io/ethio-connect-et/${app}@${digest}"
-            record="$(jq -nc --arg project "$project" --arg app "$app" --arg image_ref "$image_ref" --arg immutable_ref "$immutable_ref" --arg digest "$digest" --arg source_sha "${GITHUB_SHA}" --arg release_version "$CANONICAL_RELEASE_VERSION" '{project:$project,app:$app,image_ref:$image_ref,immutable_ref:$immutable_ref,digest:$digest,source_sha:$source_sha,release_version:$release_version}')"
-            jq -c --argjson record "$record" '. + [$record]' "$metadata_path" > "$metadata_path.tmp" && mv "$metadata_path.tmp" "$metadata_path"
-          done < <(jq -r '.[]' <<< '${{ inputs.projects_json }}')
-
-          jq -e 'type=="array" and all(.[]; has("project") and has("immutable_ref") and has("digest") and (.digest|test("^sha256:[0-9a-f]{64}$")))' "$metadata_path" >/dev/null
+          pnpm nx run @ethio-connect/source:container:image-metadata -- \
+            --mode generate-publish-metadata \
+            --projects-json '${{ inputs.projects_json }}' \
+            --image-tag '${{ steps.publish-context.outputs.image_tag }}' \
+            --release-version '${{ steps.publish-context.outputs.canonical_release_version }}' \
+            --source-sha '${{ github.sha }}' \
+            --output "$metadata_path"
           echo "path=$metadata_path" >> "$GITHUB_OUTPUT"
 
       - name: Upload publish image metadata artifact
@@ -183,12 +173,18 @@ jobs:
             exit 0
           }
 
-          # ── Install Trivy ──────────────────────────────────────────────────
+          # ── Install Trivy (pinned + checksum verified provenance) ─────────
+          # Provenance: release artifact from aquasecurity/trivy GitHub releases.
+          # We pin an explicit version and verify SHA256 before installing.
           echo "::group::Install Trivy"
-          sudo apt-get update -y -qq
-          sudo apt-get install -y -qq wget
-          wget -qO- https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sudo sh -s -- -b /usr/local/bin
+          TRIVY_VERSION="0.65.0"
+          TRIVY_DEB="trivy_${TRIVY_VERSION}_Linux-64bit.deb"
+          TRIVY_SHA256="35f0b74ebf63ce8b1f48f15133634cb6ec67f649edb2677a334e2fb31f57ec5f"
+
+          curl -fsSLo "${TRIVY_DEB}" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${TRIVY_DEB}"
+          echo "${TRIVY_SHA256}  ${TRIVY_DEB}" | sha256sum --check --strict
+          sudo dpkg -i "${TRIVY_DEB}"
+
           trivy --version
           echo "::endgroup::"
 
@@ -363,24 +359,13 @@ jobs:
 
       - name: Verify published tags resolve to immutable manifests
         shell: bash
-        env:
-          IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
-          BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
         run: |
           set -euo pipefail
-          while IFS= read -r project; do
-            app="${project#@ethio-connect/}"
-            image_ref="ghcr.io/ethio-connect-et/${app}:${IMAGE_TAG}"
-            branch_ref="ghcr.io/ethio-connect-et/${app}:${BRANCH_TAG}"
-            image_digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
-            branch_digest="$(docker buildx imagetools inspect "$branch_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
-
-            [[ "$image_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::Invalid digest for $image_ref: $image_digest"; exit 1; }
-            [[ "$branch_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::Invalid digest for $branch_ref: $branch_digest"; exit 1; }
-            [[ "$image_digest" == "$branch_digest" ]] || { echo "::error::Digest mismatch for $app between ${IMAGE_TAG} and ${BRANCH_TAG}"; exit 1; }
-
-            echo "Verified $app => $image_digest"
-          done < <(jq -r '.[]' <<< '${{ inputs.projects_json }}')
+          pnpm nx run @ethio-connect/source:container:image-metadata -- \
+            --mode verify-tag-parity \
+            --projects-json '${{ inputs.projects_json }}' \
+            --primary-tag '${{ steps.publish-context.outputs.image_tag }}' \
+            --secondary-tag '${{ steps.publish-context.outputs.branch_label }}'
 
       - name: Summarize published images
         shell: bash

@@ -12,6 +12,21 @@ on:
       publish_manifest_artifact_name:
         required: true
         type: string
+      project:
+        required: false
+        type: string
+      immutable_ref:
+        required: false
+        type: string
+      digest:
+        required: false
+        type: string
+      release_version:
+        required: false
+        type: string
+      environment_target:
+        required: false
+        type: string
 
 concurrency:
   group: reusable-manifest-promotion-${{ inputs.ref_name }}
@@ -37,13 +52,57 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Download publish image metadata artifact
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+        with:
+          name: ${{ inputs.publish_manifest_artifact_name }}
+          path: artifacts
+
       - name: Trigger non-prod manifest promoter
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          gh workflow run promote-manifest-nonprod.yml \
-            --ref "${{ inputs.ref_name }}" \
-            -f source_sha="${{ inputs.source_sha }}" \
-            -f publish_manifest_artifact_name="${{ inputs.publish_manifest_artifact_name }}"
+          DIGEST_REGEX='^sha256:[a-f0-9]{64}$'
+          IMMUTABLE_REF_REGEX='^ghcr\.io/ethio-connect-et/[a-z0-9._-]+@sha256:[a-f0-9]{64}$'
+          SHA_REGEX='^[a-f0-9]{40}$'
+
+          metadata_file="$(find artifacts -type f -name '*.json' | head -n1)"
+          [[ -n "${metadata_file}" ]] || { echo "Publish image metadata artifact JSON was not found." >&2; exit 1; }
+          jq -e 'type=="array" and length>0' "$metadata_file" >/dev/null || { echo "Metadata artifact must be a non-empty JSON array." >&2; exit 1; }
+
+          source_sha='${{ inputs.source_sha }}'
+          [[ "$source_sha" =~ $SHA_REGEX ]] || { echo "source_sha must be a 40-char commit SHA" >&2; exit 1; }
+
+          default_environment_target="${{ inputs.ref_name }}"
+          while IFS= read -r row; do
+            project="${{ inputs.project }}"
+            immutable_ref="${{ inputs.immutable_ref }}"
+            digest="${{ inputs.digest }}"
+            release_version="${{ inputs.release_version }}"
+            environment_target="${{ inputs.environment_target }}"
+
+            [[ -n "$project" ]] || project="$(jq -r '.app // empty' <<<"$row")"
+            [[ -n "$immutable_ref" ]] || immutable_ref="$(jq -r '.immutable_ref // empty' <<<"$row")"
+            [[ -n "$digest" ]] || digest="$(jq -r '.digest // empty' <<<"$row")"
+            [[ -n "$release_version" ]] || release_version="$(jq -r '.release_version // empty' <<<"$row")"
+            [[ -n "$environment_target" ]] || environment_target="$default_environment_target"
+
+            [[ "$environment_target" =~ ^(testing|staging|production)$ ]] || { echo "Invalid environment_target: $environment_target" >&2; exit 1; }
+            [[ "$project" =~ ^[a-z0-9._-]+$ ]] || { echo "Invalid project: $project" >&2; exit 1; }
+            [[ "$digest" =~ $DIGEST_REGEX ]] || { echo "Invalid digest: $digest" >&2; exit 1; }
+            [[ "$immutable_ref" =~ $IMMUTABLE_REF_REGEX ]] || { echo "immutable_ref must be immutable digest reference (image@sha256:...)" >&2; exit 1; }
+            [[ "$immutable_ref" == "ghcr.io/ethio-connect-et/${project}@${digest}" ]] || { echo "immutable_ref must match project and digest inputs for $project" >&2; exit 1; }
+            [[ -n "$release_version" ]] || { echo "release_version is required" >&2; exit 1; }
+
+            gh workflow run promote-manifest-nonprod.yml \
+              --ref "${{ inputs.ref_name }}" \
+              -f project="$project" \
+              -f immutable_ref="$immutable_ref" \
+              -f digest="$digest" \
+              -f source_sha="$source_sha" \
+              -f release_version="$release_version" \
+              -f environment_target="$environment_target" \
+              -f publish_manifest_artifact_name="${{ inputs.publish_manifest_artifact_name }}"
+          done < <(jq -c '.[]' "$metadata_file")
