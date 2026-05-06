@@ -12,6 +12,21 @@ on:
       publish_manifest_artifact_name:
         required: true
         type: string
+      project:
+        required: true
+        type: string
+      immutable_ref:
+        required: true
+        type: string
+      digest:
+        required: true
+        type: string
+      release_version:
+        required: true
+        type: string
+      environment_target:
+        required: true
+        type: string
 
 concurrency:
   group: reusable-manifest-promotion-${{ inputs.ref_name }}
@@ -43,7 +58,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          DIGEST_REGEX='^sha256:[a-f0-9]{64}$'
+          IMMUTABLE_REF_REGEX='^ghcr\.io/ethio-connect-et/[a-z0-9._-]+@sha256:[a-f0-9]{64}$'
+          SHA_REGEX='^[a-f0-9]{40}$'
+
+          [[ "${{ inputs.environment_target }}" =~ ^(testing|staging|production)$ ]] || { echo "Invalid environment_target: ${{ inputs.environment_target }}" >&2; exit 1; }
+          [[ "${{ inputs.project }}" =~ ^[a-z0-9._-]+$ ]] || { echo "Invalid project: ${{ inputs.project }}" >&2; exit 1; }
+          [[ "${{ inputs.digest }}" =~ $DIGEST_REGEX ]] || { echo "Invalid digest: ${{ inputs.digest }}" >&2; exit 1; }
+          [[ "${{ inputs.immutable_ref }}" =~ $IMMUTABLE_REF_REGEX ]] || { echo "immutable_ref must be immutable digest reference (image@sha256:...)" >&2; exit 1; }
+          [[ "${{ inputs.immutable_ref }}" == "ghcr.io/ethio-connect-et/${{ inputs.project }}@${{ inputs.digest }}" ]] || { echo "immutable_ref must match project and digest inputs" >&2; exit 1; }
+          [[ "${{ inputs.source_sha }}" =~ $SHA_REGEX ]] || { echo "source_sha must be a 40-char commit SHA" >&2; exit 1; }
+          [[ -n "${{ inputs.release_version }}" ]] || { echo "release_version is required" >&2; exit 1; }
+
           gh workflow run promote-manifest-nonprod.yml \
             --ref "${{ inputs.ref_name }}" \
+            -f project="${{ inputs.project }}" \
+            -f immutable_ref="${{ inputs.immutable_ref }}" \
+            -f digest="${{ inputs.digest }}" \
             -f source_sha="${{ inputs.source_sha }}" \
+            -f release_version="${{ inputs.release_version }}" \
+            -f environment_target="${{ inputs.environment_target }}" \
             -f publish_manifest_artifact_name="${{ inputs.publish_manifest_artifact_name }}"
