@@ -5,7 +5,9 @@
   "projectType": "library",
   "release": {
     "version": {
-      "manifestRootsToUpdate": ["dist/{projectRoot}"],
+      "manifestRootsToUpdate": [
+        "dist/{projectRoot}"
+      ],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk"
     },
@@ -24,21 +26,24 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/libs/ui-components",
         "main": "libs/ui-components/src/index.ts",
         "tsConfig": "libs/ui-components/tsconfig.lib.json",
-        "assets": ["libs/ui-components/*.md"],
+        "assets": [
+          "libs/ui-components/*.md"
+        ],
         "generatePackageJson": true
       }
     },
     "package": {
       "executor": "nx:noop",
-      "dependsOn": ["build"]
-    },
-    "nx-release-publish": {
-      "executor": "nx:noop"
+      "dependsOn": [
+        "build"
+      ]
     }
   }
 }
