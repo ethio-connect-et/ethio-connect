@@ -1,5 +1,5 @@
 {
-  "name": "@ethio-connect/central-hub-public-dashboard",
+  "name": "@ethio-connect/public-website",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/central-hub/public-website",
   "projectType": "application",
@@ -66,7 +66,7 @@
       "cache": false,
       "options": {
         "quiet": false,
-        "imageName": "ghcr.io/ethio-connect-et/central-hub-public-dashboard"
+        "imageName": "ghcr.io/ethio-connect-et/public-website"
       }
     },
     "prune": {

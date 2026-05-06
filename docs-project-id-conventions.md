@@ -14,7 +14,7 @@ Use `@ethio-connect/<domain>-<capability>-<suffix>`.
 ### Examples
 
 - `@ethio-connect/central-hub-dashboard`
-- `@ethio-connect/central-hub-public-dashboard`
+- `@ethio-connect/public-website`
 - `@ethio-connect/customer-portal-api`
 - `@ethio-connect/vendor-portal-dashboard-e2e`
 
