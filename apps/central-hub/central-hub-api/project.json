@@ -107,13 +107,6 @@
         "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"{projectName}\",\\n  \"root\": \"{projectRoot}\",\\n  \"type\": \"application\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/{projectName}.json"
       }
     },
-    "docker:build": {
-      "executor": "@nx/docker:build",
-      "dependsOn": [
-        "build",
-        "prune"
-      ]
-    },
     "nx-release-publish": {
       "executor": "@nx/docker:release-publish",
       "dependsOn": [

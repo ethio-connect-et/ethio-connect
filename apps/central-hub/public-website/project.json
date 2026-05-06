@@ -50,13 +50,6 @@
     "prune": {
       "executor": "nx:noop"
     },
-    "docker:build": {
-      "executor": "@nx/docker:build",
-      "dependsOn": [
-        "build",
-        "prune"
-      ]
-    },
     "nx-release-publish": {
       "executor": "@nx/docker:release-publish",
       "dependsOn": [

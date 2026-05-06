@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = process.cwd();
-const DEPLOY_TARGETS = ['docker:build', 'nx-release-publish'];
+const DEPLOY_TARGETS = ['nx-release-publish'];
 
 const ARCHETYPES = {
   deployableApp: {
@@ -12,7 +12,6 @@ const ARCHETYPES = {
       'build',
       'lint',
       'test',
-      'docker:build',
       'nx-release-publish',
     ],
     forbidden: [],
