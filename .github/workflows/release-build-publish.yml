@@ -112,8 +112,17 @@ jobs:
 
           for group in shared-libs central-hub customer-portal vendor-portal; do
             echo "Processing release group: $group with version $docker_version"
-            pnpm nx release version "$docker_version" --groups "$group" --dockerVersion "$docker_version" --stage-changes=false --git-commit=false --git-tag=false
+            pnpm nx release version "$docker_version" --groups "$group" --stage-changes=false --git-commit=false --git-tag=false
           done
+
+          # Manually create .docker-version files to satisfy the @nx/docker:release-publish executor,
+          # bypassing the problematic docker tag behavior of the nx release version command.
+          while IFS= read -r project; do
+            root=$(pnpm nx show project "$project" --json | jq -r .root)
+            mkdir -p "tmp/$root"
+            echo "${docker_version}" > "tmp/$root/.docker-version"
+            echo "Created tmp/$root/.docker-version with tag ${docker_version}"
+          done < <(pnpm nx show projects --withTarget nx-release-publish --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
 
       - name: Build and publish docker images via Nx targets
         id: publish-targets
