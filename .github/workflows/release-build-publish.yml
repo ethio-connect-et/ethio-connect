@@ -112,7 +112,7 @@ jobs:
 
           for group in shared-libs central-hub customer-portal vendor-portal; do
             echo "Processing release group: $group with version $docker_version"
-            pnpm nx release version "$docker_version" --groups "$group" --dockerVersion "$docker_version" --stage-changes=false --git-commit=false --git-tag=false
+            pnpm nx release version "$docker_version" --groups "$group" --stage-changes=false --git-commit=false --git-tag=false
           done
 
       - name: Build and publish docker images via Nx targets
