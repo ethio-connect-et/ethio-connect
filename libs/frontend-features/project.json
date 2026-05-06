@@ -18,6 +18,9 @@
     "platform:web",
     "release:publish"
   ],
+  "metadata": {
+    "targetContractProfile": "library"
+  },
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
@@ -37,8 +40,5 @@
     "nx-release-publish": {
       "executor": "nx:noop"
     }
-  },
-  "metadata": {
-    "targetContractProfile": "library"
   }
 }

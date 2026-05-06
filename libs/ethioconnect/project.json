@@ -18,6 +18,9 @@
     "platform:cross",
     "release:publish"
   ],
+  "metadata": {
+    "targetContractProfile": "library"
+  },
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
@@ -37,8 +40,5 @@
       "executor": "nx:noop",
       "dependsOn": ["build"]
     }
-  },
-  "metadata": {
-    "targetContractProfile": "library"
   }
 }
