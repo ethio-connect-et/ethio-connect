@@ -1,10 +1,16 @@
 name: Promote Manifest (Non-Prod)
 
 on:
-  push:
-    branches:
-      - testing
-      - staging
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: 'Source commit SHA to promote'
+        required: false
+        type: string
+      publish_manifest_artifact_name:
+        description: 'Optional publish-manifest artifact name override'
+        required: false
+        type: string
 
 concurrency:
   group: promote-manifest-nonprod-${{ github.ref_name }}
