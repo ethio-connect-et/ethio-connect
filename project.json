@@ -10,6 +10,12 @@
         "config": ".verdaccio/config.yml",
         "storage": "tmp/local-registry/storage"
       }
+    },
+    "container:image-metadata": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node scripts/container-image-metadata.mjs"
+      }
     }
   }
 }
