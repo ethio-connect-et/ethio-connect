@@ -92,7 +92,7 @@ jobs:
           set -euo pipefail
           affected_json="$(pnpm nx show projects --affected --base="$NX_BASE" --head="$NX_HEAD" --json)"
           quality_json="$(jq -c '.' <<<"$affected_json")"
-          docker_json="$(jq -c '[.[] | select(startswith("@ethio-connect/"))]' <<<"$affected_json")"
+          docker_json="$(pnpm nx show projects --affected --withTarget=docker:build --base="$NX_BASE" --head="$NX_HEAD" --json)"
           release_json="$docker_json"
           has_quality="$(jq -r 'if length>0 then "true" else "false" end' <<<"$quality_json")"
           has_docker="$(jq -r 'if length>0 then "true" else "false" end' <<<"$docker_json")"
