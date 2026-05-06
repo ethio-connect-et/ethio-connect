@@ -19,7 +19,12 @@
     "release:publish"
   ],
   "metadata": {
-    "targetContractProfile": "library"
+    "targetContractProfile": "library",
+    "targetContract": {
+      "allowedForbiddenTargets": {
+        "nx-release-publish": "Required by scripts/validate-target-contract.mjs for library profile; kept as noop to satisfy release contract parity."
+      }
+    }
   },
   "targets": {
     "build": {
@@ -36,6 +41,10 @@
     "package": {
       "executor": "nx:noop",
       "dependsOn": ["build"]
+    },
+    "nx-release-publish": {
+      "executor": "nx:noop",
+      "dependsOn": ["package"]
     }
   }
 }
