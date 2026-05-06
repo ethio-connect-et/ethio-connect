@@ -3,13 +3,13 @@ name: CI Orchestrator
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-  push:
-    branches: [development, testing, staging, main]
     paths:
       - 'apps/**'
       - 'libs/**'
-      - 'gitops/**'
-      - '.github/workflows/**'
+      - 'tools/**'
+      - '.github/workflows/orchestrator.yml'
+      - '.github/workflows/reusable-build-test-lint.yml'
+      - '.github/actions/setup-nx-node/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -18,6 +18,18 @@ on:
       - 'eslint.config.mjs'
       - 'jest.config.ts'
       - 'jest.preset.js'
+  push:
+    branches: [testing, staging, main]
+    paths:
+      - 'apps/**'
+      - 'libs/**'
+      - 'gitops/**'
+      - '.github/workflows/orchestrator.yml'
+      - '.github/workflows/reusable-container-publish.yml'
+      - '.github/workflows/reusable-manifest-promotion-trigger.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
 
 permissions:
   actions: read
@@ -35,6 +47,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+
+  prep_policy:
+    name: Prep · Trigger and Release Policy
+    runs-on: ubuntu-latest
+    outputs:
+      can_publish: ${{ steps.policy.outputs.can_publish }}
+      target_environment: ${{ steps.policy.outputs.target_environment }}
+    steps:
+      - name: Evaluate trigger and release policy
+        id: policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          can_publish=false
+          target_environment=testing
+
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            case "${{ github.ref_name }}" in
+              testing)
+                can_publish=true
+                target_environment=testing
+                ;;
+              staging)
+                can_publish=true
+                target_environment=staging
+                ;;
+              main)
+                can_publish=true
+                target_environment=production
+                ;;
+            esac
+          fi
+
+          {
+            echo "can_publish=${can_publish}"
+            echo "target_environment=${target_environment}"
+          } >> "$GITHUB_OUTPUT"
+
   plan:
     name: Plan · Affected Partition
     runs-on: ubuntu-latest
@@ -133,8 +183,8 @@ jobs:
 
   docker_build:
     name: Docker Build/Publish Lane
-    needs: [plan]
-    if: needs.plan.outputs.has_release_publish == 'true' && github.event_name == 'push' && (github.ref_name == 'testing' || github.ref_name == 'staging' || github.ref_name == 'main')
+    needs: [prep_policy, plan]
+    if: needs.plan.outputs.has_release_publish == 'true' && needs.prep_policy.outputs.can_publish == 'true'
     uses: ./.github/workflows/reusable-container-publish.yml
     secrets: inherit
     with:
@@ -228,11 +278,11 @@ jobs:
 
   manifest_promotion_trigger:
     name: Manifest Promotion Trigger Lane
-    needs: [plan, docker_build]
-    if: needs.plan.outputs.has_manifest_promotion == 'true' && github.event_name == 'push' && (github.ref_name == 'testing' || github.ref_name == 'staging')
+    needs: [prep_policy, plan, docker_build]
+    if: needs.plan.outputs.has_manifest_promotion == 'true' && needs.prep_policy.outputs.can_publish == 'true' && needs.prep_policy.outputs.target_environment != 'production'
     uses: ./.github/workflows/reusable-manifest-promotion-trigger.yml
     secrets: inherit
     with:
-      ref_name: ${{ github.ref_name }}
+      ref_name: ${{ needs.prep_policy.outputs.target_environment }}
       source_sha: ${{ github.sha }}
-      publish_manifest_artifact_name: publish-image-metadata-${{ github.ref_name }}-${{ github.run_id }}
+      publish_manifest_artifact_name: publish-image-metadata-${{ needs.prep_policy.outputs.target_environment }}-${{ github.run_id }}
