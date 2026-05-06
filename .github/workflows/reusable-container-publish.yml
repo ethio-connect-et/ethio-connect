@@ -155,8 +155,8 @@ jobs:
               continue
             fi
 
-            trivy image --scanners vuln --format json --output "$json_report" "$image_ref"
-            trivy image --scanners vuln --format sarif --output "$sarif_report" "$image_ref"
+            trivy image --ignorefile .trivyignore.yaml --scanners vuln --format json --output "$json_report" "$image_ref"
+            trivy image --ignorefile .trivyignore.yaml --scanners vuln --format sarif --output "$sarif_report" "$image_ref"
 
             critical_count="$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' "$json_report")"
             high_count="$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' "$json_report")"

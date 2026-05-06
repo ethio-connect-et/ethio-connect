@@ -15,22 +15,13 @@ RUN node -e 'const fs = require("fs"); const pkg = JSON.parse(fs.readFileSync("p
 
 FROM gcr.io/distroless/nodejs20-debian12@sha256:6fe218dbad37e979c7542e670d28d6e23d3f53d2929693bc9cdded8b622f339f AS runtime-base
 
-FROM debian:12-slim AS runtime-prune
-COPY --from=runtime-base / /rootfs
-RUN rm -f /rootfs/usr/lib/x86_64-linux-gnu/libssl.so.3 \
-    /rootfs/usr/lib/x86_64-linux-gnu/libcrypto.so.3 \
-    /rootfs/var/lib/dpkg/status.d/libssl3 \
-    /rootfs/var/lib/dpkg/status.d/libssl3.md5sums \
-    && rm -rf /rootfs/usr/lib/x86_64-linux-gnu/ossl-modules \
-    /rootfs/usr/share/doc/libssl3
-
 FROM scratch
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
 
-COPY --from=runtime-prune /rootfs/ /
+COPY --from=runtime-base / /
 
 COPY --chown=65532:65532 dist/apps/customer-portal/customer-portal-api/ ./
 COPY --from=deps --chown=65532:65532 /app/node_modules ./node_modules
