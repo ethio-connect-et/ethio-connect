@@ -8,6 +8,7 @@ on:
     paths:
       - 'apps/**'
       - 'libs/**'
+      - 'gitops/**'
       - '.github/workflows/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
