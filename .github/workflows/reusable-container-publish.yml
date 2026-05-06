@@ -72,29 +72,44 @@ jobs:
       - name: Build images (Stage A)
         shell: bash
         env:
-          NX_DOCKER_VERSION_SCHEME: production
+          IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
+          BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          COMMIT_SHA: ${{ github.sha }}
+          BUILD_DATE: ${{ steps.publish-context.outputs.build_date }}
+          VERSION: ${{ steps.publish-context.outputs.image_tag }}
           NX_IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_TAG: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_VERSION: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
-          NX_DOCKER_LABEL_BUILD_NUMBER: ${{ github.run_number }}
-          NX_DOCKER_LABEL_COMMIT_SHA: ${{ github.sha }}
-          NX_DOCKER_LABEL_BUILD_DATE: ${{ steps.publish-context.outputs.build_date }}
+          NX_DOCKER_VERSION_SCHEME: production
         run: |
           set -euo pipefail
           pnpm nx run-many -t docker:build --all --outputStyle=static
 
+      - name: Initialize release version for Docker
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_tag="${{ steps.publish-context.outputs.image_tag }}"
+          # Initialize ephemeral release version to satisfy the publish executor.
+          # Using 0.0.0-<tag> to ensure it's a valid semver string for Nx Release.
+          pnpm nx release version "0.0.0-${image_tag}" --dockerVersion "${image_tag}" --stage-changes=false --git-commit=false --git-tag=false --yes
+
       - name: Publish images (Stage B)
         shell: bash
         env:
-          NX_DOCKER_VERSION_SCHEME: production
+          IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
+          BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          COMMIT_SHA: ${{ github.sha }}
+          BUILD_DATE: ${{ steps.publish-context.outputs.build_date }}
+          VERSION: ${{ steps.publish-context.outputs.image_tag }}
           NX_IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_TAG: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_VERSION: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
-          NX_DOCKER_LABEL_BUILD_NUMBER: ${{ github.run_number }}
-          NX_DOCKER_LABEL_COMMIT_SHA: ${{ github.sha }}
-          NX_DOCKER_LABEL_BUILD_DATE: ${{ steps.publish-context.outputs.build_date }}
+          NX_DOCKER_VERSION_SCHEME: production
         run: |
           set -euo pipefail
           pnpm nx run-many -t nx-release-publish --all --outputStyle=static

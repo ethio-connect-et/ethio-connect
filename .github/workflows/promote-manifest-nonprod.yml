@@ -50,17 +50,39 @@ jobs:
           projects="$(jq -r '.[]' <<< "$projects_json")"
           validate_dispatch_preconditions "${{ github.ref_name }}" "$projects"
           target_env="$(map_source_to_target_env "${{ github.ref_name }}")"
-          artifact_name="$(gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/runs" \
-            -f event=push \
-            -f head_sha="${GITHUB_SHA}" \
-            -f branch="${{ github.ref_name }}" \
-            -f per_page=20 \
-            --jq '.workflow_runs[] | select(.name == "CI") | .id' | head -n 1)"
-          [[ -n "$artifact_name" ]] || { echo "::error::Unable to locate CI run for sha ${GITHUB_SHA}"; exit 1; }
-          artifact_run_id="$artifact_name"
-          artifact_id="$(gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/runs/${artifact_run_id}/artifacts" \
-            --jq '.artifacts[] | select((.name | startswith("publish-manifest-${{ github.ref_name }}-")) and .expired == false) | .id' | head -n 1)"
-          [[ -n "$artifact_id" ]] || { echo "::error::Unable to locate publish-manifest artifact for run ${artifact_run_id}"; exit 1; }
+          # Retry loop to wait for the CI run and its artifact (race condition mitigation)
+          MAX_RETRIES=30
+          RETRY_INTERVAL=30
+          artifact_id=""
+          artifact_run_id=""
+
+          echo "Waiting for CI run and manifest artifact for sha ${GITHUB_SHA}..."
+          for ((i=1; i<=MAX_RETRIES; i++)); do
+            artifact_run_id="$(gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/runs" \
+              -f event=push \
+              -f head_sha="${GITHUB_SHA}" \
+              -f branch="${{ github.ref_name }}" \
+              -f per_page=20 \
+              --jq '.workflow_runs[] | select(.name == "CI") | .id' | head -n 1)"
+
+            if [[ -n "$artifact_run_id" ]]; then
+              artifact_id="$(gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/runs/${artifact_run_id}/artifacts" \
+                --jq '.artifacts[] | select((.name | startswith("publish-manifest-${{ github.ref_name }}-")) and .expired == false) | .id' | head -n 1)"
+              
+              if [[ -n "$artifact_id" ]]; then
+                echo "Found CI run ID: $artifact_run_id and artifact ID: $artifact_id after $i attempts."
+                break
+              fi
+            fi
+            
+            if [[ $i -lt $MAX_RETRIES ]]; then
+              echo "Attempt $i: CI run or artifact not ready yet. Retrying in ${RETRY_INTERVAL}s..."
+              sleep $RETRY_INTERVAL
+            fi
+          done
+
+          [[ -n "$artifact_id" ]] || { echo "::error::Timed out waiting for publish-manifest artifact for CI run ${artifact_run_id:-unknown}"; exit 1; }
+
           gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > publish-manifest.zip
           unzip -o publish-manifest.zip -d artifacts >/dev/null
           manifest_path="$(find artifacts -type f -name 'publish-manifest-*.json' | head -n 1)"
