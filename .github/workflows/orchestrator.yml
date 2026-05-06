@@ -195,7 +195,6 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-
   manifest_promotion_trigger:
     name: Manifest Promotion Trigger Lane
     needs: [plan, docker_build]

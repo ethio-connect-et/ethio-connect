@@ -130,7 +130,6 @@ jobs:
           [[ "$BRANCH_TAG" != "latest" ]] || { echo "::error::BRANCH_TAG must not be latest"; exit 1; }
           pnpm nx run-many -t docker:build --projects "$projects" --outputStyle=static
 
-
       - name: Upload docker lane skip marker
         if: always()
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808

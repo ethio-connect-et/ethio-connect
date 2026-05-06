@@ -11,8 +11,8 @@ Contract details:
 
 Why this separation exists:
 
-1. The orchestrator decides *which lanes to invoke* and passes shared context.
-2. Lane workflows decide *which tasks actually run* against the same SHA range, preserving Nx as runtime authority.
+1. The orchestrator decides _which lanes to invoke_ and passes shared context.
+2. Lane workflows decide _which tasks actually run_ against the same SHA range, preserving Nx as runtime authority.
 3. Artifacts and summaries remain stable even when no affected tasks exist.
 
 # Workflow Integration Contract
@@ -131,7 +131,6 @@ Policy:
 
 - A sustained miss against either threshold for 3 consecutive runs should trigger investigation.
 - The Nx Cloud run URL captured in job summary is the audit reference for each run.
-
 
 ## Workflow dependency map (2026-05 orchestrator unification)
 

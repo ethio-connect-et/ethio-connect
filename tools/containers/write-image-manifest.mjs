@@ -5,7 +5,9 @@ import path from 'node:path';
 const argv = process.argv.slice(2);
 const projectIndex = argv.indexOf('--project');
 if (projectIndex === -1 || !argv[projectIndex + 1]) {
-  console.error('Usage: node tools/containers/write-image-manifest.mjs --project <projectName>');
+  console.error(
+    'Usage: node tools/containers/write-image-manifest.mjs --project <projectName>',
+  );
   process.exit(1);
 }
 
@@ -28,7 +30,9 @@ try {
 }
 
 const imageName = `${registry}/${repository}/${projectName}:${imageTag}`;
-const imageRef = digest ? `${registry}/${repository}/${projectName}@${digest}` : '';
+const imageRef = digest
+  ? `${registry}/${repository}/${projectName}@${digest}`
+  : '';
 
 await mkdir(outputDir, { recursive: true });
 await writeFile(
