@@ -23,18 +23,18 @@ spec:
             tenant: vendor-portal
           - env: production
             tenant: central-hub
-            autoSync: "false"
+            autoSync: 'false'
           - env: production
             tenant: customer-portal
-            autoSync: "false"
+            autoSync: 'false'
           - env: production
             tenant: vendor-portal
-            autoSync: "false"
+            autoSync: 'false'
   template:
     metadata:
       name: 'ec-{{env}}-{{tenant}}'
       annotations:
-        argocd.argoproj.io/sync-wave: "2"
+        argocd.argoproj.io/sync-wave: '2'
       labels:
         app.kubernetes.io/part-of: ethio-connect
         ec.environment: '{{env}}'
