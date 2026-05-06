@@ -15,26 +15,6 @@
     "targetContractProfile": "app"
   },
   "targets": {
-    "container": {
-      "dependsOn": ["build", "^build"],
-      "executor": "nx:run-commands",
-      "outputs": [
-        "{workspaceRoot}/dist/containers/{projectName}/container-metadata.json"
-      ],
-      "options": {
-        "cwd": "{workspaceRoot}",
-        "command": "docker buildx build --load --file {projectRoot}/Dockerfile --tag ${NX_DOCKER_REGISTRY:-ghcr.io}/${NX_DOCKER_REPOSITORY:-ethio-connect-et}/{projectName}:${NX_IMAGE_TAG:-local} --metadata-file dist/containers/{projectName}/container-metadata.json {projectRoot}"
-      }
-    },
-    "container-push": {
-      "dependsOn": ["container"],
-      "executor": "nx:run-commands",
-      "outputs": ["{workspaceRoot}/dist/containers/{projectName}/image.json"],
-      "options": {
-        "cwd": "{workspaceRoot}",
-        "command": "mkdir -p dist/containers/{projectName} && docker buildx build --push --file {projectRoot}/Dockerfile --tag ${NX_DOCKER_REGISTRY:-ghcr.io}/${NX_DOCKER_REPOSITORY:-ethio-connect-et}/{projectName}:${NX_IMAGE_TAG:-${NX_TASK_HASH:-latest}} --metadata-file dist/containers/{projectName}/push-metadata.json {projectRoot} && DIGEST=$(python - <<'P'\nimport json\nfrom pathlib import Path\np=Path('dist/containers/{projectName}/push-metadata.json')\nj=json.loads(p.read_text()) if p.exists() else {}\nprint(j.get('containerimage.digest',''))\nP\n) && printf \"{\\n  \\\"project\\\": \\\"{projectName}\\\",\\n  \\\"image\\\": \\\"%s/%s/{projectName}:%s\\\",\\n  \\\"digest\\\": \\\"%s\\\",\\n  \\\"ref\\\": \\\"%s/%s/{projectName}@%s\\\"\\n}\\n\" \"${NX_DOCKER_REGISTRY:-ghcr.io}\" \"${NX_DOCKER_REPOSITORY:-ethio-connect-et}\" \"${NX_IMAGE_TAG:-${NX_TASK_HASH:-latest}}\" \"$DIGEST\" \"${NX_DOCKER_REGISTRY:-ghcr.io}\" \"${NX_DOCKER_REPOSITORY:-ethio-connect-et}\" \"$DIGEST\" > dist/containers/{projectName}/image.json"
-      }
-    },
     "lint": {
       "executor": "nx:noop"
     },
@@ -55,9 +35,13 @@
       }
     },
     "deploy-metadata": {
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "executor": "nx:run-commands",
-      "outputs": ["{workspaceRoot}/dist/deploy-metadata/{projectName}.json"],
+      "outputs": [
+        "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
+      ],
       "options": {
         "cwd": "{workspaceRoot}",
         "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"{projectName}\",\\n  \"root\": \"{projectRoot}\",\\n  \"type\": \"application\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/{projectName}.json"
@@ -67,12 +51,30 @@
       "executor": "nx:noop"
     },
     "docker:build": {
-      "executor": "nx:noop",
-      "dependsOn": ["container"]
+      "executor": "@nx/docker:build",
+      "dependsOn": [
+        "build",
+        "prune"
+      ]
     },
     "nx-release-publish": {
-      "executor": "nx:noop",
-      "dependsOn": ["docker:build"]
+      "executor": "@nx/docker:release-publish",
+      "dependsOn": [
+        "docker:build"
+      ]
+    },
+    "docker:metadata": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        "nx-release-publish"
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/containers/{projectName}/image.json"
+      ],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "node tools/containers/write-image-manifest.mjs --project {projectName}"
+      }
     }
   }
 }
