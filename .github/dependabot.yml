@@ -138,9 +138,9 @@ updates:
         patterns:
           - docker/*
   - package-ecosystem: docker
-    directory: /
+    directory: /apps/central-hub/central-hub-api
     schedule:
-      interval: monthly
+      interval: weekly
       day: wednesday
       time: 06:00
       timezone: UTC
@@ -150,7 +150,97 @@ updates:
     labels:
       - dependencies
       - docker
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
+    versioning-strategy: increase-if-necessary
+  - package-ecosystem: docker
+    directory: /apps/customer-portal/customer-portal-api
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: 06:00
+      timezone: UTC
+    commit-message:
+      prefix: deps(docker)
+      include: scope
+    labels:
+      - dependencies
+      - docker
+    open-pull-requests-limit: 10
+    versioning-strategy: increase-if-necessary
+  - package-ecosystem: docker
+    directory: /apps/vendor-portal/vendor-api-server
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: 06:00
+      timezone: UTC
+    commit-message:
+      prefix: deps(docker)
+      include: scope
+    labels:
+      - dependencies
+      - docker
+    open-pull-requests-limit: 10
+    versioning-strategy: increase-if-necessary
+  - package-ecosystem: docker
+    directory: /apps/central-hub/central-hub-dashboard
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: 06:00
+      timezone: UTC
+    commit-message:
+      prefix: deps(docker)
+      include: scope
+    labels:
+      - dependencies
+      - docker
+    open-pull-requests-limit: 10
+    versioning-strategy: increase-if-necessary
+  - package-ecosystem: docker
+    directory: /apps/central-hub/public-website
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: 06:00
+      timezone: UTC
+    commit-message:
+      prefix: deps(docker)
+      include: scope
+    labels:
+      - dependencies
+      - docker
+    open-pull-requests-limit: 10
+    versioning-strategy: increase-if-necessary
+  - package-ecosystem: docker
+    directory: /apps/customer-portal/customer-portal-dashboard
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: 06:00
+      timezone: UTC
+    commit-message:
+      prefix: deps(docker)
+      include: scope
+    labels:
+      - dependencies
+      - docker
+    open-pull-requests-limit: 10
+    versioning-strategy: increase-if-necessary
+  - package-ecosystem: docker
+    directory: /apps/vendor-portal/vendor-portal-dashboard
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: 06:00
+      timezone: UTC
+    commit-message:
+      prefix: deps(docker)
+      include: scope
+    labels:
+      - dependencies
+      - docker
+    open-pull-requests-limit: 10
     versioning-strategy: increase-if-necessary
   - package-ecosystem: npm
     directory: /

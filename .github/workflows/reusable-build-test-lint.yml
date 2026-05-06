@@ -57,7 +57,7 @@ jobs:
           echo "NX_BASE=origin/${base_ref}" >> "$GITHUB_ENV"
           echo "NX_HEAD=HEAD" >> "$GITHUB_ENV"
 
-      - uses: nrwl/nx-set-shas@v4
+      - uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1
         if: inputs.event_name != 'pull_request' && inputs.ref_name != 'testing'
 
       - name: Check formatting
