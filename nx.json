@@ -117,7 +117,7 @@
           "name": "docker:run"
         },
         "nx-release-publish": {
-          "imageTag": "${IMAGE_TAG:-$VERSION}"
+          "imageTag": "${VERSION}"
         }
       }
     }
