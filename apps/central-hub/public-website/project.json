@@ -35,9 +35,13 @@
       }
     },
     "deploy-metadata": {
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "executor": "nx:run-commands",
-      "outputs": ["{workspaceRoot}/dist/deploy-metadata/{projectName}.json"],
+      "outputs": [
+        "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
+      ],
       "options": {
         "cwd": "{workspaceRoot}",
         "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"{projectName}\",\\n  \"root\": \"{projectRoot}\",\\n  \"type\": \"application\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/{projectName}.json"
@@ -48,19 +52,34 @@
     },
     "docker:build": {
       "executor": "@nx/docker:build",
-      "dependsOn": ["build", "prune"]
+      "dependsOn": [
+        "build",
+        "prune"
+      ]
     },
     "nx-release-publish": {
       "executor": "@nx/docker:release-publish",
-      "dependsOn": ["docker:build"]
+      "dependsOn": [
+        "docker:build"
+      ]
     },
     "docker:metadata": {
       "executor": "nx:run-commands",
-      "dependsOn": ["nx-release-publish"],
-      "outputs": ["{workspaceRoot}/dist/containers/{projectName}/image.json"],
+      "dependsOn": [
+        "nx-release-publish"
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/containers/{projectName}/image.json"
+      ],
       "options": {
         "cwd": "{workspaceRoot}",
         "command": "node tools/containers/write-image-manifest.mjs --project {projectName}"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm tsc --noEmit -p apps/central-hub/public-website/tsconfig.json"
       }
     }
   }

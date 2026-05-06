@@ -35,10 +35,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
 
-      - name: Download release evidence artifact
+      - name: Download publish image metadata artifact
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
-          name: release-evidence-${{ inputs.version }}-${{ github.run_id }}
+          name: publish-image-metadata-main-${{ github.run_id }}
           path: artifacts
 
       - name: Authenticate with GitHub Container Registry
@@ -57,15 +57,9 @@ jobs:
           version="${{ inputs.version }}"
           docker_version="${{ inputs.docker_version }}"
           short_sha="${{ inputs.short_sha }}"
-          apps_json='[]'
-          while IFS= read -r project; do
-            [[ -z "$project" ]] && continue
-            app="${project#@ethio-connect/}"
-            image_ref="${REGISTRY_PREFIX}/${app}:${docker_version}"
-            digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest}}' | jq -r '.digest')"
-            [[ "$digest" =~ $DIGEST_REGEX ]] || { echo "::error::Invalid digest for ${app}: ${digest}"; exit 1; }
-            apps_json="$(jq -c --arg app "$app" --arg digest "$digest" '. + [{app:$app,digest:$digest}]' <<<"$apps_json")"
-          done < <(resolve_apps_with_docker_target)
+          metadata_path="$(find artifacts -type f -name 'publish-image-metadata-*.json' | head -n 1)"
+          [[ -n "$metadata_path" ]] || { echo "::error::publish-image-metadata artifact not found"; exit 1; }
+          apps_json="$(jq -c '[.[] | {app:.app,digest:.digest}]' "$metadata_path")"
 
           jq -n \
             --arg version "$version" \

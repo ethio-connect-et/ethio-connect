@@ -8,14 +8,18 @@
     "scope:vendor-portal",
     "type:app"
   ],
-  "implicitDependencies": ["@ethio-connect/vendor-api-server"],
+  "implicitDependencies": [
+    "@ethio-connect/vendor-api-server"
+  ],
   "metadata": {
     "targetContractProfile": "e2e"
   },
   "targets": {
     "e2e": {
       "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{e2eProjectRoot}"],
+      "outputs": [
+        "{workspaceRoot}/coverage/{e2eProjectRoot}"
+      ],
       "options": {
         "jestConfig": "apps/vendor-portal/vendor-api-server-e2e/jest.config.cts",
         "passWithNoTests": true
@@ -35,12 +39,22 @@
       "executor": "nx:noop"
     },
     "deploy-metadata": {
-      "dependsOn": ["e2e"],
+      "dependsOn": [
+        "e2e"
+      ],
       "executor": "nx:run-commands",
-      "outputs": ["{workspaceRoot}/dist/deploy-metadata/{projectName}.json"],
+      "outputs": [
+        "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
+      ],
       "options": {
         "cwd": "{workspaceRoot}",
         "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"{projectName}\",\\n  \"root\": \"{projectRoot}\",\\n  \"type\": \"e2e\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/{projectName}.json"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm tsc --noEmit -p apps/vendor-portal/vendor-api-server-e2e/tsconfig.json"
       }
     }
   }

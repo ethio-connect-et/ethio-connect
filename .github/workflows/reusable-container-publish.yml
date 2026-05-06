@@ -78,13 +78,11 @@ jobs:
             canonical_release_version="0.0.0-${branch_label}.${short_sha}"
             image_tag="${canonical_release_version}"
           fi
-          build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           {
             echo "image_tag=${image_tag}"
             echo "short_sha=${short_sha}"
             echo "branch_label=${branch_label}"
             echo "canonical_release_version=${canonical_release_version}"
-            echo "build_date=${build_date}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
@@ -108,7 +106,6 @@ jobs:
           BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
           BUILD_NUMBER: ${{ github.run_number }}
           COMMIT_SHA: ${{ github.sha }}
-          BUILD_DATE: ${{ steps.publish-context.outputs.build_date }}
           VERSION: ${{ steps.publish-context.outputs.image_tag }}
           NX_IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_TAG: ${{ steps.publish-context.outputs.image_tag }}
@@ -129,6 +126,38 @@ jobs:
           [[ "$IMAGE_TAG" != "latest" ]] || { echo "::error::IMAGE_TAG must not be latest"; exit 1; }
           [[ "$BRANCH_TAG" != "latest" ]] || { echo "::error::BRANCH_TAG must not be latest"; exit 1; }
           pnpm nx run-many -t docker:build --projects "$projects" --outputStyle=static
+
+      - name: Build immutable image metadata
+        id: image-metadata
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
+          CANONICAL_RELEASE_VERSION: ${{ steps.publish-context.outputs.canonical_release_version }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          metadata_path="artifacts/publish-image-metadata-${{ inputs.ref_name }}-${{ github.run_id }}.json"
+          jq -n '[]' > "$metadata_path"
+
+          while IFS= read -r project; do
+            [[ -z "$project" ]] && continue
+            app="${project#@ethio-connect/}"
+            image_ref="ghcr.io/ethio-connect-et/${app}:${IMAGE_TAG}"
+            digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest}}' | jq -r '.digest')"
+            immutable_ref="ghcr.io/ethio-connect-et/${app}@${digest}"
+            record="$(jq -nc --arg project "$project" --arg app "$app" --arg image_ref "$image_ref" --arg immutable_ref "$immutable_ref" --arg digest "$digest" --arg source_sha "${GITHUB_SHA}" --arg release_version "$CANONICAL_RELEASE_VERSION" '{project:$project,app:$app,image_ref:$image_ref,immutable_ref:$immutable_ref,digest:$digest,source_sha:$source_sha,release_version:$release_version}')"
+            jq -c --argjson record "$record" '. + [$record]' "$metadata_path" > "$metadata_path.tmp" && mv "$metadata_path.tmp" "$metadata_path"
+          done < <(jq -r '.[]' <<< '${{ inputs.projects_json }}')
+
+          jq -e 'type=="array" and all(.[]; has("project") and has("immutable_ref") and has("digest") and (.digest|test("^sha256:[0-9a-f]{64}$")))' "$metadata_path" >/dev/null
+          echo "path=$metadata_path" >> "$GITHUB_OUTPUT"
+
+      - name: Upload publish image metadata artifact
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: publish-image-metadata-${{ inputs.ref_name }}-${{ github.run_id }}
+          path: ${{ steps.image-metadata.outputs.path }}
+          retention-days: 14
 
       - name: Upload docker lane skip marker
         if: always()
@@ -311,7 +340,6 @@ jobs:
           BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
           BUILD_NUMBER: ${{ github.run_number }}
           COMMIT_SHA: ${{ github.sha }}
-          BUILD_DATE: ${{ steps.publish-context.outputs.build_date }}
           VERSION: ${{ steps.publish-context.outputs.image_tag }}
           NX_IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_TAG: ${{ steps.publish-context.outputs.image_tag }}
@@ -366,34 +394,3 @@ jobs:
             echo "|---|---|"
             pnpm nx show projects --withTarget nx-release-publish | awk '/^@ethio-connect\// { printf("| `%s` | `%s` |\n", $0, "'"$image_tag"'") }'
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Create publish manifest artifact
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts
-          image_tag="${{ steps.publish-context.outputs.image_tag }}"
-          manifest_path="artifacts/publish-manifest-${{ inputs.ref_name }}-${{ github.run_id }}.json"
-          while IFS= read -r project; do
-            app="${project#@ethio-connect/}"
-            image_ref="ghcr.io/ethio-connect-et/${app}:${image_tag}"
-            digest="$(docker buildx imagetools inspect "$image_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
-            jq -nc \
-              --arg project "$project" \
-              --arg app "$app" \
-              --arg image_ref "$image_ref" \
-              --arg digest "$digest" \
-              --arg source_sha "${GITHUB_SHA}" \
-              --arg tag "$image_tag" \
-              --arg short_sha "${{ steps.publish-context.outputs.short_sha }}" \
-              --arg canonical_release_version "${{ steps.publish-context.outputs.canonical_release_version }}" \
-              --arg artifact_run_id "${GITHUB_RUN_ID}" \
-              '{project:$project,app:$app,image_ref:$image_ref,digest:$digest,source_sha:$source_sha,tag:$tag,short_sha:$short_sha,canonical_release_version:$canonical_release_version,artifact_run_id:$artifact_run_id,attestation_status:"not-required"}'
-          done < <(jq -r '.[]' <<< '${{ inputs.projects_json }}') | jq -sc . > "$manifest_path"
-
-      - name: Upload publish manifest artifact
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
-        with:
-          name: publish-manifest-${{ inputs.ref_name }}-${{ github.run_id }}
-          path: artifacts/publish-manifest-${{ inputs.ref_name }}-${{ github.run_id }}.json
-          retention-days: 30

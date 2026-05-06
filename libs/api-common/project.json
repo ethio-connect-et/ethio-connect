@@ -45,6 +45,24 @@
     "nx-release-publish": {
       "executor": "nx:noop",
       "dependsOn": ["package"]
+    },
+    "format:check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm nx format:check --projects={projectName}"
+      }
+    },
+    "format:write": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm nx format:write --projects={projectName}"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm tsc --noEmit -p libs/api-common/tsconfig.json"
+      }
     }
   }
 }
