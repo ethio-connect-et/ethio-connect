@@ -110,9 +110,11 @@ jobs:
           NX_IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_TAG: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_VERSION: ${{ steps.publish-context.outputs.image_tag }}
+          NX_DOCKER_IMAGE_REF: ${{ format('{0}:{1}', 'ghcr.io/ethio-connect-et', steps.publish-context.outputs.image_tag) }}
           NX_DOCKER_BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
           NX_DOCKER_VERSION_SCHEME: production
           RELEASE_VERSION: ${{ steps.publish-context.outputs.canonical_release_version }}
+          CANONICAL_RELEASE_VERSION: ${{ steps.publish-context.outputs.canonical_release_version }}
         run: |
           set -euo pipefail
           projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
@@ -126,6 +128,38 @@ jobs:
           [[ "$IMAGE_TAG" != "latest" ]] || { echo "::error::IMAGE_TAG must not be latest"; exit 1; }
           [[ "$BRANCH_TAG" != "latest" ]] || { echo "::error::BRANCH_TAG must not be latest"; exit 1; }
           pnpm nx run-many -t docker:build --projects "$projects" --outputStyle=static
+
+      - name: Summarize build stage success
+        if: ${{ success() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Build Stage"
+            echo ""
+            echo "- Target: \`docker:build\`"
+            echo "- Projects input: \`${{ inputs.projects_json }}\`"
+            echo "- Image tag: \`${{ steps.publish-context.outputs.image_tag }}\`"
+            echo "- Canonical release version: \`${{ steps.publish-context.outputs.canonical_release_version }}\`"
+            echo ""
+            echo "✅ Build stage completed successfully."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Summarize build stage failure
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Build Stage"
+            echo ""
+            echo "- Target: \`docker:build\`"
+            echo "- Projects input: \`${{ inputs.projects_json }}\`"
+            echo "- Image tag: \`${{ steps.publish-context.outputs.image_tag }}\`"
+            echo "- Canonical release version: \`${{ steps.publish-context.outputs.canonical_release_version }}\`"
+            echo ""
+            echo "❌ Build stage failed."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build immutable image metadata
         id: image-metadata
@@ -374,7 +408,8 @@ jobs:
           echo "scan_gate_status=passed" >> "$GITHUB_OUTPUT"
           echo "::notice::Security gate PASSED — no CRITICAL or HIGH vulnerabilities detected."
 
-      - name: Initialize release version for Docker
+      - name: Initialize release version for Docker (Publish Stage)
+        if: ${{ inputs.event_name != 'pull_request' && (inputs.ref_name == 'testing' || inputs.ref_name == 'staging' || inputs.ref_name == 'main') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -392,7 +427,8 @@ jobs:
             echo "Created tmp/$root/.docker-version with tag ${image_tag}"
           done < <(pnpm nx show projects --withTarget nx-release-publish --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
 
-      - name: Publish images (Stage B)
+      - name: Publish images (Publish Stage)
+        if: ${{ inputs.event_name != 'pull_request' && (inputs.ref_name == 'testing' || inputs.ref_name == 'staging' || inputs.ref_name == 'main') }}
         shell: bash
         env:
           IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
@@ -403,9 +439,11 @@ jobs:
           NX_IMAGE_TAG: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_TAG: ${{ steps.publish-context.outputs.image_tag }}
           NX_DOCKER_VERSION: ${{ steps.publish-context.outputs.image_tag }}
+          NX_DOCKER_IMAGE_REF: ${{ format('{0}:{1}', 'ghcr.io/ethio-connect-et', steps.publish-context.outputs.image_tag) }}
           NX_DOCKER_BRANCH_TAG: ${{ steps.publish-context.outputs.branch_label }}
           NX_DOCKER_VERSION_SCHEME: production
           RELEASE_VERSION: ${{ steps.publish-context.outputs.canonical_release_version }}
+          CANONICAL_RELEASE_VERSION: ${{ steps.publish-context.outputs.canonical_release_version }}
         run: |
           set -euo pipefail
           projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
@@ -420,7 +458,8 @@ jobs:
           path: artifacts/trivy/reports
           retention-days: 30
 
-      - name: Verify published tags resolve to immutable manifests
+      - name: Verify published tags resolve to immutable manifests (Publish Stage)
+        if: ${{ inputs.event_name != 'pull_request' && (inputs.ref_name == 'testing' || inputs.ref_name == 'staging' || inputs.ref_name == 'main') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -430,15 +469,31 @@ jobs:
             --primary-tag '${{ steps.publish-context.outputs.image_tag }}' \
             --secondary-tag '${{ steps.publish-context.outputs.branch_label }}'
 
-      - name: Summarize published images
+      - name: Summarize publish stage
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
           image_tag="${{ steps.publish-context.outputs.image_tag }}"
+          should_publish="false"
+          if [[ "${{ inputs.event_name }}" != "pull_request" && ( "${{ inputs.ref_name }}" == "testing" || "${{ inputs.ref_name }}" == "staging" || "${{ inputs.ref_name }}" == "main" ) ]]; then
+            should_publish="true"
+          fi
           {
-            echo "## Published Images"
+            echo "## Publish Stage"
             echo ""
-            echo "| Project | Image Tag |"
-            echo "|---|---|"
-            pnpm nx show projects --withTarget nx-release-publish | awk '/^@ethio-connect\// { printf("| `%s` | `%s` |\n", $0, "'"$image_tag"'") }'
+            echo "- Target: \`nx-release-publish\`"
+            echo "- Event: \`${{ inputs.event_name }}\`"
+            echo "- Branch: \`${{ inputs.ref_name }}\`"
+            echo "- Trusted branch gate (\`testing\`, \`staging\`, \`main\` + non-PR): \`${should_publish}\`"
+            echo ""
+            if [[ "${should_publish}" == "true" ]]; then
+              echo "✅ Publish stage completed successfully."
+              echo ""
+              echo "| Project | Image Tag |"
+              echo "|---|---|"
+              pnpm nx show projects --withTarget nx-release-publish | awk '/^@ethio-connect\// { printf("| `%s` | `%s` |\n", $0, "'"$image_tag"'") }'
+            else
+              echo "⚠️ Publish stage skipped by trust gate."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
