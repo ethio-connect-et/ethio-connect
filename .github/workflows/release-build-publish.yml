@@ -147,6 +147,12 @@ jobs:
             echo "Created tmp/$root/.docker-version with tag ${docker_version}"
           done < <(pnpm nx show projects --projects 'tag:release:publish' --json | jq -r '.[] | select(startswith("@ethio-connect/"))')
 
+      # Pinned maintained installer for Trivy binary (supply-chain hardening).
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@3e7ba765ad86a8a2d93fa95ac0f956935f8059a7 # v0.2.4
+        with:
+          trivy-version: v0.65.0
+
       - name: Build and publish docker images via Nx targets
         id: publish-targets
         shell: bash
@@ -176,14 +182,7 @@ jobs:
 
           mkdir -p artifacts/trivy/reports
 
-          # Install Trivy with explicit version pinning and checksum verification.
-          # Provenance: aquasecurity/trivy GitHub release artifact.
-          TRIVY_VERSION="0.65.0"
-          TRIVY_DEB="trivy_${TRIVY_VERSION}_Linux-64bit.deb"
-          TRIVY_SHA256="35f0b74ebf63ce8b1f48f15133634cb6ec67f649edb2677a334e2fb31f57ec5f"
-          curl -fsSLo "${TRIVY_DEB}" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${TRIVY_DEB}"
-          echo "${TRIVY_SHA256}  ${TRIVY_DEB}" | sha256sum --check --strict
-          sudo dpkg -i "${TRIVY_DEB}"
+          trivy --version
 
           failed=0
           total_critical=0

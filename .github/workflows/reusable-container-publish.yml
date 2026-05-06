@@ -157,6 +157,12 @@ jobs:
           path: ci-metrics-docker-build.json
           if-no-files-found: ignore
 
+      # Pinned maintained installer for Trivy binary (supply-chain hardening).
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@3e7ba765ad86a8a2d93fa95ac0f956935f8059a7 # v0.2.4
+        with:
+          trivy-version: v0.65.0
+
       - name: Security scan built container images (Trivy gate)
         id: scan-gate
         shell: bash
@@ -173,18 +179,7 @@ jobs:
             exit 0
           }
 
-          # ── Install Trivy (pinned + checksum verified provenance) ─────────
-          # Provenance: release artifact from aquasecurity/trivy GitHub releases.
-          # We pin an explicit version and verify SHA256 before installing.
-          echo "::group::Install Trivy"
-          TRIVY_VERSION="0.65.0"
-          TRIVY_DEB="trivy_${TRIVY_VERSION}_Linux-64bit.deb"
-          TRIVY_SHA256="35f0b74ebf63ce8b1f48f15133634cb6ec67f649edb2677a334e2fb31f57ec5f"
-
-          curl -fsSLo "${TRIVY_DEB}" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${TRIVY_DEB}"
-          echo "${TRIVY_SHA256}  ${TRIVY_DEB}" | sha256sum --check --strict
-          sudo dpkg -i "${TRIVY_DEB}"
-
+          echo "::group::Trivy version"
           trivy --version
           echo "::endgroup::"
 
