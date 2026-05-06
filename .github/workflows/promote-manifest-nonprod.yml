@@ -90,7 +90,7 @@ jobs:
 
           jq -e --arg sha "$GITHUB_SHA" '
             type=="array" and length>0 and
-            all(.[]; has("project") and has("app") and has("image_ref") and has("source_sha") and has("tag")) and
+            all(.[]; has("project") and has("app") and has("image_ref") and has("source_sha") and has("tag") and has("short_sha")) and
             all(.[]; .source_sha == $sha)
           ' "$manifest_path" >/dev/null
 
@@ -132,13 +132,16 @@ jobs:
             image_ref="$(jq -r '.image_ref' <<< "$item")"
             digest="$(jq -r '.digest // empty' <<< "$item")"
             source_sha="$(jq -r '.source_sha' <<< "$item")"
+            canonical_release_version="$(jq -r '.canonical_release_version // empty' <<< "$item")"
             attestation_status="$(jq -r '.attestation_status // "not-required"' <<< "$item")"
 
             [[ "$source_sha" == "$GITHUB_SHA" ]] || { echo "::error::source_sha mismatch for ${app}"; exit 1; }
             [[ "$digest" =~ $DIGEST_REGEX ]] || { echo "::error::Invalid immutable digest for ${app}: ${digest}"; exit 1; }
-            payload="$(build_dispatch_payload "$app" "$digest" "$target_env")"
+            immutable_ref="ghcr.io/ethio-connect-et/${app}@${digest}"
+            validate_immutable_image_reference "$immutable_ref" "$digest"
+            payload="$(build_dispatch_payload "$app" "$digest" "$target_env" "$GITHUB_REPOSITORY" "$GITHUB_REF" "$source_sha" "$GITHUB_RUN_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "" "" "$canonical_release_version")"
             dispatch_with_retry "$payload"
-            echo "| \`${app}\` | \`${{ github.ref_name }}\` | \`${image_ref}\` | \`${digest}\` | \`${target_env}\` | \`${artifact_run_id}\` | \`${attestation_status}\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| \`${app}\` | \`${{ github.ref_name }}\` | \`${immutable_ref}\` | \`${digest}\` | \`${target_env}\` | \`${artifact_run_id}\` | \`${attestation_status}\` |" >> "$GITHUB_STEP_SUMMARY"
           done < <(jq -c '.[]' "$manifest_path")
 
       - name: Create non-prod promotion evidence artifact

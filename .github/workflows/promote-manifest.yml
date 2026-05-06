@@ -120,7 +120,7 @@ jobs:
               --arg cert_leaf "$(base64 -w0 signed-payload.crt)" \
               '{signature_algorithm:$signature_algorithm,key_id:$key_id,cert_chain:[$cert_leaf],signature:$signature,canonical_payload:$canonical_payload}')"
 
-            payload="$(build_dispatch_payload "$app" "$digest" "production" "$GITHUB_REPOSITORY" "$GITHUB_REF" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$signed_metadata" "$signed_payload")"
+            payload="$(build_dispatch_payload "$app" "$digest" "production" "$GITHUB_REPOSITORY" "$GITHUB_REF" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$signed_metadata" "$signed_payload" "$release_version")"
             gh api repos/ethio-connect-et/ethio-connect-manifest/dispatches \
               -H "Accept: application/vnd.github+json" \
               --method POST \

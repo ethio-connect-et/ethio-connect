@@ -57,6 +57,32 @@ validate_dispatch_preconditions() {
   }
 }
 
+validate_immutable_image_reference() {
+  local image_ref="$1"
+  local digest="$2"
+
+  [[ "$digest" =~ $DIGEST_REGEX ]] || {
+    echo "Digest must be immutable and sha256-backed. Got: ${digest}" >&2
+    return 1
+  }
+
+  [[ "$image_ref" == *@sha256:* ]] || {
+    echo "Mutable-only image reference is not allowed for promotion: ${image_ref}" >&2
+    return 1
+  }
+
+  local image_ref_digest="${image_ref##*@}"
+  [[ "$image_ref_digest" =~ $DIGEST_REGEX ]] || {
+    echo "Image reference must include a valid digest suffix: ${image_ref}" >&2
+    return 1
+  }
+
+  [[ "$image_ref_digest" == "$digest" ]] || {
+    echo "Image reference digest mismatch. image_ref=${image_ref_digest} payload_digest=${digest}" >&2
+    return 1
+  }
+}
+
 build_dispatch_payload() {
   local app="$1"
   local digest="$2"
@@ -64,14 +90,18 @@ build_dispatch_payload() {
   local source_repo="${4:-${GITHUB_REPOSITORY:-ethio-connect-et/ethio-connect}}"
   local source_ref="${5:-${GITHUB_REF:-refs/heads/main}}"
   local source_commit="${6:-${GITHUB_SHA:-$(git rev-parse HEAD)}}"
+  local source_sha="$source_commit"
   local release_id="${7:-${GITHUB_RUN_ID:-123456789}}"
   local release_created_at="${8:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+  local canonical_release_version="${11:-}"
   local signed_metadata="${9:-}"
   
   local default_attestation
   default_attestation="$(jq -nc \
     --arg digest "$digest" \
     --arg source_commit "$source_commit" \
+    --arg source_sha "$source_sha" \
+    --arg canonical_release_version "$canonical_release_version" \
     --arg source_ref "$source_ref" \
     --arg release_id "$release_id" \
     --arg release_created_at "$release_created_at" \
@@ -117,8 +147,10 @@ build_dispatch_payload() {
         source_repo:$source_repo,
         source_ref:$source_ref,
         source_commit:$source_commit,
+        source_sha:$source_sha,
         release_id:$release_id,
         release_created_at:$release_created_at,
+        canonical_release_version:($canonical_release_version | select(length>0)),
         promotion_key:$promotion_key,
         signed_metadata:$signed_metadata,
         attestation_bundle:$attestation_bundle
