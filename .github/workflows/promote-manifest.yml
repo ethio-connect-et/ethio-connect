@@ -22,7 +22,7 @@ env:
 
 jobs:
   promote:
-    runs-on: self-host-runner
+    runs-on: self-hosted
     timeout-minutes: 15
     permissions:
       contents: read

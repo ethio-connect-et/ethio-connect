@@ -32,7 +32,7 @@ env:
 jobs:
   quality_gate:
     name: Quality · Gate
-    runs-on: self-host-runner
+    runs-on: self-hosted
     timeout-minutes: 35
     permissions:
       actions: read
