@@ -9,7 +9,9 @@
     "scope:central-hub",
     "type:app"
   ],
-  "implicitDependencies": ["@ethio-connect/central-hub-dashboard"],
+  "implicitDependencies": [
+    "@ethio-connect/central-hub-dashboard"
+  ],
   "metadata": {
     "targetContractProfile": "e2e"
   },
@@ -27,12 +29,34 @@
       "executor": "nx:noop"
     },
     "deploy-metadata": {
-      "dependsOn": ["e2e"],
+      "dependsOn": [
+        "e2e"
+      ],
       "executor": "nx:run-commands",
-      "outputs": ["{workspaceRoot}/dist/deploy-metadata/{projectName}.json"],
+      "outputs": [
+        "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
+      ],
       "options": {
         "cwd": "{workspaceRoot}",
         "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"{projectName}\",\\n  \"root\": \"{projectRoot}\",\\n  \"type\": \"e2e\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/{projectName}.json"
+      }
+    },
+    "format:check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm nx format:check --projects={projectName}"
+      }
+    },
+    "format:write": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm nx format:write --projects={projectName}"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm tsc --noEmit -p apps/central-hub/central-hub-dashboard-e2e/tsconfig.json"
       }
     }
   }
