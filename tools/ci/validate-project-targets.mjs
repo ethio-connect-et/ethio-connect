@@ -8,8 +8,6 @@ const DEPLOY_TARGETS = ['docker:build', 'nx-release-publish'];
 const ARCHETYPES = {
   deployableApp: {
     required: [
-      'format:check',
-      'format:write',
       'typecheck',
       'build',
       'lint',
@@ -21,8 +19,6 @@ const ARCHETYPES = {
   },
   e2eApp: {
     required: [
-      'format:check',
-      'format:write',
       'typecheck',
       'build',
       'lint',
@@ -32,7 +28,7 @@ const ARCHETYPES = {
     forbidden: DEPLOY_TARGETS,
   },
   sharedLib: {
-    required: ['format:check', 'format:write', 'typecheck', 'build'],
+    required: ['typecheck', 'build'],
     forbidden: DEPLOY_TARGETS,
   },
 };
