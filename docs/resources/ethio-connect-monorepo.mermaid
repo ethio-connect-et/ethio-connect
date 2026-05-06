@@ -7,6 +7,7 @@ flowchart TD
     classDef security fill:#ffebee,stroke:#c62828,stroke-width:3px;
     classDef cache fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,stroke-dasharray: 3 3;
     classDef artifact fill:#ede7f6,stroke:#512da8,stroke-width:2px;
+    classDef gitops fill:#e1f5fe,stroke:#01579b,stroke-width:3px;
 
     subgraph Product["Ethio Connect Product Platform"]
         direction TB
@@ -14,15 +15,15 @@ flowchart TD
         subgraph Repository["Repository: ethio-connect | Workspace package: @ethio-connect/source"]
             direction LR
 
-            subgraph Apps["Applications"]
+            subgraph Apps["Applications (apps/**)"]
                 direction TB
-                VendorDash["@ethio-connect/vendor-portal-dashboard"]:::app
-                VendorApi["@ethio-connect/vendor-api-server"]:::app
-                CustomerDash["@ethio-connect/customer-portal-dashboard"]:::app
-                CustomerApi["@ethio-connect/customer-portal-api"]:::app
-                HubDash["@ethio-connect/central-hub-dashboard"]:::app
-                HubPublic["@ethio-connect/public-website"]:::app
-                HubApi["@ethio-connect/central-hub-api"]:::app
+                VendorDash["apps/vendor-portal/vendor-portal-dashboard"]:::app
+                VendorApi["apps/vendor-portal/vendor-api-server"]:::app
+                CustomerDash["apps/customer-portal/customer-portal-dashboard"]:::app
+                CustomerApi["apps/customer-portal/customer-portal-api"]:::app
+                HubDash["apps/central-hub/central-hub-dashboard"]:::app
+                PublicWebsite["apps/central-hub/public-website"]:::app
+                HubApi["apps/central-hub/central-hub-api"]:::app
             end
 
             subgraph Libs["Shared Libraries"]
@@ -35,54 +36,29 @@ flowchart TD
             end
         end
 
-        subgraph CI["CI Boundary - GitHub Actions"]
-            direction TB
-            
-            subgraph CacheLane["Cache Lanes"]
-                direction LR
-                PnpmCache["pnpm cache\npnpm-lock.yaml"]:::cache
-                NxCloudCache["Nx Cloud cache\naffected task results"]:::cache
-            end
-
-            subgraph Build["Build - Quality Reusable Workflow"]
-                direction TB
-                CIWorkflow["ci.yml"]:::ci
-                QualityWorkflow["reusable-build-test-lint.yml"]:::ci
-                NxLint["Nx target: lint"]:::ci
-                NxTest["Nx target: test"]:::ci
-                NxBuild["Nx target: build"]:::ci
-            end
-
-            subgraph Publish["Publish - Container Reusable Workflow"]
-                direction TB
-                ContainerWorkflow["reusable-container-publish.yml"]:::ci
-                DockerBuild["Nx target: docker:build"]:::ci
-                NxReleasePublish["Nx target: nx-release-publish"]:::ci
-                GHCR["GHCR\ncontainer images by immutable digest"]:::infra
-                PublishManifest["publish-manifest artifact\nimage_ref + digest + source_sha"]:::artifact
-            end
-
-            subgraph Attest["Attest - Release Evidence"]
-                direction TB
-                ReleaseWorkflow["release.yml\nrelease orchestrator"]:::ci
-                ReleaseBuildPublish["release-build-publish.yml"]:::ci
-                ReleaseAttestation["release-attestation.yml"]:::security
-                PromotionAttestation["promotion-attestation artifact\nversion + docker_version + app digests"]:::artifact
-            end
-
-            subgraph Promote["Promote - Manifest Dispatch"]
-                direction TB
-                PromoteManifest["promote-manifest.yml"]:::ci
-                SignedDispatch["signed repository_dispatch payload"]:::security
-                ManifestRepo["ethio-connect-manifest\nGitOps manifest repository"]:::infra
-            end
+        subgraph CICD["CI/CD lifecycle"]
+            direction LR
+            GitPush["git push"]:::ci
+            NxAffected["nx affected\nlint/test/build"]:::ci
+            DockerBuild["nx docker:build"]:::ci
+            DigestPublish["digest publish\n(GHCR immutable digest)"]:::ci
+            ManifestUpdate["manifest repo update\n(gitops/argocd/envs/*)"]:::gitops
+            ArgoSync["ArgoCD sync"]:::infra
         end
 
-        subgraph Deploy["Deploy - GitOps Runtime"]
-            direction LR
-            ArgoCD["ArgoCD"]:::infra
-            NonProd["testing / staging deployments"]:::infra
-            Production["production deployments"]:::infra
+        subgraph GitOps["GitOps topology"]
+            direction TB
+            AppOfApps["gitops/argocd/apps\nApp-of-Apps root"]:::gitops
+            Tenants["gitops/argocd/tenants\ntenant ownership"]:::gitops
+            Workloads["gitops/argocd/workloads\nworkload ownership"]:::gitops
+            Envs["gitops/argocd/envs\nenvironment overlays"]:::gitops
+        end
+
+        subgraph Security["Security overlays"]
+            direction TB
+            OIDC["OIDC trust boundary\nGitHub Actions -> cloud identity"]:::security
+            VerifySignatures["signature verification\ncosign/attestation gate"]:::security
+            SecretFlow["secret operator flow\ngitops/argocd/secrets -> cluster secrets"]:::security
         end
     end
 
@@ -92,8 +68,8 @@ flowchart TD
     CustomerDash --> UiComponents
     HubDash --> FrontendFeatures
     HubDash --> UiComponents
-    HubPublic --> FrontendFeatures
-    HubPublic --> UiComponents
+    PublicWebsite --> FrontendFeatures
+    PublicWebsite --> UiComponents
     VendorApi --> ApiCommon
     VendorApi --> ApiFeatures
     CustomerApi --> ApiCommon
@@ -103,33 +79,16 @@ flowchart TD
     ApiFeatures --> ProductLib
     FrontendFeatures --> ProductLib
 
-    CIWorkflow --> QualityWorkflow
-    QualityWorkflow --> NxLint
-    QualityWorkflow --> NxTest
-    QualityWorkflow --> NxBuild
-    PnpmCache -.-> QualityWorkflow
-    NxCloudCache -.-> NxLint
-    NxCloudCache -.-> NxTest
-    NxCloudCache -.-> NxBuild
+    GitPush --> NxAffected --> DockerBuild --> DigestPublish --> ManifestUpdate --> ArgoSync
 
-    CIWorkflow --> ContainerWorkflow
-    ContainerWorkflow --> DockerBuild
-    DockerBuild --> GHCR
-    GHCR --> NxReleasePublish
-    NxReleasePublish --> PublishManifest
-    PnpmCache -.-> ContainerWorkflow
-    NxCloudCache -.-> DockerBuild
-    NxCloudCache -.-> NxReleasePublish
+    DigestPublish --> AppOfApps
+    AppOfApps --> Tenants
+    AppOfApps --> Workloads
+    Tenants --> Envs
+    Workloads --> Envs
+    Envs --> ArgoSync
 
-    ReleaseWorkflow --> ReleaseBuildPublish
-    ReleaseBuildPublish --> ReleaseAttestation
-    ReleaseAttestation --> PromotionAttestation
-    ReleaseWorkflow --> PromoteManifest
-    PromotionAttestation --> PromoteManifest
-    GHCR --> PromoteManifest
-    PromoteManifest --> SignedDispatch
-    SignedDispatch --> ManifestRepo
-    PublishManifest --> ManifestRepo
-    ManifestRepo --> ArgoCD
-    ArgoCD --> NonProd
-    ArgoCD --> Production
+    OIDC --> NxAffected
+    OIDC --> DockerBuild
+    VerifySignatures --> ManifestUpdate
+    SecretFlow --> ArgoSync

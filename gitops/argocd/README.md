@@ -108,7 +108,6 @@ Use digest pinning for rollback-safe, reproducible releases.
 - Production entries in `ec-tenants-appset.yaml` are set up for stricter manual promotion workflows.
 - Keep tenant directories and workload overlays aligned with ApplicationSet paths.
 
-
 ## Secret Management Policy (Explicit)
 
 ### Hard requirements
@@ -140,10 +139,10 @@ Secret delivery manifests are provided under `gitops/argocd/secrets/`:
 
 ### Environment-specific mapping
 
-| Environment | Overlay path | Namespace target | Remote key prefix |
-|---|---|---|---|
-| testing | `secrets/overlays/testing` | `ec-runtime-testing` | `/ethio-connect/testing/` |
-| staging | `secrets/overlays/staging` | `ec-runtime-staging` | `/ethio-connect/staging/` |
-| production | `secrets/overlays/production` | `ec-runtime-production` | `/ethio-connect/production/` |
+| Environment | Overlay path                  | Namespace target        | Remote key prefix            |
+| ----------- | ----------------------------- | ----------------------- | ---------------------------- |
+| testing     | `secrets/overlays/testing`    | `ec-runtime-testing`    | `/ethio-connect/testing/`    |
+| staging     | `secrets/overlays/staging`    | `ec-runtime-staging`    | `/ethio-connect/staging/`    |
+| production  | `secrets/overlays/production` | `ec-runtime-production` | `/ethio-connect/production/` |
 
 Each environment `kustomization.yaml` now includes its secret overlay so Argo CD reconciles secret mappings with the rest of the environment bundle.

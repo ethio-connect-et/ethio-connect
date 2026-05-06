@@ -6,106 +6,92 @@ flowchart TD
     classDef gitops fill:#e1f5fe,stroke:#01579b,stroke-width:3px;
     classDef security fill:#ffebee,stroke:#c62828,stroke-width:3px;
     classDef artifact fill:#ede7f6,stroke:#512da8,stroke-width:2px;
-    classDef cache fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,stroke-dasharray: 3 3;
+    classDef storage fill:#fffde7,stroke:#f9a825,stroke-width:3px;
 
-    subgraph Source["CI Boundary - ethio-connect repository"]
-        direction TB
-
-        subgraph Build["Build"]
-            direction TB
-            CIWorkflow["ci.yml"]:::ci
-            QualityWorkflow["reusable-build-test-lint.yml"]:::ci
-            QualityTargets["Nx targets\nlint / test / build"]:::ci
-            PnpmCache["pnpm cache"]:::cache
-            NxCloudCache["Nx Cloud cache"]:::cache
-        end
-
-        subgraph Publish["Publish"]
-            direction TB
-            ContainerWorkflow["reusable-container-publish.yml"]:::ci
-            DockerTarget["Nx target: docker:build"]:::ci
-            PublishTarget["Nx target: nx-release-publish"]:::ci
-            GHCR["GHCR\nghcr.io/ethio-connect-et/*"]:::infra
-            DigestResolve["deterministic digest resolution\ndocker buildx imagetools inspect"]:::security
-            PublishManifest["publish-manifest artifact\napp + image_ref + sha256 digest"]:::artifact
-        end
-
-        subgraph Attest["Attest"]
-            direction TB
-            ReleaseWorkflow["release.yml"]:::ci
-            ReleaseBuildPublish["release-build-publish.yml"]:::ci
-            ReleaseAttestation["release-attestation.yml"]:::security
-            PromotionAttestation["promotion-attestation artifact"]:::artifact
-            VerifyBeforeProd["signature and attestation verification\ncosign + digest validation"]:::security
-        end
-
-        subgraph Promote["Promote"]
-            direction TB
-            NonProdPromote["promote-manifest-nonprod.yml\ntesting / staging"]:::ci
-            ProdPromote["promote-manifest.yml\nproduction"]:::ci
-            NonProdDispatch["repository_dispatch\napp + digest + target_env"]:::gitops
-            ProdSignedDispatch["signed repository_dispatch\napp + digest + provenance"]:::security
-        end
+    subgraph CI["CI lifecycle - ethio-connect repository"]
+        direction LR
+        Push["git push"]:::ci
+        Affected["nx affected"]:::ci
+        DockerBuild["docker:build"]:::ci
+        DigestPublish["digest publish\nGHCR sha256 refs"]:::artifact
+        ManifestUpdate["manifest repo update\ngitops/argocd/envs/*"]:::gitops
+        ArgoSync["ArgoCD sync"]:::infra
     end
 
-    subgraph Manifest["Infra Boundary - ethio-connect-manifest repository"]
+    subgraph Security["Supply-chain & identity security"]
         direction TB
-        ManifestDispatch["repository_dispatch receiver"]:::gitops
-        TestingOverlay["testing manifests"]:::gitops
-        StagingOverlay["staging manifests"]:::gitops
-        ProductionOverlay["production manifests"]:::gitops
-        ArgoCD["ArgoCD"]:::gitops
+        OIDC["OIDC trust boundary\nGitHub Actions -> cloud OIDC provider"]:::security
+        SigVerify["signature verification\ncosign + attestations"]:::security
+        SecretOperator["secret operator flow\ngitops/argocd/secrets -> runtime secrets"]:::security
     end
 
-    subgraph Deploy["Deploy"]
+    subgraph Manifest["ethio-connect-manifest + gitops/argocd hierarchy"]
         direction TB
-        subgraph NonProdClusters["Non-Production Promotion Paths"]
+        RootApp["gitops/argocd/apps\nApp-of-Apps root"]:::gitops
+        TenantDefs["gitops/argocd/tenants\ntenant ownership"]:::gitops
+        WorkloadDefs["gitops/argocd/workloads\nworkload ownership"]:::gitops
+        EnvOverlays["gitops/argocd/envs/{testing,staging,production}"]:::gitops
+    end
+
+    subgraph Cluster["Kubernetes runtime"]
+        direction TB
+        MetalLB["MetalLB\nLoadBalancer IP allocator"]:::infra
+
+        subgraph TestingBoundary["vCluster boundary: testing"]
             direction LR
-            TestingVCluster["vcluster: testing-env"]:::cluster
-            StagingVCluster["vcluster: staging-env"]:::cluster
+            TestingVCluster["vcluster-testing"]:::cluster
+            TestingApps["apps/* testing workloads"]:::cluster
         end
 
-        subgraph ProdCluster["Production Promotion Path"]
+        subgraph StagingBoundary["vCluster boundary: staging"]
             direction LR
-            VendorProd["namespace: vendor-prod"]:::cluster
-            CustomerProd["namespace: customer-prod"]:::cluster
-            CentralHubProd["namespace: central-hub-prod"]:::cluster
+            StagingVCluster["vcluster-staging"]:::cluster
+            StagingApps["apps/* staging workloads"]:::cluster
+        end
+
+        subgraph ProductionBoundary["vCluster boundary: production"]
+            direction LR
+            ProductionVCluster["vcluster-production"]:::cluster
+            ProdApps["apps/* production workloads"]:::cluster
+        end
+
+        subgraph Storage["Stateful storage"]
+            direction TB
+            PVClass["PersistentVolume classes\n(e.g. fast-ssd, standard)"]:::storage
+            PVCs["PersistentVolumeClaims\nstateful workloads"]:::storage
         end
     end
 
-    CIWorkflow --> QualityWorkflow
-    QualityWorkflow --> QualityTargets
-    PnpmCache -.-> QualityWorkflow
-    NxCloudCache -.-> QualityTargets
+    Push --> Affected --> DockerBuild --> DigestPublish --> ManifestUpdate --> ArgoSync
+    OIDC --> Affected
+    OIDC --> DockerBuild
+    DigestPublish --> SigVerify
+    SigVerify --> ManifestUpdate
 
-    QualityTargets --> ContainerWorkflow
-    ContainerWorkflow --> DockerTarget
-    DockerTarget --> GHCR
-    GHCR --> PublishTarget
-    PublishTarget --> DigestResolve
-    DigestResolve --> PublishManifest
+    ManifestUpdate --> RootApp
+    RootApp --> TenantDefs
+    RootApp --> WorkloadDefs
+    TenantDefs --> EnvOverlays
+    WorkloadDefs --> EnvOverlays
+    EnvOverlays --> ArgoSync
 
-    PublishManifest --> NonProdPromote
-    GHCR -->|immutable sha256 digest| NonProdPromote
-    NonProdPromote --> NonProdDispatch
-    NonProdDispatch --> ManifestDispatch
-    ManifestDispatch --> TestingOverlay
-    ManifestDispatch --> StagingOverlay
-    TestingOverlay --> ArgoCD
-    StagingOverlay --> ArgoCD
-    ArgoCD --> TestingVCluster
-    ArgoCD --> StagingVCluster
+    ArgoSync --> TestingVCluster
+    ArgoSync --> StagingVCluster
+    ArgoSync --> ProductionVCluster
 
-    ReleaseWorkflow --> ReleaseBuildPublish
-    ReleaseBuildPublish --> ReleaseAttestation
-    ReleaseAttestation --> PromotionAttestation
-    PromotionAttestation --> VerifyBeforeProd
-    GHCR -->|resolve and verify release digest| VerifyBeforeProd
-    VerifyBeforeProd --> ProdPromote
-    ProdPromote --> ProdSignedDispatch
-    ProdSignedDispatch --> ManifestDispatch
-    ManifestDispatch --> ProductionOverlay
-    ProductionOverlay --> ArgoCD
-    ArgoCD --> VendorProd
-    ArgoCD --> CustomerProd
-    ArgoCD --> CentralHubProd
+    MetalLB --> TestingVCluster
+    MetalLB --> StagingVCluster
+    MetalLB --> ProductionVCluster
+
+    TestingVCluster --> TestingApps
+    StagingVCluster --> StagingApps
+    ProductionVCluster --> ProdApps
+
+    PVClass --> PVCs
+    PVCs --> TestingApps
+    PVCs --> StagingApps
+    PVCs --> ProdApps
+
+    SecretOperator --> TestingVCluster
+    SecretOperator --> StagingVCluster
+    SecretOperator --> ProductionVCluster
