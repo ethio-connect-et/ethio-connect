@@ -63,13 +63,40 @@ jobs:
       - name: Check formatting
         run: pnpm nx format:check --base="$NX_BASE" --head="$NX_HEAD"
 
+      - name: Enforce cache policy
+        run: node tools/ci/check-cache-policy.mjs
+
       - name: Run scoped quality tasks
         shell: bash
         run: |
           set -euo pipefail
+          start_epoch=$(date +%s)
           projects=$(jq -r 'join(",")' <<< '${{ inputs.projects_json }}')
+          affected_count=$(jq 'length' <<< '${{ inputs.projects_json }}')
           if [[ -z "$projects" ]]; then
             echo 'No quality projects to process.'
+            echo '{"lane":"quality","affected_count":0,"cache_hits":0,"cache_misses":0,"duration_seconds":0,"nx_cloud_run_url":""}' > ci-metrics-quality.json
             exit 0
           fi
-          pnpm nx run-many -t lint test build --projects "$projects" --parallel=3 --outputStyle=static
+          pnpm nx run-many -t lint test build --projects "$projects" --parallel=3 --outputStyle=static | tee nx-quality.log
+
+          end_epoch=$(date +%s)
+          duration=$((end_epoch - start_epoch))
+          cache_hits=$(rg -c "from cache" nx-quality.log || true)
+          cache_misses=$(rg -c "Successfully ran target" nx-quality.log || true)
+          nx_cloud_run_url=$(rg -o "https://cloud\.nx\.app/runs/[A-Za-z0-9_-]+" -N nx-quality.log | tail -n1 || true)
+
+          jq -n \
+            --argjson affected_count "$affected_count" \
+            --argjson cache_hits "${cache_hits:-0}" \
+            --argjson cache_misses "${cache_misses:-0}" \
+            --argjson duration_seconds "$duration" \
+            --arg nx_cloud_run_url "${nx_cloud_run_url:-}" \
+            '{lane:"quality",affected_count:$affected_count,cache_hits:$cache_hits,cache_misses:$cache_misses,duration_seconds:$duration_seconds,nx_cloud_run_url:$nx_cloud_run_url}' > ci-metrics-quality.json
+
+      - name: Upload quality metrics
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        with:
+          name: ci-metrics-quality
+          path: ci-metrics-quality.json
