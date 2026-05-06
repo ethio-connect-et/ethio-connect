@@ -110,41 +110,4 @@ jobs:
         env:
           BASE_REF: ${{ inputs.base_ref }}
           HEAD_REF: ${{ inputs.head_ref }}
-        run: |
-          base="${BASE_REF}"
-          head="${HEAD_REF}"
-
-          case "$base" in
-            development)
-              case "$head" in
-                feat/*|fix/*|codex/*|chore/*|refactor/*|hotfix/*|perf/*|docs/*|ci/*|build/*|temp/*|dependabot/*|renovate/*|ops/development/*)
-                  exit 0
-                  ;;
-              esac
-              ;;
-            testing)
-              case "$head" in
-                development|ops/testing/*)
-                  exit 0
-                  ;;
-              esac
-              ;;
-            staging)
-              case "$head" in
-                testing|ops/staging/*)
-                  exit 0
-                  ;;
-              esac
-              ;;
-            main)
-              case "$head" in
-                staging|ops/main/*)
-                  exit 0
-                  ;;
-              esac
-              ;;
-          esac
-
-          echo "::error::Unsupported pull request path: ${head} -> ${base}" >&2
-          echo "Allowed paths: temporary branches -> development -> testing -> staging -> main" >&2
-          exit 1
+        run: pnpm run ci:check-pull-request-branch-ladder

@@ -5,7 +5,8 @@
   "packageManager": "pnpm@10.20.0",
   "private": true,
   "scripts": {
-    "ci:check-branch-policy": "node tools/ci/check-branch-policy.mjs"
+    "ci:check-branch-policy": "node tools/ci/check-branch-policy.mjs",
+    "ci:check-pull-request-branch-ladder": "node tools/ci/check-pull-request-branch-ladder.mjs"
   },
   "devDependencies": {
     "@babel/core": "^7.14.5",
