@@ -1,8 +1,8 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
-  "nxCloudId": "69fbeb386cca26cc90ec5c5e",
   "analytics": false,
+  "nxCloudId": "69fbeb386cca26cc90ec5c5e",
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "production": [
@@ -242,6 +242,11 @@
       "cache": false,
       "dependsOn": ["build", "prune"],
       "inputs": ["production", "^production", "sharedGlobals", "envRuntime", "{projectRoot}/Dockerfile"]
+    },
+    "docker:run": {
+      "cache": false,
+      "dependsOn": ["docker:build"],
+      "inputs": ["production", "sharedGlobals", "runtimeEnv"]
     }
   },
   "release": {
@@ -250,11 +255,20 @@
         "projects": ["@ethio-connect-et/ethioconnect"],
         "projectsRelationship": "independent",
         "version": {
-          "conventionalCommits": true
+          "specifierSource": "conventional-commits",
+          "currentVersionResolver": "git-tag",
+          "fallbackCurrentVersionResolver": "disk",
+          "updateDependents": "auto"
         },
         "changelog": {
+          "workspaceChangelog": {
+            "createRelease": "github"
+          },
           "projectChangelogs": true,
-          "workspaceChangelog": false
+          "git": {
+            "commit": true,
+            "tag": true
+          }
         },
         "versionPlans": {
           "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
