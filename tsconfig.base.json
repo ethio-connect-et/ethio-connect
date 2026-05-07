@@ -16,6 +16,7 @@
     "paths": {
       "@ethio-connect/ethioconnect": ["./libs/ethioconnect/src/index.ts"],
       "@ethio-connect/api-common": ["./libs/api-common/src/index.ts"],
+      "@ethio-connect/api-common/bootstrap": ["./libs/api-common/bootstrap/create-secure-nest-app.ts"],
       "@ethio-connect/api-features": ["./libs/api-features/src/index.ts"],
       "@ethio-connect/ui-components": ["./libs/ui-components/src/index.ts"],
       "@ethio-connect/ui-components/server": ["./libs/ui-components/src/server.ts"],

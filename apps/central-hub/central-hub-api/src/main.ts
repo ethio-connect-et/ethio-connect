@@ -4,11 +4,11 @@
  */
 
 import { Logger } from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
+import { createSecureNestApp } from "@ethio-connect/api-common/bootstrap";
 import { AppModule } from "./app/app.module";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await createSecureNestApp(AppModule);
   const globalPrefix = "api";
   app.setGlobalPrefix(globalPrefix);
   const port = process.env.PORT || 4001;
