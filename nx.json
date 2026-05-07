@@ -104,7 +104,7 @@
       "plugin": "@nx/docker",
       "options": {
         "buildTarget": {
-          "name": "docker:build",
+          "name": "docker:build-local",
           "skipDefaultTag": true,
           "cwd": ".",
           "env": {
@@ -132,8 +132,7 @@
             "--label",
             "org.opencontainers.image.licenses=${LICENCE:-MIT}",
             "--cache-from",
-            "type=registry,ref=${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:cache",
-            "--push"
+            "type=registry,ref=${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:cache"
           ]
         },
         "runTarget": {
@@ -169,11 +168,6 @@
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"]
-    },
-    "docker:build": {
-      "cache": false,
-      "dependsOn": ["build", "prune"],
-      "inputs": ["production", "^production", "sharedGlobals", "envRuntime", "{projectRoot}/Dockerfile"]
     },
     "lint": {
       "cache": true,
@@ -214,7 +208,7 @@
     },
     "nx-release-publish": {
       "cache": false,
-      "dependsOn": ["docker:build"],
+      "dependsOn": ["docker:build-push"],
       "inputs": ["production", "sharedGlobals", "envRuntime"]
     },
     "prune-lockfile": {
@@ -243,6 +237,49 @@
       "cache": false,
       "inputs": ["default", "{workspaceRoot}/.verdaccio/config.yml"],
       "outputs": ["{workspaceRoot}/tmp/local-registry"]
+    },
+    "docker:build-local": {
+      "cache": false,
+      "dependsOn": ["build", "prune"],
+      "inputs": ["production", "^production", "sharedGlobals", "envRuntime", "{projectRoot}/Dockerfile"]
+    },
+    "docker:build-push": {
+      "cache": false,
+      "dependsOn": ["docker:build-local"],
+      "inputs": ["production", "^production", "sharedGlobals", "envRuntime", "{projectRoot}/Dockerfile"],
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": ".",
+        "env": {
+          "PROJECT_NAME": "{projectName}"
+        },
+        "command": "docker build .",
+        "args": [
+          "--file",
+          "{projectRoot}/Dockerfile",
+          "--platform",
+          "${DOCKER_PLATFORMS:-linux/amd64}",
+          "--tag",
+          "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${IMAGE_TAG:?IMAGE_TAG must be set}",
+          "--tag",
+          "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${BUILD_NUMBER:-0}",
+          "--label",
+          "org.opencontainers.image.revision=${COMMIT_SHA:-unknown}",
+          "--label",
+          "org.opencontainers.image.created=${BUILD_DATE:-unknown}",
+          "--label",
+          "org.opencontainers.image.title=${PROJECT_NAME##*/}",
+          "--label",
+          "org.opencontainers.image.source=${REPO_URL:-unknown}",
+          "--label",
+          "org.opencontainers.image.version=${VERSION:-0.0.0}",
+          "--label",
+          "org.opencontainers.image.licenses=${LICENCE:-MIT}",
+          "--cache-from",
+          "type=registry,ref=${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:cache",
+          "--push"
+        ]
+      }
     }
   },
   "release": {

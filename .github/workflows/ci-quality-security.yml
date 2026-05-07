@@ -310,7 +310,7 @@ jobs:
 
       - name: Start Nx Cloud CI run
         if: env.NX_CLOUD_ACCESS_TOKEN != ''
-        run: pnpm exec nx start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="build"
+        run: pnpm exec nx start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="build" || true
 
       - name: Check formatting
         run: pnpm exec nx format:check
@@ -318,6 +318,15 @@ jobs:
       - name: Core quality gate (affected lint/typecheck/build/test)
         run: pnpm exec nx affected -t lint typecheck build test --base="$NX_BASE" --head="$NX_HEAD" --parallel=1
 
+      - name: Build dashboard and public website frontend bundles
+        run: >-
+          pnpm exec nx run-many -t build
+          -p @ethio-connect/customer-portal-dashboard,@ethio-connect/vendor-portal-dashboard,@ethio-connect/central-hub-dashboard,@ethio-connect/public-website
+          --configuration=production
+          --parallel=1
+
+      - name: Enforce frontend performance thresholds
+        run: node tools/ci/check-frontend-performance.mjs
       - name: Resolve affected Playwright projects
         id: affected-playwright
         run: |

@@ -17,5 +17,6 @@
         "command": "node scripts/container-image-metadata.mjs"
       }
     }
-  }
+  },
+  "tags": ["scope:shared", "domain:shared", "platform:cross", "type:util"]
 }
