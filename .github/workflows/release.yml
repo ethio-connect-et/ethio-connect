@@ -130,7 +130,7 @@ jobs:
           REGISTRY: ${{ env.IMAGE_REGISTRY }}
           ORG_LC: ${{ env.IMAGE_ORG }}
         run: |
-          PROJECTS=$(pnpm exec nx show projects --withTarget docker:build 2>/dev/null | tr '\n' ' ')
+          PROJECTS=$(pnpm exec nx show projects --withTarget docker:build-push 2>/dev/null | tr '\n' ' ')
           FAILED=0
           for proj in $PROJECTS; do
             img_name="${proj##*/}"
@@ -165,7 +165,7 @@ jobs:
       packages: read
     name: Generate Release SBOMs
     needs: [verify_published_images]
-    if: ${{ needs.verify_published_images.outputs.release_exists != 'true' }}
+    if: ${{ github.event_name != 'pull_request' && needs.verify_published_images.outputs.release_exists != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -207,7 +207,7 @@ jobs:
           REGISTRY: ${{ env.IMAGE_REGISTRY }}
           ORG_LC: ${{ env.IMAGE_ORG }}
         run: |
-          PROJECTS=$(pnpm exec nx show projects --withTarget docker:build 2>/dev/null | tr '\n' ' ')
+          PROJECTS=$(pnpm exec nx show projects --withTarget docker:build-push 2>/dev/null | tr '\n' ' ')
           for proj in $PROJECTS; do
             img_name="${proj##*/}"
             image_ref="${REGISTRY}/${ORG_LC}/${img_name}:${VERSION}"
@@ -233,7 +233,7 @@ jobs:
       packages: write
     name: Sign and Attest Release Images
     needs: [verify_published_images, generate_release_sboms]
-    if: ${{ needs.verify_published_images.outputs.release_exists != 'true' }}
+    if: ${{ github.event_name != 'pull_request' && needs.verify_published_images.outputs.release_exists != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -277,7 +277,7 @@ jobs:
           REGISTRY: ${{ env.IMAGE_REGISTRY }}
           ORG_LC: ${{ env.IMAGE_ORG }}
         run: |
-          PROJECTS=$(pnpm exec nx show projects --withTarget docker:build 2>/dev/null | tr '\n' ' ')
+          PROJECTS=$(pnpm exec nx show projects --withTarget docker:build-push 2>/dev/null | tr '\n' ' ')
           for proj in $PROJECTS; do
             img_name="${proj##*/}"
             image_ref="${REGISTRY}/${ORG_LC}/${img_name}:${VERSION}"
@@ -335,7 +335,7 @@ jobs:
       contents: write
     name: Publish GitHub Release
     needs: [verify_published_images, generate_release_sboms, sign_and_attest_release]
-    if: ${{ needs.verify_published_images.outputs.release_exists != 'true' }}
+    if: ${{ github.event_name != 'pull_request' && needs.verify_published_images.outputs.release_exists != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
