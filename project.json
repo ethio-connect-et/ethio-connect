@@ -2,6 +2,7 @@
   "name": "@ethio-connect/source",
   "$schema": "node_modules/nx/schemas/project-schema.json",
   "includedScripts": [],
+  "tags": ["scope:shared", "domain:shared", "platform:cross", "type:util"],
   "targets": {
     "local-registry": {
       "executor": "@nx/js:verdaccio",
@@ -17,6 +18,5 @@
         "command": "node scripts/container-image-metadata.mjs"
       }
     }
-  },
-  "tags": ["scope:shared", "domain:shared", "platform:cross", "type:util"]
+  }
 }
