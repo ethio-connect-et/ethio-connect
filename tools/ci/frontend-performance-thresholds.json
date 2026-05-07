@@ -1,0 +1,45 @@
+{
+  "$schema": "./frontend-performance-thresholds.schema.json",
+  "applications": [
+    {
+      "project": "@ethio-connect/customer-portal-dashboard",
+      "outputPath": "dist/apps/customer-portal/customer-portal-dashboard",
+      "thresholds": {
+        "initialJsBytes": 650000,
+        "initialCssBytes": 150000,
+        "maxRouteChunkBytes": 300000,
+        "totalJsBytes": 1500000
+      }
+    },
+    {
+      "project": "@ethio-connect/vendor-portal-dashboard",
+      "outputPath": "dist/apps/vendor-portal/vendor-portal-dashboard",
+      "thresholds": {
+        "initialJsBytes": 650000,
+        "initialCssBytes": 150000,
+        "maxRouteChunkBytes": 300000,
+        "totalJsBytes": 1500000
+      }
+    },
+    {
+      "project": "@ethio-connect/central-hub-dashboard",
+      "outputPath": "dist/apps/central-hub/central-hub-dashboard",
+      "thresholds": {
+        "initialJsBytes": 650000,
+        "initialCssBytes": 150000,
+        "maxRouteChunkBytes": 300000,
+        "totalJsBytes": 1500000
+      }
+    },
+    {
+      "project": "@ethio-connect/public-website",
+      "outputPath": "dist/apps/central-hub/public-website",
+      "thresholds": {
+        "initialJsBytes": 650000,
+        "initialCssBytes": 150000,
+        "maxRouteChunkBytes": 300000,
+        "totalJsBytes": 1500000
+      }
+    }
+  ]
+}
