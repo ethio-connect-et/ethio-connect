@@ -16,8 +16,9 @@
     "targetContractProfile": "library"
   },
   "targets": {
-    "typecheck": {
-      "cache": true
+    "nx-release-publish": {
+      "executor": "nx:noop",
+      "dependsOn": ["package"]
     },
     "build": {
       "executor": "@nx/js:tsc",
