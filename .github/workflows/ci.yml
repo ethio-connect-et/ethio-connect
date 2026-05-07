@@ -29,11 +29,7 @@ on:
       - "tsconfig.base.json"
   workflow_dispatch:
 
-permissions:
-  actions: read
-  contents: read
-  pull-requests: read
-  security-events: write
+permissions: {}
 
 env:
   NODE_VERSION: "24.11.0"
@@ -47,6 +43,8 @@ concurrency:
 jobs:
   governance_policy_checks:
     name: Governance Branch and Workflow Policy
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci-policy-governance.yml
     with:
       node_version: "24.11.0"
@@ -58,6 +56,11 @@ jobs:
 
   quality_and_security:
     name: Quality and Security Gate
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+      security-events: write
     needs: [governance_policy_checks]
     uses: ./.github/workflows/ci-quality-security.yml
     with:
@@ -83,7 +86,6 @@ jobs:
       contents: read
       id-token: write
       packages: write
-      security-events: write
     uses: ./.github/workflows/ci-image-publish-attest.yml
     with:
       node_version: "24.11.0"
@@ -92,6 +94,8 @@ jobs:
 
   dispatch_staging_release:
     name: Dispatch Staging Release to Environments
+    permissions:
+      contents: read
     needs: [publish_container_images]
     if: >-
       needs.publish_container_images.result == 'success' &&
@@ -110,6 +114,8 @@ jobs:
 
   summarize_protected_branch_publish:
     name: Summarize Protected Branch Publish
+    permissions:
+      contents: read
     needs: [publish_container_images, dispatch_staging_release]
     if: always() && needs.publish_container_images.result == 'success'
     runs-on: ubuntu-latest

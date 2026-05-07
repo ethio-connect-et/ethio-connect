@@ -15,7 +15,47 @@
       "!{projectRoot}/src/test-setup.[jt]s",
       "!{projectRoot}/test-setup.[jt]s"
     ],
-    "sharedGlobals": ["{workspaceRoot}/.github/workflows/*.yml"]
+    "sharedGlobals": ["{workspaceRoot}/.github/workflows/*.yml"],
+    "envRuntime": [
+      {
+        "env": "IMAGE_TAG"
+      },
+      {
+        "env": "BUILD_NUMBER"
+      },
+      {
+        "env": "DOCKER_PLATFORMS"
+      },
+      {
+        "env": "REGISTRY"
+      },
+      {
+        "env": "ORG_LC"
+      },
+      {
+        "env": "COMMIT_SHA"
+      },
+      {
+        "env": "BUILD_DATE"
+      },
+      {
+        "env": "REPO_URL"
+      },
+      {
+        "env": "VERSION"
+      },
+      {
+        "env": "LICENCE"
+      }
+    ],
+    "runtimeEnv": [
+      {
+        "env": "NODE_ENV"
+      },
+      {
+        "env": "CI"
+      }
+    ]
   },
   "plugins": [
     {
@@ -133,7 +173,7 @@
     "docker:build": {
       "cache": false,
       "dependsOn": ["build", "prune"],
-      "inputs": ["production", "^production", "sharedGlobals", "{projectRoot}/Dockerfile"]
+      "inputs": ["production", "^production", "sharedGlobals", "envRuntime", "{projectRoot}/Dockerfile"]
     },
     "lint": {
       "cache": true,
@@ -160,6 +200,49 @@
       "dependsOn": ["^build"],
       "inputs": ["default", "^production", "sharedGlobals"],
       "outputs": ["{options.outputPath}"]
+    },
+    "deploy-metadata": {
+      "cache": false,
+      "inputs": ["default", "sharedGlobals"],
+      "outputs": ["{workspaceRoot}/dist/deploy-metadata/{projectName}.json"]
+    },
+    "docker:metadata": {
+      "cache": true,
+      "dependsOn": ["nx-release-publish"],
+      "inputs": ["production", "sharedGlobals", "{workspaceRoot}/tools/containers/write-image-manifest.mjs"],
+      "outputs": ["{workspaceRoot}/dist/containers/{projectName}/image.json"]
+    },
+    "nx-release-publish": {
+      "cache": false,
+      "dependsOn": ["docker:build"],
+      "inputs": ["production", "sharedGlobals", "envRuntime"]
+    },
+    "prune-lockfile": {
+      "cache": true,
+      "dependsOn": ["build"],
+      "inputs": ["production", "^production", "{workspaceRoot}/pnpm-lock.yaml"],
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}/package.json", "{workspaceRoot}/dist/{projectRoot}/pnpm-lock.yaml"]
+    },
+    "copy-workspace-modules": {
+      "cache": true,
+      "dependsOn": ["build"],
+      "inputs": ["production", "^production", "{workspaceRoot}/pnpm-lock.yaml"],
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}/workspace_modules"]
+    },
+    "package": {
+      "cache": true,
+      "dependsOn": ["build"],
+      "inputs": ["production", "^production"]
+    },
+    "container:image-metadata": {
+      "cache": true,
+      "inputs": ["production", "sharedGlobals", "{workspaceRoot}/scripts/container-image-metadata.mjs"],
+      "outputs": ["{workspaceRoot}/dist/container-image-metadata.json"]
+    },
+    "local-registry": {
+      "cache": false,
+      "inputs": ["default", "{workspaceRoot}/.verdaccio/config.yml"],
+      "outputs": ["{workspaceRoot}/tmp/local-registry"]
     }
   },
   "release": {
