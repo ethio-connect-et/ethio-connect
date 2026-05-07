@@ -135,36 +135,36 @@ jobs:
           NX_BASE: ${{ steps.nx-shas.outputs.base }}
           NX_HEAD: ${{ steps.nx-shas.outputs.head }}
         run: |
-          all_projects_json="$(pnpm exec nx show projects --withTarget docker:build-local --json)"
+          all_projects_json="$(pnpm exec nx show projects --withTarget docker:build --json)"
           if [ "$(printf '%s' "$all_projects_json" | jq 'length')" -eq 0 ]; then
-            echo "::error::No projects with docker:build-local targets were found." >&2
+            echo "::error::No projects with docker:build targets were found." >&2
             exit 1
           fi
 
           should_publish="true"
           resolution_mode="all_projects"
-          resolution_message="Publishing all projects with docker:build-local targets."
+          resolution_message="Publishing all projects with docker:build targets."
           projects_json="$all_projects_json"
 
           if [ -n "${NX_BASE}" ] && [ -n "${NX_HEAD}" ]; then
-            if affected_projects_json="$(pnpm exec nx show projects --affected --base="${NX_BASE}" --head="${NX_HEAD}" --withTarget docker:build-local --json 2>/dev/null)"; then
+            if affected_projects_json="$(pnpm exec nx show projects --affected --base="${NX_BASE}" --head="${NX_HEAD}" --withTarget docker:build --json 2>/dev/null)"; then
               if [ "$(printf '%s' "${affected_projects_json}" | jq 'length')" -eq 0 ]; then
                 should_publish="false"
                 resolution_mode="affected_empty"
-                resolution_message="No affected projects with docker:build-local were detected between ${NX_BASE} and ${NX_HEAD}; image publish and attestation were skipped."
+                resolution_message="No affected projects with docker:build were detected between ${NX_BASE} and ${NX_HEAD}; image publish and attestation were skipped."
                 projects_json='[]'
               else
                 resolution_mode="affected"
-                resolution_message="Publishing affected projects with docker:build-local targets between ${NX_BASE} and ${NX_HEAD}."
+                resolution_message="Publishing affected projects with docker:build targets between ${NX_BASE} and ${NX_HEAD}."
                 projects_json="${affected_projects_json}"
               fi
             else
               resolution_mode="fallback_all_projects"
-              resolution_message="Nx SHA derivation was available but affected project resolution failed; falling back to all projects with docker:build-local targets."
+              resolution_message="Nx SHA derivation was available but affected project resolution failed; falling back to all projects with docker:build targets."
             fi
           else
             resolution_mode="fallback_all_projects"
-            resolution_message="Nx SHA derivation failed (missing base/head); falling back to all projects with docker:build-local targets."
+            resolution_message="Nx SHA derivation failed (missing base/head); falling back to all projects with docker:build targets."
           fi
 
           projects_csv="$(printf '%s' "$projects_json" | jq -r 'join(",")')"
@@ -229,7 +229,7 @@ jobs:
           VERSION: ${{ steps.deploy_context.outputs.release_version }}
         run: |
           pnpm exec nx run-many \
-            -t docker:build-local \
+            -t docker:build \
             --projects="${{ steps.projects.outputs.projects_csv }}" \
             --parallel=3
 
@@ -438,7 +438,7 @@ jobs:
             echo "- Provenance: SLSA"
             if [ "${SHOULD_PUBLISH}" != "true" ]; then
               echo ""
-              echo "> Publish stage was intentionally skipped because no affected docker:build-local projects were detected."
+              echo "> Publish stage was intentionally skipped because no affected docker:build projects were detected."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
