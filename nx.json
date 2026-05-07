@@ -135,12 +135,6 @@
       "dependsOn": ["build", "prune"],
       "inputs": ["production", "^production", "sharedGlobals", "{projectRoot}/Dockerfile"]
     },
-    "nx-release-publish": {
-      "cache": false,
-      "options": {
-        "quiet": false
-      }
-    },
     "lint": {
       "cache": true,
       "inputs": ["default", "^production", "sharedGlobals"]

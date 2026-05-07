@@ -3,7 +3,7 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/vendor-portal/vendor-api-server/src",
   "projectType": "application",
-  "tags": ["domain:vendor-portal", "platform:api", "scope:vendor-portal", "type:api", "release:docker", "release:publish"],
+  "tags": ["domain:vendor-portal", "platform:api", "scope:vendor-portal", "type:api", "release:docker"],
   "metadata": {
     "targetContractProfile": "app"
   },
@@ -50,7 +50,8 @@
       "dependsOn": ["build"],
       "options": {
         "buildTarget": "@ethio-connect/vendor-api-server:build",
-        "runBuildTargetDependencies": false
+        "runBuildTargetDependencies": false,
+        "port": 9231
       },
       "configurations": {
         "development": {

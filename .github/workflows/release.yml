@@ -33,7 +33,7 @@ concurrency:
 
 env:
   IMAGE_REGISTRY: ghcr.io
-  IMAGE_ORG: ethio-connect-sc
+  IMAGE_ORG: ethio-connectet
 
 jobs:
   verify_published_images:

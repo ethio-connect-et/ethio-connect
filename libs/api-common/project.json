@@ -3,23 +3,11 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/api-common/src",
   "projectType": "library",
-  "release": {
-    "version": {
-      "manifestRootsToUpdate": ["dist/{projectRoot}"],
-      "currentVersionResolver": "git-tag",
-      "fallbackCurrentVersionResolver": "disk"
-    },
-    "publish": false
-  },
-  "tags": ["scope:shared", "type:util", "domain:shared", "platform:api", "release:publish"],
+  "tags": ["scope:shared", "type:util", "domain:shared", "platform:api"],
   "metadata": {
     "targetContractProfile": "library"
   },
   "targets": {
-    "nx-release-publish": {
-      "executor": "nx:noop",
-      "dependsOn": ["package"]
-    },
     "build": {
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
@@ -30,6 +18,15 @@
         "assets": ["libs/api-common/*.md"],
         "generatePackageJson": true
       }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm tsc --noEmit -p libs/api-common/tsconfig.json"
+      }
     }
+  },
+  "release": {
+    "publish": false
   }
 }

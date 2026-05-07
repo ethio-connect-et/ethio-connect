@@ -3,7 +3,7 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/customer-portal/customer-portal-dashboard",
   "projectType": "application",
-  "tags": ["domain:customer-portal", "platform:web", "scope:customer-portal", "type:dashboard", "release:docker", "release:publish"],
+  "tags": ["domain:customer-portal", "platform:web", "scope:customer-portal", "type:dashboard", "release:docker"],
   "metadata": {
     "targetContractProfile": "app"
   },

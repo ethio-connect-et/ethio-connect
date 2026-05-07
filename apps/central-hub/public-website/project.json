@@ -3,7 +3,7 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/central-hub/public-website",
   "projectType": "application",
-  "tags": ["domain:central-hub", "platform:web", "scope:central-hub", "type:dashboard", "release:docker", "release:publish"],
+  "tags": ["domain:central-hub", "platform:web", "scope:central-hub", "type:dashboard", "release:docker"],
   "metadata": {
     "targetContractProfile": "app"
   },

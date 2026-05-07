@@ -6,9 +6,9 @@ const ROOT = process.cwd();
 const PROFILE_RULES = {
   app: ["build", "lint", "test"],
   e2e: ["build", "lint", "test", "e2e"],
-  library: ["build", "package", "nx-release-publish"],
+  library: ["build"],
   "publishable-app": ["build", "lint", "test", "docker:build", "nx-release-publish"],
-  "internal-only-lib": ["build", "package"],
+  "internal-only-lib": ["build"],
 };
 
 async function findProjectJsonFiles(dir) {
@@ -32,7 +32,7 @@ function inferProfile(project, projectPath) {
   if (tags.has("platform:e2e") || projectPath.includes("-e2e/")) return "e2e";
   if (project.projectType === "application" && tags.has("release:docker")) return "publishable-app";
   if (project.projectType === "application") return "app";
-  if (project.projectType === "library" && !tags.has("release:publish")) return "internal-only-lib";
+  if (project.projectType === "library" && !tags.has("release:npm")) return "internal-only-lib";
   return "library";
 }
 
