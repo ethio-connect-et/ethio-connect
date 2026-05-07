@@ -18,13 +18,13 @@
     "type:util",
     "domain:shared",
     "platform:cross",
-    "release:publish"
+    "release:npm"
   ],
   "metadata": {
     "targetContractProfile": "library",
     "targetContract": {
       "allowedForbiddenTargets": {
-        "nx-release-publish": "Required by scripts/validate-target-contract.mjs for library profile; kept as noop to satisfy release contract parity."
+        "nx-release-publish": "Required for release:npm libraries; publishes package artifact."
       }
     }
   },
