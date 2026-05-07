@@ -1,0 +1,9 @@
+{
+  "name": "e2e-support",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/testing/e2e-support/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project e2e-support --web",
+  "targets": {}
+}

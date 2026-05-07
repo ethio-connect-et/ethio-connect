@@ -21,7 +21,8 @@
       "@ethio-connect/ui-components": ["./libs/ui-components/src/index.ts"],
       "@ethio-connect/ui-components/server": ["./libs/ui-components/src/server.ts"],
       "@ethio-connect/frontend-features": ["./libs/frontend-features/src/index.ts"],
-      "@ethio-connect/frontend-features/server": ["./libs/frontend-features/src/server.ts"]
+      "@ethio-connect/frontend-features/server": ["./libs/frontend-features/src/server.ts"],
+      "@ethio-connect/e2e-support": ["./libs/testing/e2e-support/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

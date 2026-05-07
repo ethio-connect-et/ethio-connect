@@ -1,8 +1,7 @@
-import axios from "axios";
+import { applyAxiosFixture, resolveServiceTarget } from '@ethio-connect/e2e-support';
 
 module.exports = async function () {
-  // Configure axios for tests to use.
-  const host = process.env.HOST ?? "localhost";
-  const port = process.env.PORT ?? "4001";
-  axios.defaults.baseURL = `http://${host}:${port}`;
+  applyAxiosFixture({
+    target: resolveServiceTarget({ defaultPort: 4001 }),
+  });
 };
