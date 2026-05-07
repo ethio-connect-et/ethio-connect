@@ -198,10 +198,11 @@ jobs:
         env:
           REGISTRY: ${{ env.IMAGE_REGISTRY }}
           ORG_LC: ${{ env.ORG_LC }}
+          IMAGE_ORG: ${{ env.IMAGE_ORG }}
           EXPECTED_ORG: ethio-connect-et
         run: |
-          if [ "${ORG_LC}" != "${EXPECTED_ORG}" ]; then
-            echo "::error::Unexpected container org '${ORG_LC}'. Expected '${EXPECTED_ORG}'." >&2
+          if [ "${ORG_LC}" != "${EXPECTED_ORG}" ] || [ "${IMAGE_ORG}" != "${EXPECTED_ORG}" ]; then
+            echo "::error::Unexpected container org. Expected IMAGE_ORG and ORG_LC to both equal '${EXPECTED_ORG}' (got IMAGE_ORG=${IMAGE_ORG}, ORG_LC=${ORG_LC})." >&2
             exit 1
           fi
 
