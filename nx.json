@@ -242,6 +242,11 @@
       "cache": false,
       "dependsOn": ["build", "prune"],
       "inputs": ["production", "^production", "sharedGlobals", "envRuntime", "{projectRoot}/Dockerfile"]
+    },
+    "docker:run": {
+      "cache": false,
+      "dependsOn": ["docker:build"],
+      "inputs": ["production", "sharedGlobals", "runtimeEnv"]
     }
   },
   "release": {
