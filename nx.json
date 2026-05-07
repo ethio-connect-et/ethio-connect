@@ -4,7 +4,10 @@
   "nxCloudId": "69fbeb386cca26cc90ec5c5e",
   "analytics": false,
   "namedInputs": {
-    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "default": [
+      "{projectRoot}/**/*",
+      "sharedGlobals"
+    ],
     "production": [
       "default",
       "!{projectRoot}/.eslintrc.json",
@@ -15,7 +18,9 @@
       "!{projectRoot}/src/test-setup.[jt]s",
       "!{projectRoot}/test-setup.[jt]s"
     ],
-    "sharedGlobals": ["{workspaceRoot}/.github/workflows/*.yml"],
+    "sharedGlobals": [
+      "{workspaceRoot}/.github/workflows/*.yml"
+    ],
     "envRuntime": [
       {
         "env": "IMAGE_TAG"
@@ -87,7 +92,11 @@
       "options": {
         "targetName": "test"
       },
-      "exclude": ["apps/central-hub/central-hub-api-e2e/**/*", "apps/vendor-portal/vendor-api-server-e2e/**/*", "apps/customer-portal/customer-portal-api-e2e/**/*"]
+      "exclude": [
+        "apps/central-hub/central-hub-api-e2e/**/*",
+        "apps/vendor-portal/vendor-api-server-e2e/**/*",
+        "apps/customer-portal/customer-portal-api-e2e/**/*"
+      ]
     },
     {
       "plugin": "@nx/webpack/plugin",
@@ -104,7 +113,7 @@
       "plugin": "@nx/docker",
       "options": {
         "buildTarget": {
-          "name": "docker:build",
+          "name": "docker:build-local",
           "skipDefaultTag": true,
           "cwd": ".",
           "env": {
@@ -132,13 +141,18 @@
             "--label",
             "org.opencontainers.image.licenses=${LICENCE:-MIT}",
             "--cache-from",
-            "type=registry,ref=${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:cache",
-            "--push"
+            "type=registry,ref=${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:cache"
           ]
         },
         "runTarget": {
           "name": "docker:run",
-          "args": ["--rm", "--publish", "3000:3000", "--env", "NODE_ENV=production"]
+          "args": [
+            "--rm",
+            "--publish",
+            "3000:3000",
+            "--env",
+            "NODE_ENV=production"
+          ]
         },
         "nx-release-publish": {
           "imageTag": "${IMAGE_TAG:-$VERSION}"
@@ -167,25 +181,37 @@
   "targetDefaults": {
     "build": {
       "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["production", "^production"]
-    },
-    "docker:build": {
-      "cache": false,
-      "dependsOn": ["build", "prune"],
-      "inputs": ["production", "^production", "sharedGlobals", "envRuntime", "{projectRoot}/Dockerfile"]
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "production",
+        "^production"
+      ]
     },
     "lint": {
       "cache": true,
-      "inputs": ["default", "^production", "sharedGlobals"]
+      "inputs": [
+        "default",
+        "^production",
+        "sharedGlobals"
+      ]
     },
     "test": {
       "cache": true,
-      "inputs": ["default", "^production", "sharedGlobals"]
+      "inputs": [
+        "default",
+        "^production",
+        "sharedGlobals"
+      ]
     },
     "typecheck": {
       "cache": true,
-      "inputs": ["default", "^production", "sharedGlobals"],
+      "inputs": [
+        "default",
+        "^production",
+        "sharedGlobals"
+      ],
       "executor": "nx:run-commands",
       "options": {
         "command": "tsc --noEmit"
@@ -193,62 +219,188 @@
     },
     "quality": {
       "cache": true,
-      "inputs": ["default", "^production", "sharedGlobals"]
+      "inputs": [
+        "default",
+        "^production",
+        "sharedGlobals"
+      ]
     },
     "@nx/next:build": {
       "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["default", "^production", "sharedGlobals"],
-      "outputs": ["{options.outputPath}"]
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "default",
+        "^production",
+        "sharedGlobals"
+      ],
+      "outputs": [
+        "{options.outputPath}"
+      ]
     },
     "deploy-metadata": {
       "cache": false,
-      "inputs": ["default", "sharedGlobals"],
-      "outputs": ["{workspaceRoot}/dist/deploy-metadata/{projectName}.json"]
+      "inputs": [
+        "default",
+        "sharedGlobals"
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
+      ]
     },
     "docker:metadata": {
       "cache": true,
-      "dependsOn": ["nx-release-publish"],
-      "inputs": ["production", "sharedGlobals", "{workspaceRoot}/tools/containers/write-image-manifest.mjs"],
-      "outputs": ["{workspaceRoot}/dist/containers/{projectName}/image.json"]
+      "dependsOn": [
+        "nx-release-publish"
+      ],
+      "inputs": [
+        "production",
+        "sharedGlobals",
+        "{workspaceRoot}/tools/containers/write-image-manifest.mjs"
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/containers/{projectName}/image.json"
+      ]
     },
     "nx-release-publish": {
       "cache": false,
-      "dependsOn": ["docker:build"],
-      "inputs": ["production", "sharedGlobals", "envRuntime"]
+      "dependsOn": [
+        "docker:build-push"
+      ],
+      "inputs": [
+        "production",
+        "sharedGlobals",
+        "envRuntime"
+      ]
     },
     "prune-lockfile": {
       "cache": true,
-      "dependsOn": ["build"],
-      "inputs": ["production", "^production", "{workspaceRoot}/pnpm-lock.yaml"],
-      "outputs": ["{workspaceRoot}/dist/{projectRoot}/package.json", "{workspaceRoot}/dist/{projectRoot}/pnpm-lock.yaml"]
+      "dependsOn": [
+        "build"
+      ],
+      "inputs": [
+        "production",
+        "^production",
+        "{workspaceRoot}/pnpm-lock.yaml"
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}/package.json",
+        "{workspaceRoot}/dist/{projectRoot}/pnpm-lock.yaml"
+      ]
     },
     "copy-workspace-modules": {
       "cache": true,
-      "dependsOn": ["build"],
-      "inputs": ["production", "^production", "{workspaceRoot}/pnpm-lock.yaml"],
-      "outputs": ["{workspaceRoot}/dist/{projectRoot}/workspace_modules"]
+      "dependsOn": [
+        "build"
+      ],
+      "inputs": [
+        "production",
+        "^production",
+        "{workspaceRoot}/pnpm-lock.yaml"
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}/workspace_modules"
+      ]
     },
     "package": {
       "cache": true,
-      "dependsOn": ["build"],
-      "inputs": ["production", "^production"]
+      "dependsOn": [
+        "build"
+      ],
+      "inputs": [
+        "production",
+        "^production"
+      ]
     },
     "container:image-metadata": {
       "cache": true,
-      "inputs": ["production", "sharedGlobals", "{workspaceRoot}/scripts/container-image-metadata.mjs"],
-      "outputs": ["{workspaceRoot}/dist/container-image-metadata.json"]
+      "inputs": [
+        "production",
+        "sharedGlobals",
+        "{workspaceRoot}/scripts/container-image-metadata.mjs"
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/container-image-metadata.json"
+      ]
     },
     "local-registry": {
       "cache": false,
-      "inputs": ["default", "{workspaceRoot}/.verdaccio/config.yml"],
-      "outputs": ["{workspaceRoot}/tmp/local-registry"]
+      "inputs": [
+        "default",
+        "{workspaceRoot}/.verdaccio/config.yml"
+      ],
+      "outputs": [
+        "{workspaceRoot}/tmp/local-registry"
+      ]
+    },
+    "docker:build-local": {
+      "cache": false,
+      "dependsOn": [
+        "build",
+        "prune"
+      ],
+      "inputs": [
+        "production",
+        "^production",
+        "sharedGlobals",
+        "envRuntime",
+        "{projectRoot}/Dockerfile"
+      ]
+    },
+    "docker:build-push": {
+      "cache": false,
+      "dependsOn": [
+        "docker:build-local"
+      ],
+      "inputs": [
+        "production",
+        "^production",
+        "sharedGlobals",
+        "envRuntime",
+        "{projectRoot}/Dockerfile"
+      ],
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": ".",
+        "env": {
+          "PROJECT_NAME": "{projectName}"
+        },
+        "command": "docker build .",
+        "args": [
+          "--file",
+          "{projectRoot}/Dockerfile",
+          "--platform",
+          "${DOCKER_PLATFORMS:-linux/amd64}",
+          "--tag",
+          "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${IMAGE_TAG:?IMAGE_TAG must be set}",
+          "--tag",
+          "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${BUILD_NUMBER:-0}",
+          "--label",
+          "org.opencontainers.image.revision=${COMMIT_SHA:-unknown}",
+          "--label",
+          "org.opencontainers.image.created=${BUILD_DATE:-unknown}",
+          "--label",
+          "org.opencontainers.image.title=${PROJECT_NAME##*/}",
+          "--label",
+          "org.opencontainers.image.source=${REPO_URL:-unknown}",
+          "--label",
+          "org.opencontainers.image.version=${VERSION:-0.0.0}",
+          "--label",
+          "org.opencontainers.image.licenses=${LICENCE:-MIT}",
+          "--cache-from",
+          "type=registry,ref=${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:cache",
+          "--push"
+        ]
+      }
     }
   },
   "release": {
     "groups": {
       "ethio-connect-packages": {
-        "projects": ["@ethio-connect-et/ethioconnect"],
+        "projects": [
+          "@ethio-connect-et/ethioconnect"
+        ],
         "releaseTagPattern": "v{version}",
         "releaseTagPatternStrictPreid": true,
         "projectsRelationship": "independent",
@@ -259,13 +411,25 @@
           "projectChangelogs": true,
           "workspaceChangelog": false
         },
-        "releaseTagPatternCheckAllBranchesWhen": ["development", "testing", "staging"],
+        "releaseTagPatternCheckAllBranchesWhen": [
+          "development",
+          "testing",
+          "staging"
+        ],
         "versionPlans": {
-          "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
+          "ignorePatternsForPlanCheck": [
+            "**/*.md",
+            "**/.github/**",
+            "docs/**"
+          ]
         }
       },
       "ethio-connect-backend-services": {
-        "projects": ["@ethio-connect/central-hub-api", "@ethio-connect/customer-portal-api", "@ethio-connect/vendor-api-server"],
+        "projects": [
+          "@ethio-connect/central-hub-api",
+          "@ethio-connect/customer-portal-api",
+          "@ethio-connect/vendor-api-server"
+        ],
         "releaseTagPattern": "v{version}",
         "releaseTagPatternStrictPreid": true,
         "docker": true,
@@ -286,13 +450,25 @@
             "tag": true
           }
         },
-        "releaseTagPatternCheckAllBranchesWhen": ["development", "testing", "staging"],
+        "releaseTagPatternCheckAllBranchesWhen": [
+          "development",
+          "testing",
+          "staging"
+        ],
         "versionPlans": {
-          "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
+          "ignorePatternsForPlanCheck": [
+            "**/*.md",
+            "**/.github/**",
+            "docs/**"
+          ]
         }
       },
       "ethio-connect-dashboards-frontends": {
-        "projects": ["@ethio-connect/central-hub-dashboard", "@ethio-connect/customer-portal-dashboard", "@ethio-connect/vendor-portal-dashboard"],
+        "projects": [
+          "@ethio-connect/central-hub-dashboard",
+          "@ethio-connect/customer-portal-dashboard",
+          "@ethio-connect/vendor-portal-dashboard"
+        ],
         "releaseTagPattern": "v{version}",
         "releaseTagPatternStrictPreid": true,
         "docker": true,
@@ -313,13 +489,23 @@
             "tag": true
           }
         },
-        "releaseTagPatternCheckAllBranchesWhen": ["development", "testing", "staging"],
+        "releaseTagPatternCheckAllBranchesWhen": [
+          "development",
+          "testing",
+          "staging"
+        ],
         "versionPlans": {
-          "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
+          "ignorePatternsForPlanCheck": [
+            "**/*.md",
+            "**/.github/**",
+            "docs/**"
+          ]
         }
       },
       "ethio-connect-public-websites": {
-        "projects": ["@ethio-connect/public-website"],
+        "projects": [
+          "@ethio-connect/public-website"
+        ],
         "releaseTagPattern": "v{version}",
         "releaseTagPatternStrictPreid": true,
         "docker": true,
@@ -340,9 +526,17 @@
             "tag": true
           }
         },
-        "releaseTagPatternCheckAllBranchesWhen": ["development", "testing", "staging"],
+        "releaseTagPatternCheckAllBranchesWhen": [
+          "development",
+          "testing",
+          "staging"
+        ],
         "versionPlans": {
-          "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
+          "ignorePatternsForPlanCheck": [
+            "**/*.md",
+            "**/.github/**",
+            "docs/**"
+          ]
         }
       }
     }
