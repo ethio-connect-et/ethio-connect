@@ -35,6 +35,7 @@ env:
   NODE_VERSION: "24.11.0"
   PNPM_VERSION: "10.20.0"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.sha }}
