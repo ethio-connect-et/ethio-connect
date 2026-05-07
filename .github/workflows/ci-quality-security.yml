@@ -23,11 +23,7 @@ on:
         required: false
         type: string
         default: ""
-permissions:
-  actions: read
-  contents: read
-  pull-requests: read
-  security-events: write
+permissions: {}
 
 concurrency:
   group: ci-quality-security-${{ github.workflow_ref }}-${{ github.ref }}
@@ -40,6 +36,8 @@ env:
 
 jobs:
   check_dependency_review:
+    permissions:
+      contents: read
     name: Security Dependency Review Availability
     if: inputs.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -69,6 +67,9 @@ jobs:
           fi
 
   dependency_review:
+    permissions:
+      contents: read
+      pull-requests: write
     name: Security Dependency Review
     needs: [check_dependency_review]
     permissions:
@@ -89,6 +90,8 @@ jobs:
           comment-summary-in-pr: on-failure
 
   check_code_scanning:
+    permissions:
+      security-events: read
     name: Security Code Scanning Availability
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -114,6 +117,8 @@ jobs:
           fi
 
   security_sast_scan:
+    permissions:
+      contents: read
     name: Security Snyk Scan
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -161,6 +166,10 @@ jobs:
           retention-days: 30
 
   security_codeql_analysis:
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
     name: Security CodeQL Analysis
     needs: [check_code_scanning]
     if: needs.check_code_scanning.outputs.enabled == 'true'
@@ -185,6 +194,8 @@ jobs:
           category: /language:javascript-typescript
 
   validate_deploy_bases:
+    permissions:
+      contents: read
     name: Quality Deployment Asset Validation
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -245,6 +256,8 @@ jobs:
           fi
 
   quality_validation_gate:
+    permissions:
+      contents: read
     name: Quality Nx Validation
     needs: [validate_deploy_bases]
     runs-on: ubuntu-latest
