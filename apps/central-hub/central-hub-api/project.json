@@ -3,14 +3,7 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/central-hub/central-hub-api/src",
   "projectType": "application",
-  "tags": [
-    "domain:central-hub",
-    "platform:api",
-    "scope:central-hub",
-    "type:api",
-    "release:docker",
-    "release:publish"
-  ],
+  "tags": ["domain:central-hub", "platform:api", "scope:central-hub", "type:api", "release:docker", "release:publish"],
   "metadata": {
     "targetContractProfile": "app"
   },
@@ -32,10 +25,7 @@
       "dependsOn": ["build"],
       "cache": true,
       "executor": "@nx/js:prune-lockfile",
-      "outputs": [
-        "{workspaceRoot}/dist/apps/central-hub/central-hub-api/package.json",
-        "{workspaceRoot}/dist/apps/central-hub/central-hub-api/pnpm-lock.yaml"
-      ],
+      "outputs": ["{workspaceRoot}/dist/apps/central-hub/central-hub-api/package.json", "{workspaceRoot}/dist/apps/central-hub/central-hub-api/pnpm-lock.yaml"],
       "options": {
         "buildTarget": "build"
       }
@@ -43,9 +33,7 @@
     "copy-workspace-modules": {
       "dependsOn": ["build"],
       "cache": true,
-      "outputs": [
-        "{workspaceRoot}/dist/apps/central-hub/central-hub-api/workspace_modules"
-      ],
+      "outputs": ["{workspaceRoot}/dist/apps/central-hub/central-hub-api/workspace_modules"],
       "executor": "@nx/js:copy-workspace-modules",
       "options": {
         "buildTarget": "build"

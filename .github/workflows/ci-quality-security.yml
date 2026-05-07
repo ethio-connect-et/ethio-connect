@@ -6,23 +6,23 @@ on:
       node_version:
         required: false
         type: string
-        default: '24.11.0'
+        default: "24.11.0"
       pnpm_version:
         required: false
         type: string
-        default: '10.20.0'
+        default: "10.20.0"
       event_name:
         required: false
         type: string
-        default: ''
+        default: ""
       ref_name:
         required: false
         type: string
-        default: ''
+        default: ""
       base_ref:
         required: false
         type: string
-        default: ''
+        default: ""
 permissions:
   actions: read
   contents: read
@@ -34,7 +34,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'push' }}
 
 env:
-  CI: 'true'
+  CI: "true"
   NODE_VERSION: ${{ inputs.node_version }}
   PNPM_VERSION: ${{ inputs.pnpm_version }}
 
@@ -135,7 +135,7 @@ jobs:
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
@@ -266,7 +266,7 @@ jobs:
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies

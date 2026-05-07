@@ -7,9 +7,7 @@ const BASE_REF = process.env.BASE_REF;
 const HEAD_REF = process.env.HEAD_REF;
 
 if (!BASE_REF || !HEAD_REF) {
-  console.error(
-    '::error::BASE_REF and HEAD_REF environment variables must be set.',
-  );
+  console.error("::error::BASE_REF and HEAD_REF environment variables must be set.");
   process.exit(1);
 }
 
@@ -30,9 +28,9 @@ const LADDER = {
     /^renovate\/.+$/,
     /^ops\/development\/.+$/,
   ],
-  testing: ['development', /^ops\/testing\/.+$/],
-  staging: ['testing', /^ops\/staging\/.+$/],
-  main: ['staging', /^ops\/main\/.+$/],
+  testing: ["development", /^ops\/testing\/.+$/],
+  staging: ["testing", /^ops\/staging\/.+$/],
+  main: ["staging", /^ops\/main\/.+$/],
 };
 
 function checkLadder(base, head) {
@@ -43,7 +41,7 @@ function checkLadder(base, head) {
   }
 
   return allowedSources.some((pattern) => {
-    if (typeof pattern === 'string') {
+    if (typeof pattern === "string") {
       return head === pattern;
     }
     return pattern.test(head);
@@ -51,12 +49,8 @@ function checkLadder(base, head) {
 }
 
 if (!checkLadder(BASE_REF, HEAD_REF)) {
-  console.error(
-    `::error::Unsupported pull request path: ${HEAD_REF} -> ${BASE_REF}`,
-  );
-  console.error(
-    'Allowed paths: temporary branches -> development -> testing -> staging -> main',
-  );
+  console.error(`::error::Unsupported pull request path: ${HEAD_REF} -> ${BASE_REF}`);
+  console.error("Allowed paths: temporary branches -> development -> testing -> staging -> main");
   process.exit(1);
 }
 

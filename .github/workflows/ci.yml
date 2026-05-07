@@ -17,16 +17,16 @@ on:
       - staging
       - main
     paths:
-      - '.github/workflows/**'
-      - 'apps/**'
-      - 'libs/**'
-      - 'deploy/**'
-      - 'scripts/**'
-      - 'nx.json'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'tsconfig.base.json'
+      - ".github/workflows/**"
+      - "apps/**"
+      - "libs/**"
+      - "deploy/**"
+      - "scripts/**"
+      - "nx.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
   workflow_dispatch:
 
 permissions:
@@ -36,9 +36,9 @@ permissions:
   security-events: write
 
 env:
-  NODE_VERSION: '24.11.0'
-  PNPM_VERSION: '10.20.0'
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  NODE_VERSION: "24.11.0"
+  PNPM_VERSION: "10.20.0"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.sha }}
@@ -49,8 +49,8 @@ jobs:
     name: Governance Branch and Workflow Policy
     uses: ./.github/workflows/ci-policy-governance.yml
     with:
-      node_version: '24.11.0'
-      pnpm_version: '10.20.0'
+      node_version: "24.11.0"
+      pnpm_version: "10.20.0"
       event_name: ${{ github.event_name }}
       base_ref: ${{ github.base_ref }}
       head_ref: ${{ github.head_ref }}
@@ -61,8 +61,8 @@ jobs:
     needs: [governance_policy_checks]
     uses: ./.github/workflows/ci-quality-security.yml
     with:
-      node_version: '24.11.0'
-      pnpm_version: '10.20.0'
+      node_version: "24.11.0"
+      pnpm_version: "10.20.0"
       event_name: ${{ github.event_name }}
       ref_name: ${{ github.ref_name }}
       base_ref: ${{ github.base_ref }}
@@ -86,8 +86,8 @@ jobs:
       security-events: write
     uses: ./.github/workflows/ci-image-publish-attest.yml
     with:
-      node_version: '24.11.0'
-      pnpm_version: '10.20.0'
+      node_version: "24.11.0"
+      pnpm_version: "10.20.0"
     secrets: inherit
 
   dispatch_staging_release:

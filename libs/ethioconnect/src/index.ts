@@ -1,1 +1,1 @@
-export * from './lib/ethioconnect';
+export * from "./lib/ethioconnect";

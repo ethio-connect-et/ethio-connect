@@ -1,9 +1,9 @@
-import { render } from '@testing-library/react';
+import { render } from "@testing-library/react";
 
-import EthioConnectFrontendFeatures from './frontend-features';
+import EthioConnectFrontendFeatures from "./frontend-features";
 
-describe('EthioConnectFrontendFeatures', () => {
-  it('should render successfully', () => {
+describe("EthioConnectFrontendFeatures", () => {
+  it("should render successfully", () => {
     const { baseElement } = render(<EthioConnectFrontendFeatures />);
     expect(baseElement).toBeTruthy();
   });

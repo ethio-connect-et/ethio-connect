@@ -1,6 +1,33 @@
-# Add files here to ignore them from prettier formatting
-/dist
-/coverage
+# Package manager / dependencies
+node_modules/
+.pnp/
+.pnp.js
+.pnpm-store/
+
+# Nx and build output
+.nx/
+dist/
+out/
+out-tsc/
+tmp/
+coverage/
+
+# Framework output
+.next/
+.storybook-out/
+
+# Generated or lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Misc generated artifacts
+*.log
+test-output/
+docs/**
+
 /.nx/cache
 /.nx/workspace-data
-.nx/self-healing
+__mocks__/
+# Infrastructure
+deploy/helm/**/*.yaml

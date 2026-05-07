@@ -6,29 +6,29 @@ on:
       node_version:
         required: false
         type: string
-        default: '24.11.0'
+        default: "24.11.0"
       pnpm_version:
         required: false
         type: string
-        default: '10.20.0'
+        default: "10.20.0"
     outputs:
       infra_environment:
-        description: 'Protected branch environment for the publish'
+        description: "Protected branch environment for the publish"
         value: ${{ jobs.publish_images_and_attestations.outputs.infra_environment }}
       target_branch:
-        description: 'Branch that produced the published images'
+        description: "Branch that produced the published images"
         value: ${{ jobs.publish_images_and_attestations.outputs.target_branch }}
       image_tag:
-        description: 'Published image tag'
+        description: "Published image tag"
         value: ${{ jobs.publish_images_and_attestations.outputs.image_tag }}
       release_version:
-        description: 'Release version identifier'
+        description: "Release version identifier"
         value: ${{ jobs.publish_images_and_attestations.outputs.release_version }}
       applications_json:
-        description: 'Map of application name to immutable image digest reference'
+        description: "Map of application name to immutable image digest reference"
         value: ${{ jobs.publish_images_and_attestations.outputs.applications_json }}
       attestation_references_json:
-        description: 'Map of application name to attestation subject reference'
+        description: "Map of application name to attestation subject reference"
         value: ${{ jobs.publish_images_and_attestations.outputs.attestation_references_json }}
 permissions:
   contents: read
@@ -41,12 +41,12 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'push' }}
 
 env:
-  CI: 'true'
+  CI: "true"
   IMAGE_REGISTRY: ghcr.io
   IMAGE_ORG: ethio-connect-sc
   NODE_VERSION: ${{ inputs.node_version }}
   PNPM_VERSION: ${{ inputs.pnpm_version }}
-  DOCKER_BUILDKIT: '1'
+  DOCKER_BUILDKIT: "1"
 
 jobs:
   publish_images_and_attestations:
@@ -80,7 +80,7 @@ jobs:
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
@@ -238,7 +238,7 @@ jobs:
         if: steps.projects.outputs.should_publish == 'true'
         id: record_state
         env:
-          COSIGN_YES: 'true'
+          COSIGN_YES: "true"
           IMAGE_TAG: ${{ steps.deploy_context.outputs.image_tag }}
           RELEASE_VERSION: ${{ steps.deploy_context.outputs.release_version }}
           REGISTRY: ${{ env.IMAGE_REGISTRY }}

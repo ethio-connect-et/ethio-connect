@@ -24,19 +24,19 @@ updates:
     allow:
       - dependency-type: production
     ignore:
-      - dependency-name: '*'
+      - dependency-name: "*"
         update-types:
           - version-update:semver-major
     groups:
-      '@nestjs':
+      "@nestjs":
         patterns:
-          - '@nestjs/*'
+          - "@nestjs/*"
         update-types:
           - version-update:semver-minor
           - version-update:semver-patch
-      '@nx':
+      "@nx":
         patterns:
-          - '@nx/*'
+          - "@nx/*"
           - nx
         update-types:
           - version-update:semver-minor
@@ -45,14 +45,14 @@ updates:
         patterns:
           - react
           - react-dom
-          - '@types/react*'
+          - "@types/react*"
         update-types:
           - version-update:semver-minor
           - version-update:semver-patch
       next:
         patterns:
           - next
-          - '@next/*'
+          - "@next/*"
         update-types:
           - version-update:semver-minor
           - version-update:semver-patch
@@ -84,7 +84,7 @@ updates:
     allow:
       - dependency-type: development
     ignore:
-      - dependency-name: '*'
+      - dependency-name: "*"
         update-types:
           - version-update:semver-major
     groups:
@@ -92,20 +92,20 @@ updates:
         patterns:
           - typescript
           - ts-jest
-          - '@types/*'
+          - "@types/*"
         update-types:
           - version-update:semver-minor
           - version-update:semver-patch
       testing:
         patterns:
           - jest*
-          - '@testing-library/*'
+          - "@testing-library/*"
           - playwright*
-          - '@playwright/*'
+          - "@playwright/*"
       eslint:
         patterns:
           - eslint*
-          - '@eslint/*'
+          - "@eslint/*"
           - eslint-*
           - typescript-eslint*
       formatting:
@@ -259,7 +259,7 @@ updates:
       - dependency-type: all
     target-branch: development
     ignore:
-      - dependency-name: '*'
+      - dependency-name: "*"
         update-types:
           - version-update:semver-major
     security-updates-only: true
