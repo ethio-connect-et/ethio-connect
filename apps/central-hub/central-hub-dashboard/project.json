@@ -41,7 +41,7 @@
     },
     "nx-release-publish": {
       "executor": "@nx/docker:release-publish",
-      "dependsOn": ["docker:build-push"]
+      "dependsOn": ["docker:build"]
     },
     "docker:metadata": {
       "executor": "nx:run-commands",
@@ -56,14 +56,6 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "pnpm tsc --noEmit -p apps/central-hub/central-hub-dashboard/tsconfig.json"
-      }
-    },
-    "docker:build-push": {
-      "executor": "nx:run-commands",
-      "dependsOn": ["docker:build-local"],
-      "options": {
-        "cwd": "{workspaceRoot}",
-        "command": "pnpm exec nx run {projectName}:docker:build-local -- --push"
       }
     }
   }

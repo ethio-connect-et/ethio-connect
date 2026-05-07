@@ -3,6 +3,9 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/api-features/src",
   "projectType": "library",
+  "release": {
+    "publish": false
+  },
   "tags": ["scope:shared", "type:feature", "domain:shared", "platform:api"],
   "metadata": {
     "targetContractProfile": "library"
@@ -29,8 +32,5 @@
         "command": "pnpm tsc --noEmit -p libs/api-features/tsconfig.json"
       }
     }
-  },
-  "release": {
-    "publish": false
   }
 }

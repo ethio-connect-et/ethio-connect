@@ -3,6 +3,9 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/ui-components/src",
   "projectType": "library",
+  "release": {
+    "publish": false
+  },
   "tags": ["scope:shared", "type:ui", "domain:shared", "platform:web"],
   "metadata": {
     "targetContractProfile": "library"
@@ -29,8 +32,5 @@
         "command": "pnpm tsc --noEmit -p libs/ui-components/tsconfig.json"
       }
     }
-  },
-  "release": {
-    "publish": false
   }
 }
