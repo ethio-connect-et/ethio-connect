@@ -167,17 +167,37 @@
     }
   },
   "release": {
-    "releaseTagPattern": "v{version}",
     "groups": {
-      "shared-library": {
-        "projects": [
-          "@ethio-connect/api-common",
-          "@ethio-connect/api-features",
-          "@ethio-connect/frontend-features",
-          "@ethio-connect/ui-components",
-          "@ethio-connect/ethioconnect"
+      "ethio-connect-packages": {
+        "projects": ["@ethio-connect-et/ethioconnect"],
+        "releaseTagPattern": "v{version}",
+        "releaseTagPatternStrictPreid": true,
+        "projectsRelationship": "independent",
+        "version": {
+          "conventionalCommits": true
+        },
+        "changelog": {
+          "projectChangelogs": true,
+          "workspaceChangelog": false
+        },
+        "releaseTagPatternCheckAllBranchesWhen": [
+          "development",
+          "testing",
+          "staging"
         ],
-        "docker": false,
+        "versionPlans": {
+          "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
+        }
+      },
+      "ethio-connect-backend-services": {
+        "projects": [
+          "@ethio-connect/central-hub-api",
+          "@ethio-connect/customer-portal-api",
+          "@ethio-connect/vendor-api-server"
+        ],
+        "releaseTagPattern": "v{version}",
+        "releaseTagPatternStrictPreid": true,
+        "docker": true,
         "projectsRelationship": "independent",
         "version": {
           "specifierSource": "conventional-commits",
@@ -185,51 +205,91 @@
           "fallbackCurrentVersionResolver": "disk",
           "updateDependents": "auto"
         },
-        "changelog": { "projectChangelogs": true, "workspaceChangelog": false }
+        "changelog": {
+          "workspaceChangelog": {
+            "createRelease": "github"
+          },
+          "projectChangelogs": true,
+          "git": {
+            "commit": true,
+            "tag": true
+          }
+        },
+        "releaseTagPatternCheckAllBranchesWhen": [
+          "development",
+          "testing",
+          "staging"
+        ],
+        "versionPlans": {
+          "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
+        }
       },
-      "central-hub": {
-        "docker": false,
+      "ethio-connect-dashboards-frontends": {
         "projects": [
-          "@ethio-connect/central-hub-api",
           "@ethio-connect/central-hub-dashboard",
-          "@ethio-connect/public-website"
-        ]
-      },
-      "customer-portal": {
-        "docker": false,
-        "projects": [
-          "@ethio-connect/customer-portal-api",
-          "@ethio-connect/customer-portal-dashboard"
-        ]
-      },
-      "vendor-portal": {
-        "docker": false,
-        "projects": [
-          "@ethio-connect/vendor-api-server",
+          "@ethio-connect/customer-portal-dashboard",
           "@ethio-connect/vendor-portal-dashboard"
-        ]
+        ],
+        "releaseTagPattern": "v{version}",
+        "releaseTagPatternStrictPreid": true,
+        "docker": true,
+        "projectsRelationship": "independent",
+        "version": {
+          "specifierSource": "conventional-commits",
+          "currentVersionResolver": "git-tag",
+          "fallbackCurrentVersionResolver": "disk",
+          "updateDependents": "auto"
+        },
+        "changelog": {
+          "workspaceChangelog": {
+            "createRelease": "github"
+          },
+          "projectChangelogs": true,
+          "git": {
+            "commit": true,
+            "tag": true
+          }
+        },
+        "releaseTagPatternCheckAllBranchesWhen": [
+          "development",
+          "testing",
+          "staging"
+        ],
+        "versionPlans": {
+          "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
+        }
+      },
+      "ethio-connect-public-websites": {
+        "projects": ["@ethio-connect/public-website"],
+        "releaseTagPattern": "v{version}",
+        "releaseTagPatternStrictPreid": true,
+        "docker": true,
+        "projectsRelationship": "independent",
+        "version": {
+          "specifierSource": "conventional-commits",
+          "currentVersionResolver": "git-tag",
+          "fallbackCurrentVersionResolver": "disk",
+          "updateDependents": "auto"
+        },
+        "changelog": {
+          "workspaceChangelog": {
+            "createRelease": "github"
+          },
+          "projectChangelogs": true,
+          "git": {
+            "commit": true,
+            "tag": true
+          }
+        },
+        "releaseTagPatternCheckAllBranchesWhen": [
+          "development",
+          "testing",
+          "staging"
+        ],
+        "versionPlans": {
+          "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
+        }
       }
-    },
-    "version": {
-      "conventionalCommits": true,
-      "fallbackCurrentVersionResolver": "disk",
-      "preVersionCommand": "pnpm nx run-many -t build --projects=@ethio-connect/api-common,@ethio-connect/api-features,@ethio-connect/frontend-features,@ethio-connect/ui-components,@ethio-connect/ethioconnect",
-      "git": { "commit": true, "tag": true }
-    },
-    "projectsRelationship": "independent",
-    "changelog": {
-      "workspaceChangelog": { "createRelease": "github" },
-      "projectChangelogs": true,
-      "git": { "commit": true, "tag": true }
-    },
-    "releaseTagPatternCheckAllBranchesWhen": [
-      "development",
-      "testing",
-      "staging"
-    ],
-    "releaseTagPatternStrictPreid": true,
-    "versionPlans": {
-      "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
     }
   }
 }

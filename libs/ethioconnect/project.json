@@ -1,5 +1,5 @@
 {
-  "name": "@ethio-connect/ethioconnect",
+  "name": "@ethio-connect-et/ethioconnect",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/ethioconnect/src",
   "projectType": "library",
@@ -27,6 +27,12 @@
     }
   },
   "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm tsc --noEmit -p libs/ethioconnect/tsconfig.json"
+      }
+    },
     "build": {
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
@@ -38,18 +44,12 @@
         "generatePackageJson": true
       }
     },
-    "package": {
-      "executor": "nx:noop",
-      "dependsOn": ["build"]
-    },
     "nx-release-publish": {
-      "executor": "nx:noop",
-      "dependsOn": ["package"]
-    },
-    "typecheck": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/js:release-publish",
+      "dependsOn": ["build"],
       "options": {
-        "command": "pnpm tsc --noEmit -p libs/ethioconnect/tsconfig.json"
+        "registry": "https://npm.pkg.github.com/",
+        "tag": "latest"
       }
     }
   }
