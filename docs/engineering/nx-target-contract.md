@@ -84,4 +84,4 @@ Rules:
 
 ## Migration notes
 
-The workspace has standardized deployable app Docker targets around `@nx/docker` plugin-backed `docker:build` and `nx-release-publish`, with per-app metadata generation delegated to `docker:metadata`. Keep future app onboarding aligned with this pattern to satisfy `tools/ci/validate-project-targets.mjs` and avoid reintroducing raw `docker buildx` shell targets in individual `project.json` files.
+The workspace has standardized deployable app Docker targets around `@nx/docker` plugin-backed `docker:build` and `nx-release-publish`, with per-app metadata generation delegated to `docker:metadata`. Keep future app onboarding aligned with this pattern to satisfy `tools/ci/validate-project-targets.mjs` and avoid reintroducing raw Docker shell targets in individual `project.json` files.
