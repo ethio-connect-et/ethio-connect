@@ -310,7 +310,7 @@ jobs:
 
       - name: Start Nx Cloud CI run
         if: env.NX_CLOUD_ACCESS_TOKEN != ''
-        run: pnpm exec nx start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="build"
+        run: pnpm exec nx start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="build" || true
 
       - name: Check formatting
         run: pnpm exec nx format:check

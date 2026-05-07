@@ -44,6 +44,7 @@ env:
   NODE_VERSION: ${{ inputs.node_version }}
   PNPM_VERSION: ${{ inputs.pnpm_version }}
   DOCKER_BUILDKIT: "1"
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
 jobs:
   publish_images_and_attestations:
@@ -54,8 +55,6 @@ jobs:
       packages: write
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    env:
-      NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
     outputs:
       infra_environment: ${{ steps.deploy_context.outputs.infra_environment }}
       target_branch: ${{ steps.deploy_context.outputs.target_branch }}
