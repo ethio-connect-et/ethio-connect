@@ -30,6 +30,16 @@ Standard flow for deployable apps:
 2. `nx-release-publish` publishes using the existing `@nx/docker` release integration.
 3. `docker:metadata` generates `dist/containers/{projectName}/image.json` in a reusable post-publish step (`tools/containers/write-image-manifest.mjs`) so digest/manifest logic is not duplicated in every app target.
 
+### Docker image tagging strategy (canonical)
+
+This repository uses **Nx Release-managed Docker tagging**.
+
+- `docker:build` must allow the `@nx/docker` plugin default tag behavior (do not set `skipDefaultTag: true`).
+- `nx-release-publish` is responsible for publishing the release tag and must use the Nx Release-provided `${VERSION}` as the canonical image tag.
+- Optional non-release convenience tags (for example CI build counters) may be added in `docker:build` args, but they cannot replace release tags and must not require a custom `IMAGE_TAG` input.
+
+This policy applies to every deployable app that exposes both `docker:build` and `nx-release-publish`.
+
 ### E2E app
 
 Required targets:

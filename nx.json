@@ -65,7 +65,6 @@
       "options": {
         "buildTarget": {
           "name": "docker:build",
-          "skipDefaultTag": true,
           "cwd": ".",
           "env": {
             "PROJECT_NAME": "{projectName}"
@@ -75,8 +74,6 @@
             "{projectRoot}/Dockerfile",
             "--platform",
             "${DOCKER_PLATFORMS:-linux/amd64}",
-            "--tag",
-            "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${IMAGE_TAG:?IMAGE_TAG must be set}",
             "--tag",
             "${REGISTRY:-ghcr.io}/${ORG_LC:-ethio-connect-et}/${PROJECT_NAME##*/}:${BUILD_NUMBER:-0}",
             "--label",
@@ -101,7 +98,7 @@
           "args": ["--rm", "--publish", "3000:3000", "--env", "NODE_ENV=production"]
         },
         "nx-release-publish": {
-          "imageTag": "${IMAGE_TAG:-$VERSION}"
+          "imageTag": "${VERSION:?VERSION must be set by Nx Release}"
         }
       }
     }

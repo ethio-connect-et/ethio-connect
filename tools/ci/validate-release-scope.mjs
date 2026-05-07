@@ -48,11 +48,37 @@ function targetKind(target) {
   return "publish";
 }
 
+function readDockerPluginOptions(nxJson) {
+  const pluginEntry = (nxJson?.plugins ?? []).find((entry) => entry?.plugin === "@nx/docker");
+  return pluginEntry?.options ?? {};
+}
+
 async function main() {
   const nxJson = await readJson("nx.json");
   const groupedProjects = flattenReleaseProjects(nxJson);
+  const dockerPlugin = readDockerPluginOptions(nxJson);
+  const dockerBuild = dockerPlugin?.buildTarget ?? {};
+  const dockerReleasePublish = dockerPlugin?.["nx-release-publish"] ?? {};
   const projects = await loadProjects();
   const errors = [];
+
+  if (dockerBuild?.skipDefaultTag === true) {
+    errors.push(
+      "nx.json: plugins[@nx/docker].options.buildTarget.skipDefaultTag must be omitted/false when using Nx Release-managed tagging."
+    );
+  }
+
+  const dockerBuildArgs = Array.isArray(dockerBuild?.args) ? dockerBuild.args.join(" ") : "";
+  if (dockerBuildArgs.includes("IMAGE_TAG")) {
+    errors.push("nx.json: plugins[@nx/docker].options.buildTarget.args must not require IMAGE_TAG for canonical tagging.");
+  }
+
+  const imageTagTemplate = String(dockerReleasePublish?.imageTag ?? "");
+  if (!imageTagTemplate.includes("VERSION") || imageTagTemplate.includes("IMAGE_TAG")) {
+    errors.push(
+      "nx.json: plugins[@nx/docker].options.nx-release-publish.imageTag must be VERSION-based and must not depend on IMAGE_TAG."
+    );
+  }
 
   for (const projectName of groupedProjects) {
     if (!projects.has(projectName)) {
@@ -67,6 +93,10 @@ async function main() {
     const publishEnabled = hasReleaseConfig ? publishFlag !== false : null;
     const target = config?.targets?.["nx-release-publish"];
     const kind = targetKind(target);
+    const releaseGroup = Object.values(nxJson?.release?.groups ?? {}).find((group) =>
+      (group?.projects ?? []).includes(name)
+    );
+    const dockerReleaseGroup = releaseGroup?.docker === true;
 
     if (publishEnabled === true && !inReleaseGroup) {
       errors.push(`${file}: release.publish is enabled, but project is not listed in nx.json release.groups.`);
@@ -82,6 +112,19 @@ async function main() {
 
     if (!inReleaseGroup && kind === "publish") {
       errors.push(`${file}: executable nx-release-publish target exists, but project is outside nx.json release.groups.`);
+    }
+
+    if (dockerReleaseGroup && kind !== "publish") {
+      errors.push(`${file}: docker-enabled release group project must define executable nx-release-publish.`);
+    }
+
+    const publishDependsOn = target?.dependsOn ?? [];
+    if (
+      dockerReleaseGroup &&
+      kind === "publish" &&
+      !publishDependsOn.some((dep) => String(dep).includes(":docker:build") || dep === "docker:build")
+    ) {
+      errors.push(`${file}: docker-enabled release group project must run docker:build before nx-release-publish.`);
     }
   }
 
