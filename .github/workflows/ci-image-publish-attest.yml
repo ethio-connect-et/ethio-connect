@@ -234,6 +234,13 @@ jobs:
             --projects="${{ steps.projects.outputs.projects_csv }}" \
             --parallel=3
 
+      - name: Generate docker version metadata for release publish
+        if: steps.projects.outputs.should_publish == 'true'
+        env:
+          VERSION: ${{ steps.deploy_context.outputs.release_version }}
+        run: |
+          printf '%s\n' "${VERSION}" > .docker-version
+
       - name: Publish application images with Nx (push-only)
         if: steps.projects.outputs.should_publish == 'true'
         env:
