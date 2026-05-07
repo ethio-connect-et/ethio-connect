@@ -72,8 +72,6 @@ jobs:
       pull-requests: write
     name: Security Dependency Review
     needs: [check_dependency_review]
-    permissions:
-      pull-requests: write
 
     if: inputs.event_name == 'pull_request' && needs.check_dependency_review.outputs.enabled == 'true'
     runs-on: ubuntu-latest
