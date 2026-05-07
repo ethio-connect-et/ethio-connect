@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["applications"],
+  "properties": {
+    "applications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["project", "outputPath", "thresholds"],
+        "properties": {
+          "project": { "type": "string" },
+          "outputPath": { "type": "string" },
+          "thresholds": {
+            "type": "object",
+            "required": ["initialJsBytes", "initialCssBytes", "maxRouteChunkBytes", "totalJsBytes"],
+            "properties": {
+              "initialJsBytes": { "type": "integer", "minimum": 1 },
+              "initialCssBytes": { "type": "integer", "minimum": 0 },
+              "maxRouteChunkBytes": { "type": "integer", "minimum": 1 },
+              "totalJsBytes": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      }
+    }
+  }
+}
