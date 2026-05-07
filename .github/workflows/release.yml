@@ -177,7 +177,7 @@ jobs:
 
       - name: Create GitHub release body
         run: |
-          cat > release-body.md <<EOF
+          cat > release-body.md <<'EOF'
           ## Release ${{ needs.nx_release_prepare.outputs.resolved_version }}
 
           Release lifecycle (versioning + changelog + publish) executed through Nx release groups.
