@@ -1,9 +1,7 @@
-import { killPort } from "@nx/node/utils";
+import { resolveServiceTarget, teardownService } from '@ethio-connect/e2e-support';
 
 module.exports = async function () {
-  // Put clean up logic here (e.g. stopping services, docker-compose, etc.).
-  // Hint: `globalThis` is shared between setup and teardown.
-  const port = process.env.PORT ? Number(process.env.PORT) : 4000;
-  await killPort(port);
-  console.log(globalThis.__TEARDOWN_MESSAGE__);
+  await teardownService({
+    target: resolveServiceTarget({ defaultPort: 4000 }),
+  });
 };
