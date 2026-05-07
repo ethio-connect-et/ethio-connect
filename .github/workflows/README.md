@@ -51,3 +51,14 @@ This repository does not own:
 Those responsibilities belong to `ethio-connect-environments`, `ethio-connect-platform`, and `ethio-connect-security-provenance`.
 
 Ownership validation note: changes under `.github/workflows/**` should request review from `@ethio-connect/platform-team` via CODEOWNERS.
+
+## Workflow Lint Checks
+
+- CI already enforces workflow linting in `.github/workflows/ci-policy-governance.yml` using `actionlint -color .github/workflows/*.yml`.
+- Minimal local check:
+
+```bash
+curl -sSL -o /tmp/actionlint.tar.gz https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz \
+  && tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint \
+  && /tmp/actionlint -color .github/workflows/*.yml
+```
