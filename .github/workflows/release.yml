@@ -4,20 +4,25 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (e.g. v1.2.3)"
+        description: "Release version specifier for Nx (e.g. 1.2.3, patch, minor, prerelease)"
         required: true
         type: string
       source_sha:
-        description: "The full git SHA whose images were published"
+        description: "The full git SHA to release from"
         required: true
         type: string
-      changelog:
-        description: "Release changelog / notes (markdown supported)"
+      release_group:
+        description: "Nx release group to execute"
         required: false
         type: string
-        default: ""
+        default: "default"
+      run_docker_gate:
+        description: "Run docker:run gate before publish"
+        required: false
+        type: boolean
+        default: false
       prerelease:
-        description: "Mark this as a pre-release"
+        description: "Mark this as a pre-release for GitHub release"
         required: false
         type: boolean
         default: false
@@ -25,7 +30,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: release-${{ inputs.version }}
+  group: release-${{ inputs.version }}-${{ inputs.release_group }}
   cancel-in-progress: false
 
 env:
@@ -33,147 +38,21 @@ env:
   IMAGE_ORG: ethio-connectet
 
 jobs:
-  verify_published_images:
-    permissions:
-      contents: read
-      id-token: write
-      packages: read
-    name: Verify Pre-Published Images
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    outputs:
-      version: ${{ steps.semver.outputs.version }}
-      release_exists: ${{ steps.release-exists.outputs.exists }}
-
-    steps:
-      - name: Validate semver format
-        id: semver
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          if ! echo "${VERSION}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
-            echo "::error::Version '${VERSION}' is not a valid semver tag (expected vMAJOR.MINOR.PATCH)." >&2
-            exit 1
-          fi
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Validated version: ${VERSION}"
-
-      - name: Validate release/tag does not already exist
-        id: release-exists
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          VERSION: ${{ steps.semver.outputs.version }}
-        run: |
-          release_code="$(curl -sS -o /dev/null -w '%{http_code}' \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${REPO}/releases/tags/${VERSION}")"
-
-          tag_code="$(curl -sS -o /dev/null -w '%{http_code}' \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${REPO}/git/ref/tags/${VERSION}")"
-
-          if [ "${release_code}" = "200" ] || [ "${tag_code}" = "200" ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Release or tag '${VERSION}' already exists (release: ${release_code}, tag: ${tag_code}). Skipping this workflow run safely."
-          elif [ "${release_code}" = "404" ] && [ "${tag_code}" = "404" ]; then
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "No existing release/tag found for ${VERSION}. Continuing."
-          else
-            echo "::error::Unable to validate release/tag existence for '${VERSION}' (release: ${release_code}, tag: ${tag_code})." >&2
-            exit 1
-          fi
-
-      - name: Check out repository
-        if: ${{ steps.release-exists.outputs.exists != 'true' }}
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4.2.3
-        with:
-          ref: ${{ inputs.source_sha }}
-
-      - name: Setup pnpm
-        if: ${{ steps.release-exists.outputs.exists != 'true' }}
-        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.1.0
-        with:
-          version: "10.20.0"
-          run_install: false
-
-      - name: Setup Node.js
-        if: ${{ steps.release-exists.outputs.exists != 'true' }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v4.4.0
-        with:
-          node-version: "24.11.0"
-          cache: "pnpm"
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        if: ${{ steps.release-exists.outputs.exists != 'true' }}
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Cosign
-        if: ${{ steps.release-exists.outputs.exists != 'true' }}
-        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.0
-
-      - name: Log in to GHCR
-        if: ${{ steps.release-exists.outputs.exists != 'true' }}
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v3.3.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify all published images are signed
-        if: ${{ steps.release-exists.outputs.exists != 'true' }}
-        env:
-          VERSION: ${{ inputs.version }}
-          REGISTRY: ${{ env.IMAGE_REGISTRY }}
-          ORG_LC: ${{ env.IMAGE_ORG }}
-        run: |
-          PROJECTS=$(pnpm exec nx show projects --withTarget docker:build 2>/dev/null | tr '\n' ' ')
-          FAILED=0
-          for proj in $PROJECTS; do
-            img_name="${proj##*/}"
-            verified=false
-
-            # Try version tag first, fall back to sha- tag
-            for tag in "${VERSION}" "sha-${GITHUB_SHA:0:8}"; do
-              image_ref="${REGISTRY}/${ORG_LC}/${img_name}:${tag}"
-              if cosign verify \
-                --certificate-identity-regexp="https://github.com/${{ github.repository }}/" \
-                --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-                "${image_ref}" 2>/dev/null; then
-                echo "Verified: ${image_ref}"
-                verified=true
-                break
-              fi
-            done
-
-            if [ "$verified" = false ]; then
-              FAILED=$((FAILED + 1))
-              echo "::error::Image signature verification failed for ${REGISTRY}/${ORG_LC}/${img_name} (tried tags: ${VERSION}, sha-${GITHUB_SHA:0:8})." >&2
-            fi
-          done
-          if [ "$FAILED" -gt 0 ]; then
-            echo "::error::${FAILED} image(s) failed signature verification." >&2
-            exit 1
-          fi
-
-  generate_release_sboms:
-    permissions:
-      contents: read
-      packages: read
-    name: Generate Release SBOMs
-    needs: [verify_published_images]
-    if: ${{ github.event_name != 'pull_request' && needs.verify_published_images.outputs.release_exists != 'true' }}
+  nx_release_prepare:
+    name: Nx Release Version + Changelog
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
+    outputs:
+      resolved_version: ${{ steps.resolve-version.outputs.version }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4.2.3
         with:
           ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.1.0
@@ -191,51 +70,39 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Syft
-        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.20.0
+      - name: Nx release version
+        run: pnpm exec nx release version "${{ inputs.version }}" --groups="${{ inputs.release_group }}" --yes
 
-      - name: Log in to GHCR
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v3.3.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate CycloneDX SBOMs for release images
-        env:
-          VERSION: ${{ inputs.version }}
-          REGISTRY: ${{ env.IMAGE_REGISTRY }}
-          ORG_LC: ${{ env.IMAGE_ORG }}
+      - name: Resolve release version from tag
+        id: resolve-version
         run: |
-          PROJECTS=$(pnpm exec nx show projects --withTarget docker:build 2>/dev/null | tr '\n' ' ')
-          for proj in $PROJECTS; do
-            img_name="${proj##*/}"
-            image_ref="${REGISTRY}/${ORG_LC}/${img_name}:${VERSION}"
-            echo "Generating SBOM: ${image_ref}"
-            syft "${image_ref}" \
-              -o cyclonedx-json="sbom-release-${img_name}.cyclonedx.json" \
-              -o spdx-json="sbom-release-${img_name}.spdx.json" || \
-            echo "::warning::SBOM generation skipped for ${img_name} (image may not have version tag yet)"
-          done
+          VERSION="$(git describe --tags --abbrev=0)"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Resolved release version: ${VERSION}"
 
-      - name: Upload release SBOMs
-        if: always() && hashFiles('sbom-release-*.json') != ''
+      - name: Nx release changelog
+        run: pnpm exec nx release changelog "${{ steps.resolve-version.outputs.version }}" --groups="${{ inputs.release_group }}" --yes
+
+      - name: Upload release metadata
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
         with:
-          name: release-sboms-${{ inputs.version }}
-          path: sbom-release-*.json
+          name: nx-release-metadata-${{ steps.resolve-version.outputs.version }}
+          path: |
+            CHANGELOG.md
+            **/CHANGELOG.md
+            .nx/workspace-data/**
+          if-no-files-found: ignore
           retention-days: 365
 
-  sign_and_attest_release:
+  docker_release_artifacts:
+    name: Docker Release Artifacts via Nx Targets
+    needs: [nx_release_prepare]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
       id-token: write
       packages: write
-    name: Sign and Attest Release Images
-    needs: [verify_published_images, generate_release_sboms]
-    if: ${{ github.event_name != 'pull_request' && needs.verify_published_images.outputs.release_exists != 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
 
     steps:
       - name: Check out repository
@@ -259,95 +126,41 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.0
-
-      - name: Log in to GHCR
+      - name: OIDC login to GHCR
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Sign release images and attest SLSA provenance
-        env:
-          COSIGN_YES: "true"
-          VERSION: ${{ inputs.version }}
-          SOURCE_SHA: ${{ inputs.source_sha }}
-          REGISTRY: ${{ env.IMAGE_REGISTRY }}
-          ORG_LC: ${{ env.IMAGE_ORG }}
-        run: |
-          projects_json="$(pnpm exec nx show projects --withTarget docker:build --json)"
-          mapfile -t projects < <(printf '%s' "${projects_json}" | jq -r '.[]')
+      - name: Build Docker artifacts via Nx
+        run: pnpm exec nx run-many -t docker:build --all
 
-          project_count="${#projects[@]}"
-          echo "Selected projects for release signing: ${project_count}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Docker runtime gate via Nx
+        if: ${{ inputs.run_docker_gate }}
+        run: pnpm exec nx run-many -t docker:run --all
 
-          if [ "${project_count}" -eq 0 ]; then
-            echo "::error::No projects with docker:build targets were found for release signing." >&2
-            exit 1
-          fi
+      - name: Publish release artifacts via Nx
+        run: pnpm exec nx run-many -t nx-release-publish --all
 
-          for proj in "${projects[@]}"; do
-            img_name="${proj##*/}"
-            image_ref="${REGISTRY}/${ORG_LC}/${img_name}:${VERSION}"
-
-            digest=$(docker manifest inspect "${image_ref}" --verbose 2>/dev/null \
-              | jq -r '.[0].Descriptor.digest // .Descriptor.digest' 2>/dev/null || echo "")
-            [ -z "$digest" ] && echo "::warning::No digest for ${img_name}:${VERSION} — skipping." && continue
-
-            digest_ref="${REGISTRY}/${ORG_LC}/${img_name}@${digest}"
-            digest_sha="${digest#sha256:}"
-
-            echo "Signing release image: ${digest_ref}"
-            cosign sign "${digest_ref}"
-
-            cat > "provenance-release-${img_name}.json" <<PREDICATE
-          {
-            "_type": "https://in-toto.io/Statement/v0.1",
-            "subject": [{
-              "name": "${REGISTRY}/${ORG_LC}/${img_name}",
-              "digest": { "sha256": "${digest_sha}" }
-            }],
-            "predicateType": "https://slsa.dev/provenance/v1",
-            "predicate": {
-              "buildDefinition": {
-                "buildType": "https://github.com/Attestations/GitHubHostedActions@v1",
-                "externalParameters": {
-                  "workflow": "${{ github.workflow }}",
-                  "repository": "${{ github.repository }}",
-                  "ref": "${{ github.ref }}",
-                  "version": "${VERSION}",
-                  "source_sha": "${SOURCE_SHA}"
-                },
-                "internalParameters": {},
-                "resolvedDependencies": []
-              },
-              "runDetails": {
-                "builder": {
-                  "id": "https://github.com/${{ github.repository }}/.github/workflows/release.yml@${{ github.sha }}"
-                },
-                "metadata": { "invocationId": "${{ github.run_id }}" }
-              }
-            }
-          }
-          PREDICATE
-
-            echo "Attesting SLSA provenance: ${digest_ref}"
-            cosign attest \
-              --predicate "provenance-release-${img_name}.json" \
-              --type slsaprovenance \
-              "${digest_ref}"
-          done
+      - name: Upload docker release manifests
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: docker-release-artifacts-${{ needs.nx_release_prepare.outputs.resolved_version }}
+          path: |
+            dist/**
+            coverage/**
+          if-no-files-found: ignore
+          retention-days: 30
 
   publish_github_release:
-    permissions:
-      contents: write
     name: Publish GitHub Release
-    needs: [verify_published_images, generate_release_sboms, sign_and_attest_release]
-    if: ${{ github.event_name != 'pull_request' && needs.verify_published_images.outputs.release_exists != 'true' }}
+    needs: [nx_release_prepare, docker_release_artifacts]
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
 
     steps:
       - name: Check out repository
@@ -355,69 +168,39 @@ jobs:
         with:
           ref: ${{ inputs.source_sha }}
 
-      - name: Download release SBOMs
+      - name: Download Nx release metadata
         uses: actions/download-artifact@cbed621e49e4c01b044d60f6c80ea4ed6328b281 # v4.2.1
         continue-on-error: true
         with:
-          name: release-sboms-${{ inputs.version }}
+          name: nx-release-metadata-${{ needs.nx_release_prepare.outputs.resolved_version }}
           path: release-assets/
 
-      - name: Build release body
-        id: release-body
-        env:
-          VERSION: ${{ inputs.version }}
-          SOURCE_SHA: ${{ inputs.source_sha }}
-          CHANGELOG: ${{ inputs.changelog }}
+      - name: Create GitHub release body
         run: |
-          BODY=$(cat <<MARKDOWN
-          ## Release ${VERSION}
+          cat > release-body.md <<EOF
+          ## Release ${{ needs.nx_release_prepare.outputs.resolved_version }}
 
-          **Source SHA**: \`${SOURCE_SHA}\`
-          **Registry**: \`ghcr.io/${{ env.IMAGE_ORG }}\`
+          Release lifecycle (versioning + changelog + publish) executed through Nx release groups.
 
-          ${CHANGELOG}
-
-          ---
+          ### Source
+          - Source SHA: `${{ inputs.source_sha }}`
+          - Nx release group: `${{ inputs.release_group }}`
 
           ### Artifacts
-          - Container images published to \`ghcr.io/${{ env.IMAGE_ORG }}/*:${VERSION}\`
-          - SBOMs (CycloneDX + SPDX) attached to this release
-          - SLSA provenance attestations signed with Cosign keyless OIDC
-          - Images verifiable with:
-            \`\`\`
-            cosign verify \\
-              --certificate-identity-regexp="https://github.com/${{ github.repository }}/" \\
-              --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\
-              ghcr.io/${{ env.IMAGE_ORG }}/<app>:${VERSION}
-            \`\`\`
+          - Docker artifacts built via Nx targets (`docker:build` and optional `docker:run`)
+          - Publish performed by Nx target `nx-release-publish`
+          - Changelog and release metadata generated by `nx release changelog`
+          EOF
 
-          MARKDOWN
-          )
-          # Write to a file to avoid env quoting issues
-          echo "$BODY" > release-body.md
-          echo "body_file=release-body.md" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub Release with SBOM assets
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.3.2
         with:
-          tag_name: ${{ inputs.version }}
-          name: ${{ inputs.version }}
-          body_path: ${{ steps.release-body.outputs.body_file }}
+          tag_name: ${{ needs.nx_release_prepare.outputs.resolved_version }}
+          name: ${{ needs.nx_release_prepare.outputs.resolved_version }}
+          body_path: release-body.md
           target_commitish: ${{ inputs.source_sha }}
           prerelease: ${{ inputs.prerelease }}
           files: |
-            release-assets/*.json
+            release-assets/**/*.md
+            release-assets/**/*.json
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish release summary
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          {
-            echo "## Release ${VERSION} Published"
-            echo ""
-            echo "- GitHub Release: [${{ github.server_url }}/${{ github.repository }}/releases/tag/${VERSION}](${{ github.server_url }}/${{ github.repository }}/releases/tag/${VERSION})"
-            echo "- Images signed with Cosign keyless OIDC"
-            echo "- SLSA provenance attested"
-            echo "- SBOMs (CycloneDX + SPDX) attached"
-          } >> "$GITHUB_STEP_SUMMARY"
