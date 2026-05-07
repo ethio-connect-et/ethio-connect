@@ -30,11 +30,7 @@ on:
       attestation_references_json:
         description: "Map of application name to attestation subject reference"
         value: ${{ jobs.publish_images_and_attestations.outputs.attestation_references_json }}
-permissions:
-  contents: read
-  id-token: write
-  packages: write
-  security-events: write
+permissions: {}
 
 concurrency:
   group: ci-image-publish-${{ github.workflow_ref }}-${{ github.ref }}
@@ -52,6 +48,10 @@ env:
 jobs:
   publish_images_and_attestations:
     name: Publish Images, SBOMs, and Provenance
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:

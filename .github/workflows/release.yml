@@ -22,10 +22,7 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: write
-  id-token: write
-  packages: write
+permissions: {}
 
 concurrency:
   group: release-${{ inputs.version }}
@@ -37,6 +34,10 @@ env:
 
 jobs:
   verify_published_images:
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
     name: Verify Pre-Published Images
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -159,6 +160,9 @@ jobs:
           fi
 
   generate_release_sboms:
+    permissions:
+      contents: read
+      packages: read
     name: Generate Release SBOMs
     needs: [verify_published_images]
     if: ${{ needs.verify_published_images.outputs.release_exists != 'true' }}
@@ -223,6 +227,10 @@ jobs:
           retention-days: 365
 
   sign_and_attest_release:
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
     name: Sign and Attest Release Images
     needs: [verify_published_images, generate_release_sboms]
     if: ${{ needs.verify_published_images.outputs.release_exists != 'true' }}
@@ -323,6 +331,8 @@ jobs:
           done
 
   publish_github_release:
+    permissions:
+      contents: write
     name: Publish GitHub Release
     needs: [verify_published_images, generate_release_sboms, sign_and_attest_release]
     if: ${{ needs.verify_published_images.outputs.release_exists != 'true' }}

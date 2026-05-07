@@ -24,10 +24,7 @@ on:
         type: string
         default: ""
 
-permissions:
-  actions: read
-  contents: read
-  pull-requests: read
+permissions: {}
 
 concurrency:
   group: ci-governance-${{ github.workflow_ref }}-${{ github.ref }}
@@ -41,6 +38,8 @@ env:
 jobs:
   governance_policy_checks:
     name: Governance Branch and Workflow Policy
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -85,23 +84,6 @@ jobs:
       - name: Lint GitHub Actions workflow files
         run: actionlint -color .github/workflows/*.yml
 
-      - name: Enforce immutable action refs
-        run: |
-          bad_refs=$(rg --line-number --no-heading \
-            '^\s*uses:\s+[^#\s]+@[A-Za-z0-9._/-]+' \
-            .github/workflows/*.yml \
-            | rg -v '@([a-f0-9]{40})($|\s+#)|@\./|^\s*$' || true)
-          if [ -n "$bad_refs" ]; then
-            echo "::error::Non-immutable action refs detected:" >&2
-            echo "$bad_refs" >&2
-            exit 1
-          fi
-
-      - name: Debug - List scripts
-        run: |
-          git branch
-          git log -1 --oneline
-          ls -R scripts
       - name: Enforce branch literal policy
         run: pnpm run ci:check-branch-policy
 
@@ -111,3 +93,6 @@ jobs:
           BASE_REF: ${{ inputs.base_ref }}
           HEAD_REF: ${{ inputs.head_ref }}
         run: pnpm run ci:check-pull-request-branch-ladder
+
+      - name: Enforce workflow hardening policy
+        run: node tools/ci/validate-workflow-hardening.mjs
