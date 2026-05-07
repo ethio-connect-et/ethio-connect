@@ -14,6 +14,7 @@ const allowedWriteScopes = {
   "release.yml:sign_and_attest_release": ["packages", "id-token"],
   "release.yml:publish_github_release": ["contents"],
   "ci-image-publish-attest.yml:publish_images_and_attestations": ["id-token", "packages"],
+  "ci.yml:quality_and_security": ["pull-requests", "security-events"],
   "ci.yml:publish_container_images": ["id-token", "packages"],
 };
 
