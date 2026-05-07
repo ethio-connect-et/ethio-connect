@@ -4,7 +4,7 @@ ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 WORKDIR /app
 
-RUN corepack enable
+RUN corepack install --activate pnpm@10.20.0
 
 COPY dist/apps/central-hub/central-hub-api/package.json ./package.json
 COPY dist/apps/central-hub/central-hub-api/pnpm-lock.yaml ./pnpm-lock.yaml
