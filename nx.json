@@ -161,21 +161,6 @@
       "cache": true,
       "inputs": ["default", "^production", "sharedGlobals"]
     },
-    "format:write": {
-      "cache": false,
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css,scss}\""
-      }
-    },
-    "format:check": {
-      "cache": true,
-      "inputs": ["default", "^production", "sharedGlobals"],
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css,scss}\""
-      }
-    },
     "@nx/next:build": {
       "cache": true,
       "dependsOn": ["^build"],
