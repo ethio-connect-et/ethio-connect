@@ -1,8 +1,8 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
-  "nxCloudId": "69fbeb386cca26cc90ec5c5e",
   "analytics": false,
+  "nxCloudId": "69fbeb386cca26cc90ec5c5e",
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "production": [
