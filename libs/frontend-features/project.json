@@ -3,36 +3,25 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/frontend-features/src",
   "projectType": "library",
-  "tags": [
-    "scope:shared",
-    "type:feature",
-    "domain:shared",
-    "platform:web"
-  ],
+  "tags": ["scope:shared", "type:feature", "domain:shared", "platform:web"],
   "metadata": {
     "targetContractProfile": "library"
   },
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/libs/frontend-features",
         "main": "libs/frontend-features/src/index.ts",
         "tsConfig": "libs/frontend-features/tsconfig.lib.json",
-        "assets": [
-          "libs/frontend-features/*.md"
-        ],
+        "assets": ["libs/frontend-features/*.md"],
         "generatePackageJson": true
       }
     },
     "package": {
       "executor": "nx:noop",
-      "dependsOn": [
-        "build"
-      ]
+      "dependsOn": ["build"]
     },
     "typecheck": {
       "executor": "nx:run-commands",

@@ -194,7 +194,6 @@ jobs:
           # package:write on the target org; GITHUB_TOKEN is only valid for this repo org.
           password: ${{ secrets.GITHUB_TOKEN }}
 
-
       - name: Preflight image prefix
         if: steps.projects.outputs.should_publish == 'true'
         env:

@@ -4,10 +4,7 @@
   "nxCloudId": "69fbeb386cca26cc90ec5c5e",
   "analytics": false,
   "namedInputs": {
-    "default": [
-      "{projectRoot}/**/*",
-      "sharedGlobals"
-    ],
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "production": [
       "default",
       "!{projectRoot}/.eslintrc.json",
@@ -18,9 +15,7 @@
       "!{projectRoot}/src/test-setup.[jt]s",
       "!{projectRoot}/test-setup.[jt]s"
     ],
-    "sharedGlobals": [
-      "{workspaceRoot}/.github/workflows/*.yml"
-    ]
+    "sharedGlobals": ["{workspaceRoot}/.github/workflows/*.yml"]
   },
   "plugins": [
     {
@@ -52,11 +47,7 @@
       "options": {
         "targetName": "test"
       },
-      "exclude": [
-        "apps/central-hub/central-hub-api-e2e/**/*",
-        "apps/vendor-portal/vendor-api-server-e2e/**/*",
-        "apps/customer-portal/customer-portal-api-e2e/**/*"
-      ]
+      "exclude": ["apps/central-hub/central-hub-api-e2e/**/*", "apps/vendor-portal/vendor-api-server-e2e/**/*", "apps/customer-portal/customer-portal-api-e2e/**/*"]
     },
     {
       "plugin": "@nx/webpack/plugin",
@@ -107,13 +98,7 @@
         },
         "runTarget": {
           "name": "docker:run",
-          "args": [
-            "--rm",
-            "--publish",
-            "3000:3000",
-            "--env",
-            "NODE_ENV=production"
-          ]
+          "args": ["--rm", "--publish", "3000:3000", "--env", "NODE_ENV=production"]
         },
         "nx-release-publish": {
           "imageTag": "${IMAGE_TAG:-$VERSION}"
@@ -142,50 +127,25 @@
   "targetDefaults": {
     "build": {
       "cache": true,
-      "dependsOn": [
-        "^build"
-      ],
-      "inputs": [
-        "production",
-        "^production"
-      ]
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"]
     },
     "docker:build": {
       "cache": false,
-      "dependsOn": [
-        "build",
-        "prune"
-      ],
-      "inputs": [
-        "production",
-        "^production",
-        "sharedGlobals",
-        "{projectRoot}/Dockerfile"
-      ]
+      "dependsOn": ["build", "prune"],
+      "inputs": ["production", "^production", "sharedGlobals", "{projectRoot}/Dockerfile"]
     },
     "lint": {
       "cache": true,
-      "inputs": [
-        "default",
-        "^production",
-        "sharedGlobals"
-      ]
+      "inputs": ["default", "^production", "sharedGlobals"]
     },
     "test": {
       "cache": true,
-      "inputs": [
-        "default",
-        "^production",
-        "sharedGlobals"
-      ]
+      "inputs": ["default", "^production", "sharedGlobals"]
     },
     "typecheck": {
       "cache": true,
-      "inputs": [
-        "default",
-        "^production",
-        "sharedGlobals"
-      ],
+      "inputs": ["default", "^production", "sharedGlobals"],
       "executor": "nx:run-commands",
       "options": {
         "command": "tsc --noEmit"
@@ -193,33 +153,19 @@
     },
     "quality": {
       "cache": true,
-      "inputs": [
-        "default",
-        "^production",
-        "sharedGlobals"
-      ]
+      "inputs": ["default", "^production", "sharedGlobals"]
     },
     "@nx/next:build": {
       "cache": true,
-      "dependsOn": [
-        "^build"
-      ],
-      "inputs": [
-        "default",
-        "^production",
-        "sharedGlobals"
-      ],
-      "outputs": [
-        "{options.outputPath}"
-      ]
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production", "sharedGlobals"],
+      "outputs": ["{options.outputPath}"]
     }
   },
   "release": {
     "groups": {
       "ethio-connect-packages": {
-        "projects": [
-          "@ethio-connect-et/ethioconnect"
-        ],
+        "projects": ["@ethio-connect-et/ethioconnect"],
         "releaseTagPattern": "v{version}",
         "releaseTagPatternStrictPreid": true,
         "projectsRelationship": "independent",
@@ -230,25 +176,13 @@
           "projectChangelogs": true,
           "workspaceChangelog": false
         },
-        "releaseTagPatternCheckAllBranchesWhen": [
-          "development",
-          "testing",
-          "staging"
-        ],
+        "releaseTagPatternCheckAllBranchesWhen": ["development", "testing", "staging"],
         "versionPlans": {
-          "ignorePatternsForPlanCheck": [
-            "**/*.md",
-            "**/.github/**",
-            "docs/**"
-          ]
+          "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
         }
       },
       "ethio-connect-backend-services": {
-        "projects": [
-          "@ethio-connect/central-hub-api",
-          "@ethio-connect/customer-portal-api",
-          "@ethio-connect/vendor-api-server"
-        ],
+        "projects": ["@ethio-connect/central-hub-api", "@ethio-connect/customer-portal-api", "@ethio-connect/vendor-api-server"],
         "releaseTagPattern": "v{version}",
         "releaseTagPatternStrictPreid": true,
         "docker": true,
@@ -269,25 +203,13 @@
             "tag": true
           }
         },
-        "releaseTagPatternCheckAllBranchesWhen": [
-          "development",
-          "testing",
-          "staging"
-        ],
+        "releaseTagPatternCheckAllBranchesWhen": ["development", "testing", "staging"],
         "versionPlans": {
-          "ignorePatternsForPlanCheck": [
-            "**/*.md",
-            "**/.github/**",
-            "docs/**"
-          ]
+          "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
         }
       },
       "ethio-connect-dashboards-frontends": {
-        "projects": [
-          "@ethio-connect/central-hub-dashboard",
-          "@ethio-connect/customer-portal-dashboard",
-          "@ethio-connect/vendor-portal-dashboard"
-        ],
+        "projects": ["@ethio-connect/central-hub-dashboard", "@ethio-connect/customer-portal-dashboard", "@ethio-connect/vendor-portal-dashboard"],
         "releaseTagPattern": "v{version}",
         "releaseTagPatternStrictPreid": true,
         "docker": true,
@@ -308,23 +230,13 @@
             "tag": true
           }
         },
-        "releaseTagPatternCheckAllBranchesWhen": [
-          "development",
-          "testing",
-          "staging"
-        ],
+        "releaseTagPatternCheckAllBranchesWhen": ["development", "testing", "staging"],
         "versionPlans": {
-          "ignorePatternsForPlanCheck": [
-            "**/*.md",
-            "**/.github/**",
-            "docs/**"
-          ]
+          "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
         }
       },
       "ethio-connect-public-websites": {
-        "projects": [
-          "@ethio-connect/public-website"
-        ],
+        "projects": ["@ethio-connect/public-website"],
         "releaseTagPattern": "v{version}",
         "releaseTagPatternStrictPreid": true,
         "docker": true,
@@ -345,17 +257,9 @@
             "tag": true
           }
         },
-        "releaseTagPatternCheckAllBranchesWhen": [
-          "development",
-          "testing",
-          "staging"
-        ],
+        "releaseTagPatternCheckAllBranchesWhen": ["development", "testing", "staging"],
         "versionPlans": {
-          "ignorePatternsForPlanCheck": [
-            "**/*.md",
-            "**/.github/**",
-            "docs/**"
-          ]
+          "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
         }
       }
     }

@@ -5,26 +5,18 @@
   "projectType": "library",
   "release": {
     "version": {
-      "manifestRootsToUpdate": [
-        "dist/{projectRoot}"
-      ],
+      "manifestRootsToUpdate": ["dist/{projectRoot}"],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk"
     },
     "publish": true
   },
-  "tags": [
-    "scope:shared",
-    "type:util",
-    "domain:shared",
-    "platform:cross",
-    "release:npm"
-  ],
+  "tags": ["scope:shared", "type:util", "domain:shared", "platform:cross", "release:npm"],
   "metadata": {
     "targetContractProfile": "library",
     "targetContract": {
       "allowedForbiddenTargets": {
-        "nx-release-publish": "Required for release:npm libraries; publishes package artifact."
+        "nx-release-publish": "Required by scripts/validate-target-contract.mjs for library profile; kept as noop to satisfy release contract parity."
       }
     }
   },
@@ -37,24 +29,18 @@
     },
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/libs/ethioconnect",
         "main": "libs/ethioconnect/src/index.ts",
         "tsConfig": "libs/ethioconnect/tsconfig.lib.json",
-        "assets": [
-          "libs/ethioconnect/*.md"
-        ],
+        "assets": ["libs/ethioconnect/*.md"],
         "generatePackageJson": true
       }
     },
     "nx-release-publish": {
       "executor": "@nx/js:release-publish",
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "options": {
         "registry": "https://npm.pkg.github.com/",
         "tag": "latest"

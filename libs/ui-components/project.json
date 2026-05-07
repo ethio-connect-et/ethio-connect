@@ -3,36 +3,25 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/ui-components/src",
   "projectType": "library",
-  "tags": [
-    "scope:shared",
-    "type:ui",
-    "domain:shared",
-    "platform:web"
-  ],
+  "tags": ["scope:shared", "type:ui", "domain:shared", "platform:web"],
   "metadata": {
     "targetContractProfile": "library"
   },
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/libs/ui-components",
         "main": "libs/ui-components/src/index.ts",
         "tsConfig": "libs/ui-components/tsconfig.lib.json",
-        "assets": [
-          "libs/ui-components/*.md"
-        ],
+        "assets": ["libs/ui-components/*.md"],
         "generatePackageJson": true
       }
     },
     "package": {
       "executor": "nx:noop",
-      "dependsOn": [
-        "build"
-      ]
+      "dependsOn": ["build"]
     },
     "typecheck": {
       "executor": "nx:run-commands",

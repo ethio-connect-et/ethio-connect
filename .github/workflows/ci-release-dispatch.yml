@@ -40,7 +40,7 @@ on:
         description: "owner/repo for the downstream environments repository"
         required: false
         type: string
-        default: "ethio-connect-sc/ethio-connect-environments"
+        default: "ethio-connect-et/ethio-connect-environments"
 permissions:
   contents: read
 

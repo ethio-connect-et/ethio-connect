@@ -3,28 +3,19 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/api-common/src",
   "projectType": "library",
-  "tags": [
-    "scope:shared",
-    "type:util",
-    "domain:shared",
-    "platform:api"
-  ],
+  "tags": ["scope:shared", "type:util", "domain:shared", "platform:api"],
   "metadata": {
     "targetContractProfile": "library"
   },
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/libs/api-common",
         "main": "libs/api-common/src/index.ts",
         "tsConfig": "libs/api-common/tsconfig.lib.json",
-        "assets": [
-          "libs/api-common/*.md"
-        ],
+        "assets": ["libs/api-common/*.md"],
         "generatePackageJson": true
       }
     },
