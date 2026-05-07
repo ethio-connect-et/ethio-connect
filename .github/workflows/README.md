@@ -21,15 +21,15 @@ flowchart TD
   E --> F
 ```
 
-| Workflow                                        | Owner                                      | Trigger                                                    | Inputs                                                                                                                                                                                    | Outputs                                                                                                                  | Notes                                                                                                                                   |
-| ----------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `.github/workflows/ci.yml`                      | Platform Engineering                       | `pull_request`, `merge_group`, `push`, `workflow_dispatch` | n/a                                                                                                                                                                                       | n/a                                                                                                                      | Orchestrator that calls reusable CI workflows and enforces stage ordering.                                                              |
-| `.github/workflows/ci-policy-governance.yml`    | Platform Engineering                       | `workflow_call`                                            | `node_version`, `pnpm_version`, `event_name`, `base_ref`, `head_ref`                                                                                                                      | n/a                                                                                                                      | Branch ladder enforcement, workflow linting, immutable action pin checks.                                                               |
-| `.github/workflows/ci-quality-security.yml`     | Security + Platform Engineering            | `workflow_call`                                            | `node_version`, `pnpm_version`, `event_name`, `ref_name`, `base_ref`                                                                                                                      | n/a                                                                                                                      | Dependency review, Snyk, CodeQL, deploy asset checks, Nx lint/typecheck/test/build.                                                     |
-| `.github/workflows/ci-image-publish-attest.yml` | Security Provenance + Platform Engineering | `workflow_call`                                            | `node_version`, `pnpm_version`                                                                                                                                                            | `infra_environment`, `target_branch`, `image_tag`, `release_version`, `applications_json`, `attestation_references_json` | Protected-branch image publish, SBOM generation, signing, provenance attestation.                                                       |
-| `.github/workflows/ci-release-dispatch.yml`     | Platform Engineering                       | `workflow_call`                                            | `source_sha`, `source_ref`, `target_environment`, `image_tag`, `release_version`, `release_schema_version`, `applications_json`, `attestation_references_json`, `environments_repository` | n/a                                                                                                                      | Validates payload against the versioned schema, then dispatches `app-release-published` to `ethio-connect-environments` (staging only). |
-| `.github/workflows/release.yml`                 | Release Management                         | `workflow_dispatch`                                        | `version`, `source_sha`, `changelog`, `prerelease`                                                                                                                                        | n/a                                                                                                                      | Manual release metadata and post-publish release artifacts/signing flow.                                                                |
-| `.github/workflows/release-drafter.yml`         | Release Management                         | `push` to `main`, `workflow_dispatch`                      | n/a                                                                                                                                                                                       | n/a                                                                                                                      | Maintains draft release notes for `main`.                                                                                               |
+| Workflow                                        | Owner                                      | Trigger                                                    | Inputs                                                                                                                                                                                    | Outputs                                                                                                                  | Notes                                                                                                                                                                  |
+| ----------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.github/workflows/ci.yml`                      | Platform Engineering                       | `pull_request`, `merge_group`, `push`, `workflow_dispatch` | n/a                                                                                                                                                                                       | n/a                                                                                                                      | Orchestrator that calls reusable CI workflows and enforces stage ordering.                                                                                             |
+| `.github/workflows/ci-policy-governance.yml`    | Platform Engineering                       | `workflow_call`                                            | `node_version`, `pnpm_version`, `event_name`, `base_ref`, `head_ref`                                                                                                                      | n/a                                                                                                                      | Branch ladder enforcement, workflow linting, immutable action pin checks.                                                                                              |
+| `.github/workflows/ci-quality-security.yml`     | Security + Platform Engineering            | `workflow_call`                                            | `node_version`, `pnpm_version`, `event_name`, `ref_name`, `base_ref`                                                                                                                      | n/a                                                                                                                      | Dependency review, Snyk, CodeQL, deploy asset checks, Nx lint/typecheck/test/build.                                                                                    |
+| `.github/workflows/ci-image-publish-attest.yml` | Security Provenance + Platform Engineering | `workflow_call`                                            | `node_version`, `pnpm_version`                                                                                                                                                            | `infra_environment`, `target_branch`, `image_tag`, `release_version`, `applications_json`, `attestation_references_json` | Protected-branch image publish, SBOM generation, signing, provenance attestation.                                                                                      |
+| `.github/workflows/ci-release-dispatch.yml`     | Platform Engineering                       | `workflow_call`                                            | `source_sha`, `source_ref`, `target_environment`, `image_tag`, `release_version`, `release_schema_version`, `applications_json`, `attestation_references_json`, `environments_repository` | n/a                                                                                                                      | Validates payload against the versioned schema, then dispatches `app-release-published` to `ethio-connect-environments` (staging only).                                |
+| `.github/workflows/release.yml`                 | Release Management                         | `workflow_dispatch`                                        | `version`, `source_sha`, `release_group`, `run_docker_gate`, `prerelease`                                                                                                                 | n/a                                                                                                                      | Nx-first release lifecycle: `nx release version`, `nx release changelog`, Nx target-based docker build/gate/publish, and GitHub Release publication from Nx artifacts. |
+| `.github/workflows/release-drafter.yml`         | Release Management                         | `push` to `main`, `workflow_dispatch`                      | n/a                                                                                                                                                                                       | n/a                                                                                                                      | Maintains draft release notes for `main`.                                                                                                                              |
 
 ## Shared Workflow Conventions
 
@@ -62,3 +62,49 @@ curl -sSL -o /tmp/actionlint.tar.gz https://github.com/rhysd/actionlint/releases
   && tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint \
   && /tmp/actionlint -color .github/workflows/*.yml
 ```
+
+## Nx-First Release Workflow (`release.yml`)
+
+Release execution now uses Nx as the source of truth for versioning, changelog generation, and publish orchestration.
+
+### Job Sequence
+
+1. **`nx_release_prepare`**
+   - Runs `pnpm exec nx release version <specifier> --groups=<release_group> --yes`.
+   - Resolves the created tag/version from git.
+   - Runs `pnpm exec nx release changelog <resolved-version> --groups=<release_group> --yes`.
+   - Uploads Nx-generated release metadata/changelog artifacts.
+2. **`docker_release_artifacts`**
+   - Runs Nx docker lifecycle targets only:
+     - `docker:build`
+     - optional `docker:run` (gated by `run_docker_gate=true`)
+     - `nx-release-publish`
+   - Uploads produced release artifacts for handoff.
+3. **`publish_github_release`**
+   - Downloads Nx-generated metadata artifacts.
+   - Creates the GitHub Release/tag presentation using the resolved Nx version and uploaded artifacts.
+
+### Required Inputs
+
+- `version`: Nx release specifier or exact version.
+- `source_sha`: commit SHA used for the release.
+
+### Optional Inputs
+
+- `release_group` (default: `default`): Nx release group from `nx.json` release config.
+- `run_docker_gate` (default: `false`): run `docker:run` target before publish.
+- `prerelease` (default: `false`): mark GitHub release as prerelease.
+
+### Required Secrets / Permissions
+
+- `secrets.GITHUB_TOKEN`
+  - `contents: write` for tag/release creation.
+  - `packages: write` for registry publish targets.
+  - `id-token: write` for OIDC-backed auth/signing integrations where required.
+
+### Artifacts and Handoff Points
+
+- **From `nx_release_prepare` to `publish_github_release`:**
+  - `nx-release-metadata-<version>` (CHANGELOG and Nx release metadata).
+- **From `docker_release_artifacts` to downstream/manual review:**
+  - `docker-release-artifacts-<version>` (build/publish target outputs such as `dist/**`).
