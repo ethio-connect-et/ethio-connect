@@ -43,7 +43,8 @@ concurrency:
 env:
   CI: "true"
   IMAGE_REGISTRY: ghcr.io
-  IMAGE_ORG: ethio-connect-sc
+  ORG_LC: ethio-connect-et
+  IMAGE_ORG: ethio-connect-et
   NODE_VERSION: ${{ inputs.node_version }}
   PNPM_VERSION: ${{ inputs.pnpm_version }}
   DOCKER_BUILDKIT: "1"
@@ -189,13 +190,39 @@ jobs:
         with:
           registry: ${{ env.IMAGE_REGISTRY }}
           username: ${{ github.actor }}
+          # Cross-org publishing requires a PAT or GitHub App installation token with
+          # package:write on the target org; GITHUB_TOKEN is only valid for this repo org.
           password: ${{ secrets.GITHUB_TOKEN }}
+
+
+      - name: Preflight image prefix
+        if: steps.projects.outputs.should_publish == 'true'
+        env:
+          REGISTRY: ${{ env.IMAGE_REGISTRY }}
+          ORG_LC: ${{ env.ORG_LC }}
+          EXPECTED_ORG: ethio-connect-et
+        run: |
+          if [ "${ORG_LC}" != "${EXPECTED_ORG}" ]; then
+            echo "::error::Unexpected container org '${ORG_LC}'. Expected '${EXPECTED_ORG}'." >&2
+            exit 1
+          fi
+
+          first_project="$(jq -r '.[0] // empty' <<< '${{ steps.projects.outputs.projects_json }}')"
+          if [ -z "${first_project}" ]; then
+            echo "::error::No publishable project found for image prefix preflight." >&2
+            exit 1
+          fi
+
+          project_image_name="${first_project##*/}"
+          image_prefix="${REGISTRY}/${ORG_LC}/${project_image_name}"
+          echo "Resolved image prefix: ${image_prefix}"
+          echo "Expected format: ghcr.io/<org>/<project>"
 
       - name: Build application images with Nx
         if: steps.projects.outputs.should_publish == 'true'
         env:
           REGISTRY: ${{ env.IMAGE_REGISTRY }}
-          ORG_LC: ${{ env.IMAGE_ORG }}
+          ORG_LC: ${{ env.ORG_LC }}
           IMAGE_TAG: ${{ steps.deploy_context.outputs.image_tag }}
           BUILD_NUMBER: ${{ github.run_number }}
           COMMIT_SHA: ${{ github.sha }}
@@ -212,7 +239,7 @@ jobs:
         if: steps.projects.outputs.should_publish == 'true'
         env:
           REGISTRY: ${{ env.IMAGE_REGISTRY }}
-          ORG_LC: ${{ env.IMAGE_ORG }}
+          ORG_LC: ${{ env.ORG_LC }}
           IMAGE_TAG: ${{ steps.deploy_context.outputs.image_tag }}
         run: |
           pnpm exec nx run-many \
@@ -242,7 +269,7 @@ jobs:
           IMAGE_TAG: ${{ steps.deploy_context.outputs.image_tag }}
           RELEASE_VERSION: ${{ steps.deploy_context.outputs.release_version }}
           REGISTRY: ${{ env.IMAGE_REGISTRY }}
-          ORG_LC: ${{ env.IMAGE_ORG }}
+          ORG_LC: ${{ env.ORG_LC }}
           PROJECTS_JSON: ${{ steps.projects.outputs.projects_json }}
         run: |
           applications_json='{}'
