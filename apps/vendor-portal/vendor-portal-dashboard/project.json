@@ -3,13 +3,7 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/vendor-portal/vendor-portal-dashboard",
   "projectType": "application",
-  "tags": [
-    "domain:vendor-portal",
-    "platform:web",
-    "scope:vendor-portal",
-    "type:dashboard",
-    "release:docker"
-  ],
+  "tags": ["domain:vendor-portal", "platform:web", "scope:vendor-portal", "type:dashboard", "release:docker"],
   "metadata": {
     "targetContractProfile": "app"
   },
@@ -34,13 +28,9 @@
       }
     },
     "deploy-metadata": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "executor": "nx:run-commands",
-      "outputs": [
-        "{workspaceRoot}/dist/deploy-metadata/{projectName}.json"
-      ],
+      "outputs": ["{workspaceRoot}/dist/deploy-metadata/{projectName}.json"],
       "options": {
         "cwd": "{workspaceRoot}",
         "command": "mkdir -p dist/deploy-metadata && printf '{\\n  \"project\": \"{projectName}\",\\n  \"root\": \"{projectRoot}\",\\n  \"type\": \"application\",\\n  \"timestamp\": \"'\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"'\"\\n}\\n' > dist/deploy-metadata/{projectName}.json"
@@ -51,18 +41,12 @@
     },
     "nx-release-publish": {
       "executor": "@nx/docker:release-publish",
-      "dependsOn": [
-        "docker:build-push"
-      ]
+      "dependsOn": ["docker:build-push"]
     },
     "docker:metadata": {
       "executor": "nx:run-commands",
-      "dependsOn": [
-        "nx-release-publish"
-      ],
-      "outputs": [
-        "{workspaceRoot}/dist/containers/{projectName}/image.json"
-      ],
+      "dependsOn": ["nx-release-publish"],
+      "outputs": ["{workspaceRoot}/dist/containers/{projectName}/image.json"],
       "options": {
         "cwd": "{workspaceRoot}",
         "command": "node tools/containers/write-image-manifest.mjs --project {projectName}"
@@ -76,9 +60,7 @@
     },
     "docker:build-push": {
       "executor": "nx:run-commands",
-      "dependsOn": [
-        "docker:build-local"
-      ],
+      "dependsOn": ["docker:build-local"],
       "options": {
         "cwd": "{workspaceRoot}",
         "command": "pnpm exec nx run {projectName}:docker:build-local -- --push"
