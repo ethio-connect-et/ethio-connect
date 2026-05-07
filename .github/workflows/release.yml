@@ -277,8 +277,18 @@ jobs:
           REGISTRY: ${{ env.IMAGE_REGISTRY }}
           ORG_LC: ${{ env.IMAGE_ORG }}
         run: |
-          PROJECTS=$(pnpm exec nx show projects --withTarget docker:build- 2>/dev/null | tr '\n' ' ')
-          for proj in $PROJECTS; do
+          projects_json="$(pnpm exec nx show projects --withTarget docker:build --json)"
+          mapfile -t projects < <(printf '%s' "${projects_json}" | jq -r '.[]')
+
+          project_count="${#projects[@]}"
+          echo "Selected projects for release signing: ${project_count}" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${project_count}" -eq 0 ]; then
+            echo "::error::No projects with docker:build targets were found for release signing." >&2
+            exit 1
+          fi
+
+          for proj in "${projects[@]}"; do
             img_name="${proj##*/}"
             image_ref="${REGISTRY}/${ORG_LC}/${img_name}:${VERSION}"
 
