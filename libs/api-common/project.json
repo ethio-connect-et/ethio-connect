@@ -34,5 +34,8 @@
         "command": "pnpm tsc --noEmit -p libs/api-common/tsconfig.json"
       }
     }
+  },
+  "release": {
+    "publish": false
   }
 }

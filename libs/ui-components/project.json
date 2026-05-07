@@ -40,5 +40,8 @@
         "command": "pnpm tsc --noEmit -p libs/ui-components/tsconfig.json"
       }
     }
+  },
+  "release": {
+    "publish": false
   }
 }

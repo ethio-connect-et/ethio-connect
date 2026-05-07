@@ -32,7 +32,7 @@ function inferProfile(project, projectPath) {
   if (tags.has("platform:e2e") || projectPath.includes("-e2e/")) return "e2e";
   if (project.projectType === "application" && tags.has("release:docker")) return "publishable-app";
   if (project.projectType === "application") return "app";
-  if (project.projectType === "library" && !tags.has("release:publish")) return "internal-only-lib";
+  if (project.projectType === "library" && !tags.has("release:npm")) return "internal-only-lib";
   return "library";
 }
 
