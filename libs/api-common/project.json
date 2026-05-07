@@ -19,14 +19,12 @@
     "release:publish"
   ],
   "metadata": {
-    "targetContractProfile": "library",
-    "targetContract": {
-      "allowedForbiddenTargets": {
-        "nx-release-publish": "Required by scripts/validate-target-contract.mjs for library profile; kept as noop to satisfy release contract parity."
-      }
-    }
+    "targetContractProfile": "library"
   },
   "targets": {
+    "typecheck": {
+      "cache": true
+    },
     "build": {
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
@@ -36,20 +34,6 @@
         "tsConfig": "libs/api-common/tsconfig.lib.json",
         "assets": ["libs/api-common/*.md"],
         "generatePackageJson": true
-      }
-    },
-    "package": {
-      "executor": "nx:noop",
-      "dependsOn": ["build"]
-    },
-    "nx-release-publish": {
-      "executor": "nx:noop",
-      "dependsOn": ["package"]
-    },
-    "typecheck": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "pnpm tsc --noEmit -p libs/api-common/tsconfig.json"
       }
     }
   }
