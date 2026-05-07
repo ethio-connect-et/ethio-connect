@@ -1,7 +1,7 @@
-import { ethioconnect } from './ethioconnect';
+import { ethioconnect } from "./ethioconnect";
 
-describe('ethioconnect', () => {
-  it('should work', () => {
-    expect(ethioconnect()).toEqual('ethioconnect');
+describe("ethioconnect", () => {
+  it("should work", () => {
+    expect(ethioconnect()).toEqual("ethioconnect");
   });
 });

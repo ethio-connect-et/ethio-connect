@@ -47,11 +47,7 @@
       "options": {
         "targetName": "test"
       },
-      "exclude": [
-        "apps/central-hub/central-hub-api-e2e/**/*",
-        "apps/vendor-portal/vendor-api-server-e2e/**/*",
-        "apps/customer-portal/customer-portal-api-e2e/**/*"
-      ]
+      "exclude": ["apps/central-hub/central-hub-api-e2e/**/*", "apps/vendor-portal/vendor-api-server-e2e/**/*", "apps/customer-portal/customer-portal-api-e2e/**/*"]
     },
     {
       "plugin": "@nx/webpack/plugin",
@@ -102,13 +98,7 @@
         },
         "runTarget": {
           "name": "docker:run",
-          "args": [
-            "--rm",
-            "--publish",
-            "3000:3000",
-            "--env",
-            "NODE_ENV=production"
-          ]
+          "args": ["--rm", "--publish", "3000:3000", "--env", "NODE_ENV=production"]
         },
         "nx-release-publish": {
           "imageTag": "${IMAGE_TAG:-$VERSION}"
@@ -143,12 +133,7 @@
     "docker:build": {
       "cache": false,
       "dependsOn": ["build", "prune"],
-      "inputs": [
-        "production",
-        "^production",
-        "sharedGlobals",
-        "{projectRoot}/Dockerfile"
-      ]
+      "inputs": ["production", "^production", "sharedGlobals", "{projectRoot}/Dockerfile"]
     },
     "nx-release-publish": {
       "cache": false,
@@ -176,21 +161,6 @@
       "cache": true,
       "inputs": ["default", "^production", "sharedGlobals"]
     },
-    "format:write": {
-      "cache": false,
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css,scss}\""
-      }
-    },
-    "format:check": {
-      "cache": true,
-      "inputs": ["default", "^production", "sharedGlobals"],
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css,scss}\""
-      }
-    },
     "@nx/next:build": {
       "cache": true,
       "dependsOn": ["^build"],
@@ -212,21 +182,13 @@
           "projectChangelogs": true,
           "workspaceChangelog": false
         },
-        "releaseTagPatternCheckAllBranchesWhen": [
-          "development",
-          "testing",
-          "staging"
-        ],
+        "releaseTagPatternCheckAllBranchesWhen": ["development", "testing", "staging"],
         "versionPlans": {
           "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
         }
       },
       "ethio-connect-backend-services": {
-        "projects": [
-          "@ethio-connect/central-hub-api",
-          "@ethio-connect/customer-portal-api",
-          "@ethio-connect/vendor-api-server"
-        ],
+        "projects": ["@ethio-connect/central-hub-api", "@ethio-connect/customer-portal-api", "@ethio-connect/vendor-api-server"],
         "releaseTagPattern": "v{version}",
         "releaseTagPatternStrictPreid": true,
         "docker": true,
@@ -247,21 +209,13 @@
             "tag": true
           }
         },
-        "releaseTagPatternCheckAllBranchesWhen": [
-          "development",
-          "testing",
-          "staging"
-        ],
+        "releaseTagPatternCheckAllBranchesWhen": ["development", "testing", "staging"],
         "versionPlans": {
           "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
         }
       },
       "ethio-connect-dashboards-frontends": {
-        "projects": [
-          "@ethio-connect/central-hub-dashboard",
-          "@ethio-connect/customer-portal-dashboard",
-          "@ethio-connect/vendor-portal-dashboard"
-        ],
+        "projects": ["@ethio-connect/central-hub-dashboard", "@ethio-connect/customer-portal-dashboard", "@ethio-connect/vendor-portal-dashboard"],
         "releaseTagPattern": "v{version}",
         "releaseTagPatternStrictPreid": true,
         "docker": true,
@@ -282,11 +236,7 @@
             "tag": true
           }
         },
-        "releaseTagPatternCheckAllBranchesWhen": [
-          "development",
-          "testing",
-          "staging"
-        ],
+        "releaseTagPatternCheckAllBranchesWhen": ["development", "testing", "staging"],
         "versionPlans": {
           "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
         }
@@ -313,11 +263,7 @@
             "tag": true
           }
         },
-        "releaseTagPatternCheckAllBranchesWhen": [
-          "development",
-          "testing",
-          "staging"
-        ],
+        "releaseTagPatternCheckAllBranchesWhen": ["development", "testing", "staging"],
         "versionPlans": {
           "ignorePatternsForPlanCheck": ["**/*.md", "**/.github/**", "docs/**"]
         }

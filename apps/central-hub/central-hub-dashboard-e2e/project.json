@@ -3,12 +3,7 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "sourceRoot": "apps/central-hub/central-hub-dashboard-e2e/src",
-  "tags": [
-    "domain:central-hub",
-    "platform:e2e",
-    "scope:central-hub",
-    "type:app"
-  ],
+  "tags": ["domain:central-hub", "platform:e2e", "scope:central-hub", "type:app"],
   "implicitDependencies": ["@ethio-connect/central-hub-dashboard"],
   "metadata": {
     "targetContractProfile": "e2e"

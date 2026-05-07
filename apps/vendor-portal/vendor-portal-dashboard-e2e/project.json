@@ -3,12 +3,7 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "sourceRoot": "apps/vendor-portal/vendor-portal-dashboard-e2e/src",
-  "tags": [
-    "domain:vendor-portal",
-    "platform:e2e",
-    "scope:vendor-portal",
-    "type:app"
-  ],
+  "tags": ["domain:vendor-portal", "platform:e2e", "scope:vendor-portal", "type:app"],
   "implicitDependencies": ["@ethio-connect/vendor-portal-dashboard"],
   "metadata": {
     "targetContractProfile": "e2e"

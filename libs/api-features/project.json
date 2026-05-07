@@ -11,13 +11,7 @@
     },
     "publish": false
   },
-  "tags": [
-    "scope:shared",
-    "type:feature",
-    "domain:shared",
-    "platform:api",
-    "release:publish"
-  ],
+  "tags": ["scope:shared", "type:feature", "domain:shared", "platform:api", "release:publish"],
   "metadata": {
     "targetContractProfile": "library",
     "targetContract": {

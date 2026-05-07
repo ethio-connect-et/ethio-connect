@@ -2,12 +2,7 @@
   "name": "@ethio-connect/customer-portal-api-e2e",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
-  "tags": [
-    "domain:customer-portal",
-    "platform:e2e",
-    "scope:customer-portal",
-    "type:app"
-  ],
+  "tags": ["domain:customer-portal", "platform:e2e", "scope:customer-portal", "type:app"],
   "implicitDependencies": ["@ethio-connect/customer-portal-api"],
   "metadata": {
     "targetContractProfile": "e2e"
@@ -20,10 +15,7 @@
         "jestConfig": "apps/customer-portal/customer-portal-api-e2e/jest.config.cts",
         "passWithNoTests": true
       },
-      "dependsOn": [
-        "@ethio-connect/customer-portal-api:build",
-        "@ethio-connect/customer-portal-api:serve"
-      ]
+      "dependsOn": ["@ethio-connect/customer-portal-api:build", "@ethio-connect/customer-portal-api:serve"]
     },
     "lint": {
       "executor": "nx:noop"

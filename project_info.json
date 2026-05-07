@@ -21,10 +21,7 @@
       },
       "cache": true,
       "inputs": ["ci", "^production"],
-      "outputs": [
-        "{workspaceRoot}/coverage/{projectRoot}",
-        "{projectRoot}/test-results"
-      ],
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}", "{projectRoot}/test-results"],
       "executor": "nx:run-commands",
       "options": {
         "cwd": "apps/central-hub/central-hub-api",
@@ -41,12 +38,7 @@
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"],
-      "outputs": [
-        "{workspaceRoot}/dist/{projectRoot}",
-        "{projectRoot}/dist",
-        "{projectRoot}/build",
-        "{projectRoot}/.next"
-      ],
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}", "{projectRoot}/dist", "{projectRoot}/build", "{projectRoot}/.next"],
       "metadata": {
         "technologies": ["webpack"],
         "description": "Runs Webpack build",
@@ -216,10 +208,7 @@
       "dependsOn": ["build"],
       "cache": true,
       "executor": "@nx/js:prune-lockfile",
-      "outputs": [
-        "{workspaceRoot}/dist/apps/central-hub/central-hub-api/package.json",
-        "{workspaceRoot}/dist/apps/central-hub/central-hub-api/pnpm-lock.yaml"
-      ],
+      "outputs": ["{workspaceRoot}/dist/apps/central-hub/central-hub-api/package.json", "{workspaceRoot}/dist/apps/central-hub/central-hub-api/pnpm-lock.yaml"],
       "options": { "buildTarget": "build" },
       "configurations": {},
       "parallelism": true
@@ -227,9 +216,7 @@
     "copy-workspace-modules": {
       "dependsOn": ["build"],
       "cache": true,
-      "outputs": [
-        "{workspaceRoot}/dist/apps/central-hub/central-hub-api/workspace_modules"
-      ],
+      "outputs": ["{workspaceRoot}/dist/apps/central-hub/central-hub-api/workspace_modules"],
       "executor": "@nx/js:copy-workspace-modules",
       "options": { "buildTarget": "build" },
       "configurations": {},
@@ -245,9 +232,7 @@
     "container": {
       "dependsOn": ["build", "^build"],
       "executor": "nx:run-commands",
-      "outputs": [
-        "{workspaceRoot}/dist/containers/{projectName}/container-metadata.json"
-      ],
+      "outputs": ["{workspaceRoot}/dist/containers/{projectName}/container-metadata.json"],
       "options": {
         "cwd": "",
         "command": "docker buildx build --load --file apps/central-hub/central-hub-api/Dockerfile --tag ${NX_DOCKER_REGISTRY:-ghcr.io}/${NX_DOCKER_REPOSITORY:-ethio-connect-et}/@ethio-connect/central-hub-api:${NX_IMAGE_TAG:-local} --metadata-file dist/containers/@ethio-connect/central-hub-api/container-metadata.json apps/central-hub/central-hub-api"
@@ -255,12 +240,7 @@
       "configurations": {},
       "parallelism": true,
       "cache": true,
-      "inputs": [
-        "production",
-        "^production",
-        "{workspaceRoot}/Dockerfile",
-        "{projectRoot}/Dockerfile"
-      ]
+      "inputs": ["production", "^production", "{workspaceRoot}/Dockerfile", "{projectRoot}/Dockerfile"]
     },
     "container-push": {
       "dependsOn": ["container"],
@@ -297,13 +277,7 @@
     }
   },
   "name": "@ethio-connect/central-hub-api",
-  "tags": [
-    "npm:public",
-    "domain:central-hub",
-    "platform:api",
-    "scope:central-hub",
-    "type:api"
-  ],
+  "tags": ["npm:public", "domain:central-hub", "platform:api", "scope:central-hub", "type:api"],
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/central-hub/central-hub-api/src",
   "implicitDependencies": []

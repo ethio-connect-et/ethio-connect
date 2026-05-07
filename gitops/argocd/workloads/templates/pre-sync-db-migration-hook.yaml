@@ -5,7 +5,7 @@ metadata:
   annotations:
     argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/hook-delete-policy: HookSucceeded
-    argocd.argoproj.io/sync-wave: '4'
+    argocd.argoproj.io/sync-wave: "4"
 spec:
   backoffLimit: 1
   template:
@@ -14,4 +14,4 @@ spec:
       containers:
         - name: migrate
           image: ghcr.io/ethio-connect/{{tenant}}-api:{{imageTag}}
-          command: ['sh', '-c', 'npm run db:migrate']
+          command: ["sh", "-c", "npm run db:migrate"]

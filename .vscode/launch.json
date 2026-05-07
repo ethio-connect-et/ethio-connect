@@ -14,22 +14,14 @@
       "internalConsoleOptions": "neverOpen",
       "skipFiles": ["<node_internals>/**"],
       "sourceMaps": true,
-      "outFiles": [
-        "${workspaceFolder}/apps/central-hub/central-hub-api/dist/**/*.(m|c|)js",
-        "!**/node_modules/**"
-      ]
+      "outFiles": ["${workspaceFolder}/apps/central-hub/central-hub-api/dist/**/*.(m|c|)js", "!**/node_modules/**"]
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Debug @ethio-connect/vendor-api-server with Nx",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "exec",
-        "nx",
-        "serve",
-        "@ethio-connect/vendor-api-server"
-      ],
+      "runtimeArgs": ["exec", "nx", "serve", "@ethio-connect/vendor-api-server"],
       "env": {
         "NODE_OPTIONS": "--inspect=9230"
       },
@@ -37,22 +29,14 @@
       "internalConsoleOptions": "neverOpen",
       "skipFiles": ["<node_internals>/**"],
       "sourceMaps": true,
-      "outFiles": [
-        "${workspaceFolder}/apps/vendor-portal/vendor-api-server/dist/**/*.(m|c|)js",
-        "!**/node_modules/**"
-      ]
+      "outFiles": ["${workspaceFolder}/apps/vendor-portal/vendor-api-server/dist/**/*.(m|c|)js", "!**/node_modules/**"]
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Debug @ethio-connect/customer-portal-api with Nx",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "exec",
-        "nx",
-        "serve",
-        "@ethio-connect/customer-portal-api"
-      ],
+      "runtimeArgs": ["exec", "nx", "serve", "@ethio-connect/customer-portal-api"],
       "env": {
         "NODE_OPTIONS": "--inspect=9231"
       },
@@ -60,10 +44,7 @@
       "internalConsoleOptions": "neverOpen",
       "skipFiles": ["<node_internals>/**"],
       "sourceMaps": true,
-      "outFiles": [
-        "${workspaceFolder}/apps/customer-portal/customer-portal-api/dist/**/*.(m|c|)js",
-        "!**/node_modules/**"
-      ]
+      "outFiles": ["${workspaceFolder}/apps/customer-portal/customer-portal-api/dist/**/*.(m|c|)js", "!**/node_modules/**"]
     }
   ]
 }

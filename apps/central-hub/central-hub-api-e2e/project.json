@@ -2,12 +2,7 @@
   "name": "@ethio-connect/central-hub-api-e2e",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
-  "tags": [
-    "domain:central-hub",
-    "platform:e2e",
-    "scope:central-hub",
-    "type:app"
-  ],
+  "tags": ["domain:central-hub", "platform:e2e", "scope:central-hub", "type:app"],
   "implicitDependencies": ["@ethio-connect/central-hub-api"],
   "metadata": {
     "targetContractProfile": "e2e"
@@ -20,10 +15,7 @@
         "jestConfig": "apps/central-hub/central-hub-api-e2e/jest.config.cts",
         "passWithNoTests": true
       },
-      "dependsOn": [
-        "@ethio-connect/central-hub-api:build",
-        "@ethio-connect/central-hub-api:serve"
-      ]
+      "dependsOn": ["@ethio-connect/central-hub-api:build", "@ethio-connect/central-hub-api:serve"]
     },
     "lint": {
       "executor": "nx:noop"

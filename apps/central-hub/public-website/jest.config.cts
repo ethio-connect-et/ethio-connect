@@ -1,18 +1,18 @@
-const nextJest = require('next/jest.js');
+const nextJest = require("next/jest.js");
 
 const createJestConfig = nextJest({
-  dir: './',
+  dir: "./",
 });
 
 const config = {
-  displayName: '@ethio-connect/public-website',
-  preset: '../../../jest.preset.js',
+  displayName: "@ethio-connect/public-website",
+  preset: "../../../jest.preset.js",
   transform: {
-    '^(?!.*\\.(js|jsx|ts|tsx|css|json)$)': '@nx/react/plugins/jest',
+    "^(?!.*\\.(js|jsx|ts|tsx|css|json)$)": "@nx/react/plugins/jest",
   },
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
-  coverageDirectory: '../../../coverage/apps/central-hub/public-website',
-  testEnvironment: 'jsdom',
+  moduleFileExtensions: ["ts", "tsx", "js", "jsx"],
+  coverageDirectory: "../../../coverage/apps/central-hub/public-website",
+  testEnvironment: "jsdom",
 };
 
 const jestConfig = createJestConfig(config);

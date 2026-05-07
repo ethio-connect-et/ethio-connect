@@ -4,20 +4,20 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g. v1.2.3)'
+        description: "Release version (e.g. v1.2.3)"
         required: true
         type: string
       source_sha:
-        description: 'The full git SHA whose images were published'
+        description: "The full git SHA whose images were published"
         required: true
         type: string
       changelog:
-        description: 'Release changelog / notes (markdown supported)'
+        description: "Release changelog / notes (markdown supported)"
         required: false
         type: string
-        default: ''
+        default: ""
       prerelease:
-        description: 'Mark this as a pre-release'
+        description: "Mark this as a pre-release"
         required: false
         type: boolean
         default: false
@@ -95,15 +95,15 @@ jobs:
         if: ${{ steps.release-exists.outputs.exists != 'true' }}
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.1.0
         with:
-          version: '10.20.0'
+          version: "10.20.0"
           run_install: false
 
       - name: Setup Node.js
         if: ${{ steps.release-exists.outputs.exists != 'true' }}
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v4.4.0
         with:
-          node-version: '24.11.0'
-          cache: 'pnpm'
+          node-version: "24.11.0"
+          cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
@@ -174,14 +174,14 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.1.0
         with:
-          version: '10.20.0'
+          version: "10.20.0"
           run_install: false
 
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v4.4.0
         with:
-          node-version: '24.11.0'
-          cache: 'pnpm'
+          node-version: "24.11.0"
+          cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
@@ -238,14 +238,14 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.1.0
         with:
-          version: '10.20.0'
+          version: "10.20.0"
           run_install: false
 
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v4.4.0
         with:
-          node-version: '24.11.0'
-          cache: 'pnpm'
+          node-version: "24.11.0"
+          cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
@@ -263,7 +263,7 @@ jobs:
 
       - name: Sign release images and attest SLSA provenance
         env:
-          COSIGN_YES: 'true'
+          COSIGN_YES: "true"
           VERSION: ${{ inputs.version }}
           SOURCE_SHA: ${{ inputs.source_sha }}
           REGISTRY: ${{ env.IMAGE_REGISTRY }}
@@ -324,8 +324,7 @@ jobs:
 
   publish_github_release:
     name: Publish GitHub Release
-    needs:
-      [verify_published_images, generate_release_sboms, sign_and_attest_release]
+    needs: [verify_published_images, generate_release_sboms, sign_and_attest_release]
     if: ${{ needs.verify_published_images.outputs.release_exists != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

@@ -3,12 +3,7 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "sourceRoot": "apps/customer-portal/customer-portal-dashboard-e2e/src",
-  "tags": [
-    "domain:customer-portal",
-    "platform:e2e",
-    "scope:customer-portal",
-    "type:app"
-  ],
+  "tags": ["domain:customer-portal", "platform:e2e", "scope:customer-portal", "type:app"],
   "implicitDependencies": ["@ethio-connect/customer-portal-dashboard"],
   "metadata": {
     "targetContractProfile": "e2e"
