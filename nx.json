@@ -31,22 +31,12 @@
     },
     {
       "plugin": "@nx/playwright/plugin",
-      "options": {
-        "targetName": "e2e",
-        "ciTargetName": "e2e-ci"
-      }
+      "options": { "targetName": "e2e", "ciTargetName": "e2e-ci" }
     },
-    {
-      "plugin": "@nx/eslint/plugin",
-      "options": {
-        "targetName": "lint"
-      }
-    },
+    { "plugin": "@nx/eslint/plugin", "options": { "targetName": "lint" } },
     {
       "plugin": "@nx/jest/plugin",
-      "options": {
-        "targetName": "test"
-      },
+      "options": { "targetName": "test" },
       "exclude": [
         "apps/central-hub/central-hub-api-e2e/**/*",
         "apps/vendor-portal/vendor-api-server-e2e/**/*",
@@ -71,9 +61,7 @@
           "name": "docker:build",
           "skipDefaultTag": true,
           "cwd": ".",
-          "env": {
-            "PROJECT_NAME": "{projectName}"
-          },
+          "env": { "PROJECT_NAME": "{projectName}" },
           "args": [
             "--file",
             "{projectRoot}/Dockerfile",
@@ -110,29 +98,16 @@
             "NODE_ENV=production"
           ]
         },
-        "nx-release-publish": {
-          "imageTag": "${IMAGE_TAG:-$VERSION}"
-        }
+        "nx-release-publish": { "imageTag": "${IMAGE_TAG:-$VERSION}" }
       }
     }
   ],
   "pluginsConfig": {
-    "@nx/js": {
-      "projectsAffectedByDependencyUpdates": "auto"
-    }
+    "@nx/js": { "projectsAffectedByDependencyUpdates": "auto" }
   },
   "generators": {
-    "@nx/next": {
-      "application": {
-        "style": "tailwind",
-        "linter": "eslint"
-      }
-    },
-    "@nx/react": {
-      "library": {
-        "unitTestRunner": "jest"
-      }
-    }
+    "@nx/next": { "application": { "style": "tailwind", "linter": "eslint" } },
+    "@nx/react": { "library": { "unitTestRunner": "jest" } }
   },
   "targetDefaults": {
     "build": {
@@ -150,12 +125,7 @@
         "{projectRoot}/Dockerfile"
       ]
     },
-    "nx-release-publish": {
-      "cache": false,
-      "options": {
-        "quiet": false
-      }
-    },
+    "nx-release-publish": { "cache": false, "options": { "quiet": false } },
     "lint": {
       "cache": true,
       "inputs": ["default", "^production", "sharedGlobals"]
@@ -168,9 +138,7 @@
       "cache": true,
       "inputs": ["default", "^production", "sharedGlobals"],
       "executor": "nx:run-commands",
-      "options": {
-        "command": "tsc --noEmit"
-      }
+      "options": { "command": "tsc --noEmit" }
     },
     "quality": {
       "cache": true,
