@@ -50,7 +50,8 @@
       "dependsOn": ["build"],
       "options": {
         "buildTarget": "@ethio-connect/central-hub-api:build",
-        "runBuildTargetDependencies": false
+        "runBuildTargetDependencies": false,
+        "port": 9230
       },
       "configurations": {
         "development": {

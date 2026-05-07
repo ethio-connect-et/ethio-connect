@@ -52,6 +52,9 @@
         "command": "node tools/containers/write-image-manifest.mjs --project {projectName}"
       }
     },
+    "dev": {
+      "command": "next dev -p 3005"
+    },
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {
