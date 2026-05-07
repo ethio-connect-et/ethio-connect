@@ -63,7 +63,6 @@ curl -sSL -o /tmp/actionlint.tar.gz https://github.com/rhysd/actionlint/releases
   && /tmp/actionlint -color .github/workflows/*.yml
 ```
 
-
 - **Target migration notes:** maintainers should follow `docs/release-target-migration.md` for canonical Nx release target usage and deprecated target guidance.
 
 ## Nx-First Release Workflow (`release.yml`)
