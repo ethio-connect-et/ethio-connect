@@ -41,15 +41,15 @@ for (const file of files) {
   if (jobsIndex === -1) continue;
 
   for (let i = jobsIndex + 1; i < lines.length; i += 1) {
-    const jobMatch = lines[i].match(/^  ([A-Za-z0-9_-]+):\s*$/);
+    const jobMatch = lines[i].match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
     if (!jobMatch) continue;
     const job = jobMatch[1];
     const jobKey = `${file}:${job}`;
     let hasPermissions = false;
 
     for (let j = i + 1; j < lines.length; j += 1) {
-      if (/^  [A-Za-z0-9_-]+:\s*$/.test(lines[j])) break;
-      if (!/^    permissions:\s*$/.test(lines[j])) continue;
+      if (/^ {2}[A-Za-z0-9_-]+:\s*$/.test(lines[j])) break;
+      if (!/^ {4}permissions:\s*$/.test(lines[j])) continue;
       hasPermissions = true;
       for (let k = j + 1; k < lines.length; k += 1) {
         if (!lines[k].trim()) continue;
