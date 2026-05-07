@@ -57,7 +57,10 @@ jobs:
   quality_and_security:
     name: Quality and Security Gate
     permissions:
+      actions: read
       contents: read
+      pull-requests: write
+      security-events: write
     needs: [governance_policy_checks]
     uses: ./.github/workflows/ci-quality-security.yml
     with:
