@@ -305,7 +305,7 @@ jobs:
         run: |
           pnpm exec nx affected \
             -t lint typecheck build test \
-            --exclude=@ethio-connect/deploy,*-e2e \
+            --exclude=@ethio-connect/deploy \
             --base="$NX_BASE" \
             --head="$NX_HEAD" \
             --parallel=3
