@@ -5,13 +5,21 @@
   "projectType": "library",
   "release": {
     "version": {
-      "manifestRootsToUpdate": ["dist/{projectRoot}"],
+      "manifestRootsToUpdate": [
+        "dist/{projectRoot}"
+      ],
       "currentVersionResolver": "git-tag",
       "fallbackCurrentVersionResolver": "disk"
     },
-    "publish": false
+    "publish": true
   },
-  "tags": ["scope:shared", "type:util", "domain:shared", "platform:cross", "release:publish"],
+  "tags": [
+    "scope:shared",
+    "type:util",
+    "domain:shared",
+    "platform:cross",
+    "release:publish"
+  ],
   "metadata": {
     "targetContractProfile": "library",
     "targetContract": {
@@ -29,18 +37,24 @@
     },
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/libs/ethioconnect",
         "main": "libs/ethioconnect/src/index.ts",
         "tsConfig": "libs/ethioconnect/tsconfig.lib.json",
-        "assets": ["libs/ethioconnect/*.md"],
+        "assets": [
+          "libs/ethioconnect/*.md"
+        ],
         "generatePackageJson": true
       }
     },
     "nx-release-publish": {
       "executor": "@nx/js:release-publish",
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "options": {
         "registry": "https://npm.pkg.github.com/",
         "tag": "latest"

@@ -3,42 +3,36 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/api-features/src",
   "projectType": "library",
-  "release": {
-    "version": {
-      "manifestRootsToUpdate": ["dist/{projectRoot}"],
-      "currentVersionResolver": "git-tag",
-      "fallbackCurrentVersionResolver": "disk"
-    },
-    "publish": false
-  },
-  "tags": ["scope:shared", "type:feature", "domain:shared", "platform:api", "release:publish"],
+  "tags": [
+    "scope:shared",
+    "type:feature",
+    "domain:shared",
+    "platform:api"
+  ],
   "metadata": {
-    "targetContractProfile": "library",
-    "targetContract": {
-      "allowedForbiddenTargets": {
-        "nx-release-publish": "Required by scripts/validate-target-contract.mjs for library profile; kept as noop to satisfy release contract parity."
-      }
-    }
+    "targetContractProfile": "library"
   },
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/libs/api-features",
         "main": "libs/api-features/src/index.ts",
         "tsConfig": "libs/api-features/tsconfig.lib.json",
-        "assets": ["libs/api-features/*.md"],
+        "assets": [
+          "libs/api-features/*.md"
+        ],
         "generatePackageJson": true
       }
     },
     "package": {
       "executor": "nx:noop",
-      "dependsOn": ["build"]
-    },
-    "nx-release-publish": {
-      "executor": "nx:noop",
-      "dependsOn": ["package"]
+      "dependsOn": [
+        "build"
+      ]
     },
     "typecheck": {
       "executor": "nx:run-commands",

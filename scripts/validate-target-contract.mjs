@@ -6,9 +6,9 @@ const ROOT = process.cwd();
 const PROFILE_RULES = {
   app: ["build", "lint", "test"],
   e2e: ["build", "lint", "test", "e2e"],
-  library: ["build", "package", "nx-release-publish"],
+  library: ["build"],
   "publishable-app": ["build", "lint", "test", "docker:build", "nx-release-publish"],
-  "internal-only-lib": ["build", "package"],
+  "internal-only-lib": ["build"],
 };
 
 async function findProjectJsonFiles(dir) {
